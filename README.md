@@ -37,7 +37,7 @@ A continuación se muestra un diagrama que muestra la estructura del proyecto:
 
 ### Clonar el Repositorio
 ```bash
-git clone <URL_DEL_REPOSITORIO>
+git clone https://github.com/AlexisVarela2811/CloudLocal.git
 cd CloudLocal
 ```
 
