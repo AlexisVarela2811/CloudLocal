@@ -1,7 +1,7 @@
 # CloudLocal
 
 ## Descripción
-**CloudLocal** es un sistema de gestión de archivos que permite a los usuarios subir, descargar y gestionar archivos de manera sencilla, simula ser un almacenamiento en la nube, pero de manera local, usando un ordenador que ya no se esté utilizando en casa o en el trabajo. Con este sistema, puedes tener tu propio "nube personal" sin necesidad de depender de servicios de terceros.
+**CloudLocal** es un sistema de gestión de archivos que permite a los usuarios subir, descargar y gestionar archivos de manera sencilla, simula ser un almacenamiento en la nube, pero de manera local, usando un ordenador que ya no se esté utilizando en casa o en el trabajo. Con este sistema, puedes tener tu propia "nube personal" sin necesidad de depender de servicios de terceros.
 
 ## Estructura del Proyecto
 - **Frontend**: React + Vite
