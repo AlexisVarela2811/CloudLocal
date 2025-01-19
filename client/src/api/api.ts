@@ -5,14 +5,14 @@ export interface FileInfo {
     path: string;
 }
 
-const API_BASE_URL = 'http://192.168.1.6:5000/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
-    export const api = {
-        // Obtener todos los archivos
-        getAllFiles: async (): Promise<string[]> => {
-            const response = await axios.get(`${API_BASE_URL}/files/list`);
-            return response.data.files; // El backend devuelve un array de nombres de archivo
-        },
+export const api = {
+    // Obtener todos los archivos
+    getAllFiles: async (): Promise<string[]> => {
+        const response = await axios.get(`${API_BASE_URL}/files/list`);
+        return response.data.files; // El backend devuelve un array de nombres de archivo
+    },
 
     // Subir archivo
     uploadFile: async (file: File): Promise<FileInfo> => {
