@@ -41,16 +41,13 @@ git clone https://github.com/AlexisVarela2811/CloudLocal.git
 cd CloudLocal
 ```
 
-### Configuración del Backend
-1. Navega a la carpeta del servidor:
-   ```bash
-   cd server
-   ```
-2. Instala las dependencias:
+### Ejecucion del proyecto
+
+1. Instala las dependencias:
    ```bash
    bun install
-   ```
-3. Crea un archivo `.env` en la carpeta del servidor y configura las variables necesarias:
+   ```   
+2. Crea un archivo `.env` en la carpeta del servidor y configura las variables necesarias:
 
 ```plaintext
 # Configuración del servidor
@@ -60,16 +57,6 @@ HOST=0.0.0.0                        # Dirección IP del servidor
 # Orígenes permitidos para CORS
 ORIGINS=http://localhost:5173,http://ipejemplo:5173,http://ipejemplo:5173
 ```
-
-### Configuración del Frontend
-1. Navega a la carpeta del cliente:
-   ```bash
-   cd ../client
-   ```
-2. Instala las dependencias:
-   ```bash
-   bun install
-   ```
 3. Asegúrate de que tu archivo `vite.config.ts` esté configurado correctamente. Aquí tienes un ejemplo de configuración:
 
 ```typescript
@@ -85,28 +72,10 @@ export default defineConfig({
   },
 })
 ```
-
-## Ejecución del Proyecto
-
-### Ejecutar el Backend
-1. Navega a la carpeta del servidor:
-   ```bash
-   cd server
-   ```
-2. Inicia el servidor:
+4. Ejecuta el proyecto:
    ```bash
    bun start
-   ```
-
-### Ejecutar el Frontend
-1. Navega a la carpeta del cliente:
-   ```bash
-   cd ../client
-   ```
-2. Inicia la aplicación:
-   ```bash
-   bun run dev
-   ```
+   ``` 
 
 ## Pruebas Locales
 Una vez que ambos servidores (frontend y backend) estén en funcionamiento, puedes acceder a la aplicación en tu navegador en la dirección [http://localhost:5173](http://localhost:5173) o en el puerto que hayas configurado en el archivo `.env` y en el `vite.config.ts` ademas verificar que `api.ts` este apuntado al backend .
