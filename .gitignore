@@ -1,2 +1,8 @@
 node_modules
 client/tmp
+client/.tmp/
+.cache/
+desktop/dist/
+launcher/dist/
+server/src/upload/
+.cloudlocal-state/
