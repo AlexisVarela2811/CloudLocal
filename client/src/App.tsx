@@ -1010,7 +1010,14 @@ function App() {
                   </div>
                 )}
                 {!loading && !error && trash.length === 0 && (
-                  <div className="table-row table-row-full"><div className="table-cell-full"><span className="placeholder">La papelera está vacía.</span></div></div>
+                  <div className="table-row table-row-full">
+                    <div className="table-cell-full">
+                      <div className="trash-empty">
+                        <FaTrash size={32} />
+                        <p>La papelera está vacía</p>
+                      </div>
+                    </div>
+                  </div>
                 )}
                 {!loading && !error && trash.map(item => (
                   <div key={item.id} className="table-row">

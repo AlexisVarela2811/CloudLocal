@@ -82,41 +82,21 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
     <section className="settings-panel" aria-labelledby="settings-title">
       <h2 id="settings-title">Apariencia</h2>
 
-      <div className="settings-row">
-        <label htmlFor="dark-mode-toggle">Modo oscuro</label>
-        <div className="theme-switch" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <label htmlFor="dark-mode-toggle" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-            <input
-              id="dark-mode-toggle"
-              type="checkbox"
-              role="switch"
-              checked={darkMode}
-              onChange={toggleDarkMode}
-              style={{
-                width: '36px',
-                height: '20px',
-                appearance: 'none',
-                background: darkMode ? 'var(--accent)' : 'var(--line)',
-                borderRadius: '10px',
-                position: 'relative',
-                cursor: 'pointer',
-                transition: 'background var(--duration) var(--ease)',
-                flexShrink: 0,
-              }}
-            />
-            <span style={{
-              position: 'absolute',
-              width: '16px',
-              height: '16px',
-              borderRadius: '50%',
-              background: '#fff',
-              top: '2px',
-              left: darkMode ? '18px' : '2px',
-              transition: 'left var(--duration) var(--ease)',
-              pointerEvents: 'none',
-            }} />
-          </label>
-          <span style={{ fontSize: '0.82rem', color: 'var(--muted)', userSelect: 'none' }}>
+      <div className="settings-row theme-row">
+        <span className="theme-label-text">Modo oscuro</span>
+        <div className="theme-switch">
+          <input
+            id="dark-mode-toggle"
+            type="checkbox"
+            role="switch"
+            checked={darkMode}
+            onChange={toggleDarkMode}
+            aria-labelledby="dark-mode-label"
+          />
+          <span className="theme-switch-track" aria-hidden="true">
+            <span className="theme-switch-thumb" />
+          </span>
+          <span className="theme-switch-label">
             {darkMode ? 'Activado' : 'Desactivado'}
           </span>
         </div>
