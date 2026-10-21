@@ -445,6 +445,11 @@ function App() {
               <FaWifi aria-hidden="true" />
             </button>
             {/* Breadcrumb */}
+            {folder !== '' && view === 'files' && (
+              <button className="btn-back" onClick={() => go(folder.includes('/') ? folder.slice(0, folder.lastIndexOf('/')) : '')}>
+                <FaArrowLeft aria-hidden="true" /> Volver
+              </button>
+            )}
             <nav className="breadcrumb" aria-label="Ruta">
               {crumbs.map((crumb, index) => (
                 <span key={crumb.path}>

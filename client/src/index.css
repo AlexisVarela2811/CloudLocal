@@ -453,7 +453,7 @@ a { color: var(--accent); text-decoration: none; }
   margin-top: 1.5rem;
 }
 .card:hover { box-shadow: var(--shadow); }
-.card-content { padding: 1.25rem; }
+.card-content { padding: 1rem; }
 
 /* Accent card (connect device) */
 .card-accent {
@@ -478,6 +478,13 @@ a { color: var(--accent); text-decoration: none; }
   color: var(--accent);
 }
 .card-upload .card-header-icon { display: none; }
+
+/* Upload card – keep accent button left-aligned */
+.card-upload .btn-accent {
+  display: block;
+  width: 100%;
+  margin-left: 0;
+}
 
 .card h2, .card h3 {
   margin: 0 0 .35rem;
@@ -1008,6 +1015,56 @@ a { color: var(--accent); text-decoration: none; }
   color: #475569;
   margin: 1.5rem auto 0;
 }
+
+/* ── Dark mode: login card ─────────────────────────── */
+[data-theme="dark"] .access-shell {
+  background: #0f172a;
+}
+[data-theme="dark"] .access-panel {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+[data-theme="dark"] .access-panel label {
+  color: #94a3b8;
+}
+[data-theme="dark"] .access-panel input {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+[data-theme="dark"] .access-panel input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+[data-theme="dark"] .access-panel .btn-primary {
+  background: var(--accent);
+}
+[data-theme="dark"] .access-panel .btn-primary:hover {
+  background: var(--accent2);
+}
+[data-theme="dark"] .access-panel .eyebrow {
+  color: #94a3b8;
+}
+[data-theme="dark"] .access-panel p:not(.eyebrow):not(.notice):not(.hint) {
+  color: #cbd5e1;
+}
+[data-theme="dark"] .access-panel .hint {
+  color: #94a3b8;
+}
+[data-theme="dark"] .access-panel .error {
+  color: #f87171;
+}
+[data-theme="dark"] .access-panel .notice {
+  color: #94a3b8;
+}
+[data-theme="dark"] .access-brand {
+  color: #f1f5f9;
+}
+[data-theme="dark"] .access-foot {
+  color: #64748b;
+}
+
 .hint { color: var(--muted2); font-size: .78rem; line-height: 1.4; }
 
 /* ── Drag & drop overlay ───────────────────────────────── */
