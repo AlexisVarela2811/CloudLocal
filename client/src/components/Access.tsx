@@ -34,7 +34,7 @@ export function Access({ session, onAccess }: { session: Session; onAccess: () =
           <input id="password" type="password" autoComplete={setup ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={setup ? 12 : undefined} maxLength={256} />
           {setup && <><p className="hint">Entre 12 y 256 caracteres.</p><label htmlFor="confirm">Repite la contraseña</label><input id="confirm" type="password" autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} required /></>}
           {error && <p className="error" role="alert">{error}</p>}
-          <button className="primary" disabled={busy}>{busy ? 'Comprobando…' : setup ? 'Crear y entrar' : 'Entrar'}</button>
+          <button className="btn-primary" disabled={busy}>{busy ? 'Comprobando…' : setup ? 'Crear y entrar' : 'Entrar'}</button>
         </form>}
     </section>
     <p className="access-foot">Solo red local · HTTP no cifra contraseñas ni archivos. No expongas este servidor a Internet.</p>

@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   FaFolder, FaFile, FaDownload, FaTrash, FaUndo,
   FaArrowLeft, FaPlus, FaUpload, FaSync, FaServer,
-  FaSignOutAlt, FaCopy, FaWifi, FaQuestionCircle
+  FaSignOutAlt, FaCopy, FaWifi, FaQuestionCircle,
+  FaSpinner, FaExclamationTriangle, FaFolderOpen,
+  FaFilePdf, FaEye, FaArrowsAlt,
+  FaImage, FaVideo, FaMusic
 } from 'react-icons/fa';
 import { api, expired, failure, type Entry, type Session, type Status, type TrashEntry } from './api/api';
 
@@ -49,6 +52,7 @@ function App() {
   const [entryError, setEntryError] = useState('');
   const [folder, setFolder] = useState('');
   const [view, setView] = useState<View>('files');
+  const [fileView, setFileView] = useState<'list' | 'grid'>('list');
   const [query, setQuery] = useState('');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [trash, setTrash] = useState<TrashEntry[]>([]);
@@ -480,9 +484,43 @@ function App() {
                 <span className="btn-label">Pegar</span>
               </button>
             )}
+            {view === 'files' && (
+              <div className="view-toggle" role="radiogroup" aria-label="Vista de archivos">
+                <button
+                  className={`view-btn ${fileView === 'list' ? 'active' : ''}`}
+                  onClick={() => setFileView('list')}
+                  role="radio"
+                  aria-checked={fileView === 'list'}
+                  aria-label="Vista de lista"
+                  title="Vista de lista"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <rect x="2" y="2" width="12" height="2" rx="0.5" fill="currentColor"/>
+                    <rect x="2" y="7" width="12" height="2" rx="0.5" fill="currentColor"/>
+                    <rect x="2" y="12" width="12" height="2" rx="0.5" fill="currentColor"/>
+                  </svg>
+                </button>
+                <button
+                  className={`view-btn ${fileView === 'grid' ? 'active' : ''}`}
+                  onClick={() => setFileView('grid')}
+                  role="radio"
+                  aria-checked={fileView === 'grid'}
+                  aria-label="Vista de cuadrícula"
+                  title="Vista de cuadrícula"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+                    <rect x="9" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+                    <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+                    <rect x="9" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+                  </svg>
+                </button>
+              </div>
+            )}
             <button className="btn-icon" onClick={() => setCreating(value => !value)} title="Nueva carpeta">
               <FaPlus aria-hidden="true" />
               <span className="btn-label">Nueva carpeta</span>
+              <span className="shortcut-hint">Ctrl+N</span>
             </button>
             <label className={`btn-upload button-like${uploadBusy ? ' busy' : ''}`} title="Elegir archivos para subir">
               <FaUpload aria-hidden="true" />
@@ -533,12 +571,12 @@ function App() {
                     <p className="no-url">No hay una dirección LAN disponible. Consulta la dirección IP y el puerto reales en el ordenador servidor.</p>
                   )}
                   {copyError && <p className="error-text">{copyError}</p>}
-                  <div className="card-footer">
-                    <span className="disk-info">
+                  <div className="disk-info-row">
+                    <span className="disk-space">
                       Espacio del disco:{' '}
                       {status ? `${bytes(status.storage.free)} libres de ${bytes(status.storage.total)}` : 'No disponible'}
                     </span>
-                    <span className="http-warning">HTTP · Solo red local</span>
+                    <span className="disk-badge">HTTP · Solo red local</span>
                   </div>
                 </div>
               </section>
@@ -616,10 +654,12 @@ function App() {
                 <div className="card-content">
                   <h3>Subir archivos</h3>
                   <p>{status ? `Sube archivos aquí. Tamaño máximo por archivo: ${bytes(status.maxUploadBytes)}.` : 'Sube tus archivos aquí.'}</p>
-                  <span className="hint" title={`Extensiones no permitidas: .exe, .bat, .cmd, .scr, .vbs, .js, .ps1, .reg`}>
-                    ⚠ Algunos tipos de archivo no están permitidos
-                  </span>
-                  <label className={`btn-accent button-like${uploadBusy ? ' busy' : ''}`}>
+                  <div className="upload-warning">
+                      <FaExclamationTriangle size={13} />
+                      <span>Algunos tipos de archivo no están permitidos</span>
+                    </div>
+                  <div className="upload-actions-row">
+                    <label className={`btn-accent button-like${uploadBusy ? ' busy' : ''}`}>
                     <FaUpload aria-hidden="true" />
                     <span>Elegir archivos</span>
                     <input
@@ -628,183 +668,326 @@ function App() {
                       disabled={uploadBusy}
                       aria-label="Elegir archivos para subir"
                     />
-                  </label>
+                    </label>
+                  </div>
                 </div>
               </section>
 
               {/* ── Drag & Drop overlay ───────────────────── */}
               <DragAndDrop onFilesDropped={enqueueFiles} folderPath={folder || 'inicio'} />
 
-              {/* ── File list ─────────────────────────────── */}
-              <section className="card file-table" aria-label="Contenido de la carpeta"
-                onDragEnter={e => { if (e.dataTransfer?.types?.includes('Files')) e.currentTarget.classList.add('drag-active'); }}
-                onDragLeave={e => { const rel = e.relatedTarget as HTMLElement | null; if (rel instanceof HTMLElement && e.currentTarget.contains(rel)) return; e.currentTarget.classList.remove('drag-active'); }}
-                onDragOver={e => { e.preventDefault(); }}
-                onDrop={e => {
-                  e.preventDefault();
-                  e.currentTarget.classList.remove('drag-active');
-                  if (e.dataTransfer?.getData('application/x-cloudlocal-move')) return;
-                  const dt = e.dataTransfer;
-                  if (!dt?.files?.length) return;
-                  const files: File[] = [];
-                  for (let i = 0; i < dt.items?.length; i++) {
-                    const entry = dt.items[i].webkitGetAsEntry?.();
-                    if (entry?.isFile) { (entry as FileSystemFileEntry).file(f => files.push(f)); }
-                  }
-                  for (let j = 0; j < dt.files.length; j++) files.push(dt.files[j]);
-                  setTimeout(() => { if (files.length > 0) enqueueFiles(files, folder || 'inicio'); }, 50);
-                }}
-              >
-                {/* Table header */}
-                <div className="table-head">
-                  <div className="col-check">
-                    <input
-                      type="checkbox"
-                      aria-label="Seleccionar todo"
-                      checked={sorted.length > 0 && sorted.every(e => selected.includes(e.path))}
-                      onChange={e => {
-                        if (e.target.checked) {
-                          setSelected(sorted.map(en => en.path));
-                        } else {
-                          setSelected([]);
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="col-name">NOMBRE</div>
-                  <div className="col-details">DETALLES</div>
-                  <div className="col-actions">ACCIONES</div>
-                </div>
-
-                {/* Loading */}
-                {loading && <div className="table-row loading-row"><div className="col-check" /><div className="col-name"><span className="placeholder">Cargando archivos…</span></div><div className="col-details" /><div className="col-actions" /></div>}
-
-                {/* Error */}
-                {error && !loading && (
-                  <div className="table-row error-row">
-                    <div className="col-check" />
-                    <div className="col-name">
-                      <div className="table-error">
-                        <p>{error}</p>
-                        <button onClick={refresh}>Reintentar</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Empty */}
-                {!loading && !error && sorted.length === 0 && (
-                  <div className="table-row table-row-full">
-                    <div className="table-cell-full">
-                      <span className="placeholder">{query ? 'No hay coincidencias en esta carpeta.' : 'Esta carpeta está vacía. Puedes crear una carpeta o subir archivos.'}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* File rows */}
-                {!loading && !error && sorted.map(entry => (
-                  <div
-                    key={entry.path}
-                    className={`table-row entry${dragOver === entry.path ? ' drag-target' : ''}`}
-                    draggable={entry.type === 'file' || entry.type === 'directory'}
-                    onDragStart={e => {
-                      e.stopPropagation();
+              {fileView === 'list' ? (
+                <>
+                  {/* ── File list – list view ─────────────────── */}
+                  <section className="card file-table" aria-label="Contenido de la carpeta"
+                    onDragEnter={e => { if (e.dataTransfer?.types?.includes('Files')) e.currentTarget.classList.add('drag-active'); }}
+                    onDragLeave={e => { const rel = e.relatedTarget as HTMLElement | null; if (rel instanceof HTMLElement && e.currentTarget.contains(rel)) return; e.currentTarget.classList.remove('drag-active'); }}
+                    onDragOver={e => { e.preventDefault(); }}
+                    onDrop={e => {
+                      e.preventDefault();
+                      e.currentTarget.classList.remove('drag-active');
+                      if (e.dataTransfer?.getData('application/x-cloudlocal-move')) return;
                       const dt = e.dataTransfer;
-                      dt.setData('application/x-cloudlocal-move', entry.path);
-                      dt.effectAllowed = 'move';
+                      if (!dt?.files?.length) return;
+                      const files: File[] = [];
+                      for (let i = 0; i < dt.items?.length; i++) {
+                        const ent = dt.items[i].webkitGetAsEntry?.();
+                        if (ent?.isFile) { (ent as FileSystemFileEntry).file(f => files.push(f)); }
+                      }
+                      for (let j = 0; j < dt.files.length; j++) files.push(dt.files[j]);
+                      setTimeout(() => { if (files.length > 0) enqueueFiles(files, folder || 'inicio'); }, 50);
                     }}
                   >
-                    {/* Checkbox / icon */}
-                    <div className="col-check">
-                      {entry.type === 'file' ? (
+                    {/* Table header */}
+                    <div className="table-head">
+                      <div className="col-check">
                         <input
                           type="checkbox"
-                          aria-label={`Seleccionar ${entry.name}`}
-                          checked={selected.includes(entry.path)}
-                          onChange={e => setSelected(old => e.target.checked ? [...old, entry.path] : old.filter(path => path !== entry.path))}
+                          aria-label="Seleccionar todo"
+                          checked={sorted.length > 0 && sorted.every(e => selected.includes(e.path))}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelected(sorted.map(en => en.path));
+                            } else {
+                              setSelected([]);
+                            }
+                          }}
                         />
-                      ) : <span className="checkbox-space" />}
+                      </div>
+                      <div className="col-name">NOMBRE</div>
+                      <div className="col-details">DETALLES</div>
+                      <div className="col-actions">ACCIONES</div>
                     </div>
 
-                    {/* Name */}
-                    <div className="col-name"
-                      onDragEnter={e => { if (entry.type !== 'directory') return; e.stopPropagation(); setDragOver(entry.path); }}
-                      onDragLeave={() => { if (entry.type !== 'directory') return; setDragOver(null); }}
-                      onDragOver={e => { if (entry.type !== 'directory') return; e.preventDefault(); const dt = e.dataTransfer; dt.dropEffect = 'move'; }}
-                      onDrop={e => {
-                        if (entry.type !== 'directory') return;
-                        e.preventDefault(); e.stopPropagation(); setDragOver(null);
-                        const movedPath = e.dataTransfer?.getData('application/x-cloudlocal-move');
-                        if (movedPath) { movePath(movedPath, entry.path); }
-                      }}
-                    >
-                      <span className="file-icon">{entry.type === 'directory' ? <FaFolder aria-hidden="true" /> : <FaFile aria-hidden="true" />}</span>
-                      {renaming?.path === entry.path ? (
-                        <input
-                          className="rename-input"
-                          value={renameInput}
-                          onChange={e => setRenameInput(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') { setRenaming(null); setRenameInput(''); } }}
-                          onBlur={submitRename}
-                          autoFocus
-                          title={entry.name}
-                        />
-                      ) : entry.type === 'directory' ? (
-                        <button onClick={() => go(entry.path)} onDoubleClick={() => startRename(entry.path, entry.name)} className="file-name" title={entry.name}>{entry.name}</button>
-                      ) : (
-                        <span onDoubleClick={() => startRename(entry.path, entry.name)} className="file-name" title={entry.name}>{entry.name}</span>
-                      )}
-                    </div>
+                    {/* Loading */}
+                    {loading && <div className="table-row loading-row"><div className="col-check" /><div className="col-name"><span className="placeholder">Cargando archivos…</span></div><div className="col-details" /><div className="col-actions" /></div>}
 
-                    {/* Details */}
-                    <div className="col-details">
-                      {entry.type === 'file' ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}` : `Carpeta · ${date(entry.modifiedAt)}`}
-                    </div>
+                    {/* Error */}
+                    {error && !loading && (
+                      <div className="table-row error-row">
+                        <div className="col-check" />
+                        <div className="col-name">
+                          <div className="table-error">
+                            <p>{error}</p>
+                            <button onClick={refresh}>Reintentar</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-                    {/* Actions */}
-                    <div className="col-actions">
-                      {entry.type === 'file' ? (
-                        <span className="action-group">
-                          {previewKind(entry.name) && (
-                            <button
-                              className="btn-action"
-                              onClick={() => previewKind(entry.name) === 'pdf'
-                                ? window.open(api.content(entry.path, true), '_blank', 'noopener,noreferrer')
-                                : setPreview(entry)
-                              }
-                              title="Vista previa"
-                            >
-                              Vista previa
+                    {/* Empty */}
+                    {!loading && !error && sorted.length === 0 && (
+                      <div className="table-row table-row-full">
+                        <div className="table-cell-full">
+                          <span className="placeholder">{query ? 'No hay coincidencias en esta carpeta.' : 'Esta carpeta está vacía. Puedes crear una carpeta o subir archivos.'}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* File rows */}
+                    {!loading && !error && sorted.map(entry => (
+                      <div
+                        key={entry.path}
+                        className={`table-row entry${dragOver === entry.path ? ' drag-target' : ''}`}
+                        draggable={entry.type === 'file' || entry.type === 'directory'}
+                        onDragStart={e => {
+                          e.stopPropagation();
+                          const dt = e.dataTransfer;
+                          dt.setData('application/x-cloudlocal-move', entry.path);
+                          dt.effectAllowed = 'move';
+                        }}
+                      >
+                        {/* Checkbox / icon */}
+                        <div className="col-check">
+                          {entry.type === 'file' ? (
+                            <input
+                              type="checkbox"
+                              aria-label={`Seleccionar ${entry.name}`}
+                              checked={selected.includes(entry.path)}
+                              onChange={e => setSelected(old => e.target.checked ? [...old, entry.path] : old.filter(path => path !== entry.path))}
+                            />
+                          ) : <span className="checkbox-space" />}
+                        </div>
+
+                        {/* Name */}
+                        <div className="col-name"
+                          onDragEnter={e => { if (entry.type !== 'directory') return; e.stopPropagation(); setDragOver(entry.path); }}
+                          onDragLeave={() => { if (entry.type !== 'directory') return; setDragOver(null); }}
+                          onDragOver={e => { if (entry.type !== 'directory') return; e.preventDefault(); const dt = e.dataTransfer; dt.dropEffect = 'move'; }}
+                          onDrop={e => {
+                            if (entry.type !== 'directory') return;
+                            e.preventDefault(); e.stopPropagation(); setDragOver(null);
+                            const movedPath = e.dataTransfer?.getData('application/x-cloudlocal-move');
+                            if (movedPath) { movePath(movedPath, entry.path); }
+                          }}
+                        >
+                          <span className="file-icon">{entry.type === 'directory' ? <FaFolder aria-hidden="true" /> : <FaFile aria-hidden="true" />}</span>
+                          {renaming?.path === entry.path ? (
+                            <input
+                              className="rename-input"
+                              value={renameInput}
+                              onChange={e => setRenameInput(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') { setRenaming(null); setRenameInput(''); } }}
+                              onBlur={submitRename}
+                              autoFocus
+                              title={entry.name}
+                            />
+                          ) : entry.type === 'directory' ? (
+                            <button onClick={() => go(entry.path)} onDoubleClick={() => startRename(entry.path, entry.name)} className="file-name" title={entry.name}>{entry.name}</button>
+                          ) : (
+                            <span onDoubleClick={() => startRename(entry.path, entry.name)} className="file-name" title={entry.name}>{entry.name}</span>
+                          )}
+                        </div>
+
+                        {/* Details */}
+                        <div className="col-details">
+                          {entry.type === 'file' ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}` : `Carpeta · ${date(entry.modifiedAt)}`}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="col-actions">
+                          {entry.type === 'file' ? (
+                            <span className="action-group">
+                              {previewKind(entry.name) && (
+                                <button
+                                  className="btn-action"
+                                  onClick={() => previewKind(entry.name) === 'pdf'
+                                    ? window.open(api.content(entry.path, true), '_blank', 'noopener,noreferrer')
+                                    : setPreview(entry)
+                                  }
+                                  title="Vista previa"
+                                >
+                                  Vista previa
+                                </button>
+                              )}
+                              <a
+                                href={api.content(entry.path)}
+                                download={entry.name}
+                                className="btn-action"
+                                title={`Descargar ${entry.name}`}
+                              >
+                                <FaDownload aria-hidden="true" />
+                              </a>
+                              <button
+                                className="btn-action btn-delete"
+                                disabled={saving}
+                                onClick={() => {
+                                  if (window.confirm(`¿Enviar «${entry.name}» a la papelera? Puedes restaurarlo después.`)) {
+                                    action(() => api.trashFile(entry.path), `«${entry.name}» está en la papelera.`).then(() => setSelected(old => old.filter(path => path !== entry.path)));
+                                  }
+                                }}
+                                title={`Enviar ${entry.name} a papelera`}
+                              >
+                                <FaTrash aria-hidden="true" />
+                              </button>
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </section>
+                </>
+              ) : (
+                /* ── File list – grid view ───────────────────── */
+                <section className="card file-grid" aria-label="Contenido de la carpeta"
+                  onDragEnter={e => { if (e.dataTransfer?.types?.includes('Files')) e.currentTarget.classList.add('drag-active'); }}
+                  onDragLeave={e => { const rel = e.relatedTarget as HTMLElement | null; if (rel instanceof HTMLElement && e.currentTarget.contains(rel)) return; e.currentTarget.classList.remove('drag-active'); }}
+                  onDragOver={e => { e.preventDefault(); }}
+                  onDrop={e => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('drag-active');
+                    if (e.dataTransfer?.getData('application/x-cloudlocal-move')) return;
+                    const dt = e.dataTransfer;
+                    if (!dt?.files?.length) return;
+                    const files: File[] = [];
+                    for (let i = 0; i < dt.items?.length; i++) {
+                      const ent = dt.items[i].webkitGetAsEntry?.();
+                      if (ent?.isFile) { (ent as FileSystemFileEntry).file(f => files.push(f)); }
+                    }
+                    for (let j = 0; j < dt.files.length; j++) files.push(dt.files[j]);
+                    setTimeout(() => { if (files.length > 0) enqueueFiles(files, folder || 'inicio'); }, 50);
+                  }}
+                >
+                  <div className="grid-container">
+                    {loading && (
+                      <div className="grid-item grid-loading">
+                        <div className="grid-icon"><FaSpinner className="fa-spin" size={24} /></div>
+                        <span className="placeholder">Cargando…</span>
+                      </div>
+                    )}
+                    {error && (
+                      <div className="grid-item grid-error">
+                        <div className="grid-icon"><FaExclamationTriangle size={24} /></div>
+                        <span className="error-text">{error}</span>
+                        <button onClick={refresh} className="btn-action">Reintentar</button>
+                      </div>
+                    )}
+                    {sorted.map(entry => (
+                      <div
+                        key={entry.path}
+                        className={`grid-item entry${selected.includes(entry.path) ? ' selected' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); setSelected(old => selected.includes(entry.path) ? old.filter(p => p !== entry.path) : [...old, entry.path]); }}
+                        onDoubleClick={() => entry.type === 'directory' ? go(entry.path) : startRename(entry.path, entry.name)}
+                        draggable={true}
+                        onDragStart={(e) => { e.dataTransfer.setData('application/x-cloudlocal-move', entry.path); e.dataTransfer.effectAllowed = 'move'; }}
+                        onDragOver={(e) => { if (entry.type === 'directory') { e.preventDefault(); e.stopPropagation(); setDragOver(entry.path); } }}
+                        onDragLeave={() => { if (entry.type === 'directory') setDragOver(null); }}
+                        onDrop={(e) => {
+                          if (entry.type !== 'directory') return;
+                          e.preventDefault(); e.stopPropagation(); setDragOver(null);
+                          const movedPath = e.dataTransfer?.getData('application/x-cloudlocal-move');
+                          if (movedPath) { movePath(movedPath, entry.path); }
+                        }}
+                        tabIndex={0}
+                        role="listitem"
+                        aria-label={`${entry.name}${entry.type === 'directory' ? ' carpeta' : ' archivo'}`}
+                        aria-selected={selected.includes(entry.path)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(old => selected.includes(entry.path) ? old.filter(p => p !== entry.path) : [...old, entry.path]); } }}
+                      >
+                        <div className="grid-icon" data-icon-type={entry.type === 'directory' ? 'folder' : previewKind(entry.name)} onClick={(e) => { e.stopPropagation(); entry.type === 'directory' ? go(entry.path) : startRename(entry.path, entry.name); }}>
+                          {entry.type === 'directory' ? (
+                            <FaFolder size={32} color="var(--accent)" />
+                          ) : previewKind(entry.name) === 'pdf' ? (
+                            <FaFilePdf size={32} color="#dc2626" />
+                          ) : previewKind(entry.name) === 'image' ? (
+                            <FaImage size={32} color="#059669" />
+                          ) : previewKind(entry.name) === 'video' ? (
+                            <FaVideo size={32} color="#7c3aed" />
+                          ) : previewKind(entry.name) === 'audio' ? (
+                            <FaMusic size={32} color="#0891b2" />
+                          ) : (
+                            <FaFile size={32} color="var(--muted)" />
+                          )}
+                        </div>
+                        <div className="grid-check">
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(entry.path)}
+                            onChange={() => setSelected(old => selected.includes(entry.path) ? old.filter(p => p !== entry.path) : [...old, entry.path])}
+                            aria-label={`Seleccionar ${entry.name}`}
+                            onClick={e => e.stopPropagation()}
+                          />
+                        </div>
+                        <span className="grid-name" title={entry.path}>
+                          {renaming?.path === entry.path ? (
+                            <input
+                              autoFocus
+                              value={renameInput}
+                              onChange={e => setRenameInput(e.target.value)}
+                              onBlur={() => submitRename()}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') submitRename();
+                                if (e.key === 'Escape') { setRenaming(null); setRenameInput(''); }
+                              }}
+                              onClick={e => e.stopPropagation()}
+                              className="rename-input"
+                              style={{ width: '100%', textAlign: 'center' }}
+                            />
+                          ) : (
+                            <button onClick={(e) => { e.stopPropagation(); startRename(entry.path, entry.name); }} title={entry.name}>{entry.name}</button>
+                          )}
+                          {entry.type === 'directory' && <small>{bytes(entry.size)}</small>}
+                        </span>
+                        <div className="grid-actions">
+                          {entry.type === 'file' && (
+                            <>
+                              <button className="btn-action" title="Descargar" onClick={() => download([entry.path])}>
+                                <FaDownload size={12} />
+                              </button>
+                              {previewKind(entry.name) && (
+                                <button className="btn-action" title="Vista previa" onClick={() => previewKind(entry.name) === 'pdf' ? window.open(api.content(entry.path, true), '_blank', 'noopener,noreferrer') : setPreview({ path: entry.path, name: entry.name, size: entry.size, modifiedAt: entry.modifiedAt, type: 'file' as const })}>
+                                  {previewKind(entry.name) === 'pdf' ? <FaFilePdf size={12} color="#dc2626" /> : <FaEye size={12} />}
+                                </button>
+                              )}
+                              <button className="btn-action" title="Mover" onClick={() => { setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.'); }}>
+                                <FaArrowsAlt size={12} />
+                              </button>
+                              <button className="btn-action btn-delete" title="Eliminar" onClick={() => {
+                                if (window.confirm(`¿Enviar «${entry.name}» a la papelera? Puedes restaurarlo después.`)) {
+                                  action(() => api.trashFile(entry.path), `«${entry.name}» está en la papelera.`).then(() => setSelected(old => old.filter(path => path !== entry.path)));
+                                }
+                              }}>
+                                <FaTrash size={12} />
+                              </button>
+                            </>
+                          )}
+                          {entry.type === 'directory' && (
+                            <button className="btn-action" title="Mover" onClick={() => { setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.'); }}>
+                              <FaArrowsAlt size={12} />
                             </button>
                           )}
-                          <a
-                            href={api.content(entry.path)}
-                            download={entry.name}
-                            className="btn-action"
-                            title={`Descargar ${entry.name}`}
-                          >
-                            <FaDownload aria-hidden="true" />
-                          </a>
-                          <button
-                            className="btn-action btn-delete"
-                            disabled={saving}
-                            onClick={() => {
-                              if (window.confirm(`¿Enviar «${entry.name}» a la papelera? Puedes restaurarlo después.`)) {
-                                action(() => api.trashFile(entry.path), `«${entry.name}» está en la papelera.`).then(() => setSelected(old => old.filter(path => path !== entry.path)));
-                              }
-                            }}
-                            title={`Enviar ${entry.name} a papelera`}
-                          >
-                            <FaTrash aria-hidden="true" />
-                          </button>
-                        </span>
-                      ) : (
-                        <span className="hint" title="El servidor aún no permite eliminar carpetas">Sin eliminación de carpetas</span>
-                      )}
-                    </div>
+                        </div>
+                      </div>
+                    ))}
+                    {!loading && !error && sorted.length === 0 && (
+                      <div className="grid-item grid-empty">
+                        <div className="grid-icon"><FaFolderOpen size={32} color="var(--muted2)" /></div>
+                        <span className="placeholder">Carpeta vacía — crea una carpeta o sube archivos</span>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </section>
+                </section>
+              )}
             </>
           ) : view === 'trash' ? (
             <>
