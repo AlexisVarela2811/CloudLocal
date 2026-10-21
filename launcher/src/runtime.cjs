@@ -37,7 +37,8 @@ function launch({ home, env, proc, log, start, urlsFor, publish, clientDir }) {
     log(`CloudLocal ready. Open ${urls.join(' or ')} in a browser (same local network).`);
     log('Set up a password at localhost first. HTTP on this network is not encrypted. Stop with Ctrl+C.');
     if (env.CLOUDLOCAL_NO_MDNS !== '1') {
-      publisher = publish(port, { warn: message => log(message) });
+      if (publish) { publisher = publish(port, { warn: message => log(message) }); }
+      else { publisher = { stop: () => {} }; }
       log('Try http://cloudlocal.local' + (port === 80 ? '' : `:${port}`) + ' if mDNS works; use the IP link above otherwise.');
     }
   }
