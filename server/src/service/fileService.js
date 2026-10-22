@@ -1,75 +1,33 @@
-const fs = require('fs');
-const path = require('path');
+const path = require('node:path');
+const mime = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  gif: 'image/gif', webp: 'image/webp', avif: 'image/avif',
+  pdf: 'application/pdf', mp3: 'audio/mpeg', wav: 'audio/wav',
+  ogg: 'audio/ogg', mp4: 'video/mp4', webm: 'video/webm'
+};
 
-//creamos la carpeta upload si no existe
-const uploadDirectory = path.join(__dirname, '../upload');
-
-if (!fs.existsSync(uploadDirectory)) {
-    fs.mkdirSync(uploadDirectory, { recursive: true });
+function filename(original) {
+    // Windows clients send backslashes even when the server runs on POSIX.
+    return path.win32.basename(original);
 }
-
-//servicio para subir archivos
-exports.uploadFileService = (file) => {
-    return new Promise((resolve) => {
-        const fileInfo = {
-            filename: file.filename,
-            path: path.join(uploadDirectory, file.filename)
-        };
-        resolve(fileInfo);
-    });
-};
-
-//servicio para listar archivos
-exports.listFilesService = () => {
-    return new Promise((resolve, reject) => {
-        fs.readdir(uploadDirectory, (err, files) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(files);
-            }
-        });
-    });
-};
-
-//servicio para borrar archivos
-exports.deleteFileService = (filename) => {
-    return new Promise((resolve, reject) => {
-        fs.readdir(uploadDirectory, (err, files) => {
-            if (err) {
-                return reject(err);
-            }
-
-            // Buscar el archivo sin distinguir mayúsculas y minúsculas
-            const fileToDelete = files.find((file) => file.toLowerCase() === filename.toLowerCase());
-
-            if (!fileToDelete) {
-                return reject(new Error(`Archivo "${filename}" no encontrado`));
-            }
-
-            // Borrar el archivo encontrado
-            const filePath = path.join(uploadDirectory, fileToDelete);
-            fs.unlink(filePath, (err) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve();
-                }
-            });
-        });
-    });
-};
-
-//serivicio para descargar archivos
-exports.downloadFileService = (filename) => {
-    return new Promise((resolve, reject) => {
-        const filePath = path.join(uploadDirectory, filename);
-        
-        if (!fs.existsSync(filePath)) {
-            return reject(new Error(`Archivo "${filename}" no encontrado`));
-        }
-
-        const fileStream = fs.createReadStream(filePath);
-        resolve(fileStream);
-    });
-};
+function media(relative) {
+    return mime[path.extname(relative).slice(1).toLowerCase()] || 'application/octet-stream';
+}
+function legacyName(value) {
+    if (typeof value !== 'string' || !value || value.includes('/') || value.includes('\\')) {
+        throw Object.assign(new Error('Invalid filename'), { status: 400 });
+    }
+    return value;
+}
+async function legacyFile(storage, name, caseInsensitive = false) {
+    legacyName(name);
+    const entries = (await storage.list()).filter(e => e.type === 'file');
+    if (!caseInsensitive) return name;
+    const exact = entries.find(e => e.name === name);
+    if (exact) return exact.name;
+    const matches = entries.filter(e => e.name.toLowerCase() === name.toLowerCase());
+    if (matches.length > 1) throw Object.assign(new Error('Ambiguous filename'), { status: 409 });
+    if (!matches.length) throw Object.assign(new Error('File not found'), { status: 404 });
+    return matches[0].name;
+}
+module.exports = { filename, media, legacyFile };

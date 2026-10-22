@@ -1,44 +1,63 @@
 import axios from 'axios';
 
-export interface FileInfo {
-    filename: string;
-    path: string;
+const http = axios.create({ baseURL: '/api' });
+export interface Entry { name: string; path: string; type: 'file' | 'directory'; size: number; modifiedAt: string }
+export interface TrashEntry { id: string; name: string; path: string; deletedAt: string }
+export interface Session { configured: boolean; authenticated: boolean; localSetup: boolean }
+export interface Status { storage: { total: number; free: number }; maxUploadBytes: number; urls: string[]; warning: string }
+export interface SettingsInfo {
+  folderPath: string | null;
+  activeFolderPath: string;
+  envOverride: boolean;
+  needsRestart: boolean;
 }
 
-const API_BASE_URL = 'http://localhost:5000/api';
-
 export const api = {
-    // Obtener todos los archivos
-    getAllFiles: async (): Promise<string[]> => {
-        const response = await axios.get(`${API_BASE_URL}/files/list`);
-        return response.data.files; // El backend devuelve un array de nombres de archivo
-    },
-
-    // Subir archivo
-    uploadFile: async (file: File): Promise<FileInfo> => {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await axios.post(`${API_BASE_URL}/files/upload`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
-        return response.data.file; // El backend devuelve un objeto con la info del archivo
-    },
-
-    // Descargar archivo
-    downloadFile: async (filename: string): Promise<Blob> => {
-        const response = await axios.get(`${API_BASE_URL}/files/download/${encodeURIComponent(filename)}`, {
-            responseType: 'blob',
-            headers: {
-                'Content-Type': 'application/octet-stream',
-            },
-        });
-        return response.data; // El backend devuelve un stream del archivo
-    },
-
-    // Eliminar archivo
-    deleteFile: async (filename: string): Promise<void> => {
-        await axios.delete(`${API_BASE_URL}/files/delete/${encodeURIComponent(filename)}`);
-    },
+  session: async () => (await http.get<Session>('/session')).data,
+  setup: async (password: string) => (await http.post('/setup', { password })).data,
+  login: async (password: string) => (await http.post('/login', { password })).data,
+  logout: async () => (await http.post('/logout', {})).data,
+  files: async (folder: string, q: string) => (await http.get<{ entries: Entry[] }>('/files', { params: { folder, q } })).data.entries,
+  folder: async (folder: string, name: string) => (await http.post('/folders', { folder, name })).data,
+  upload: async (folder: string, file: File, signal: AbortSignal, onProgress: (percent: number) => void) => {
+    const data = new FormData();
+    data.append('file', file);
+    return (await http.post('/files/upload', data, {
+      params: { folder },
+      signal,
+      onUploadProgress: event => { if (event.total) onProgress(Math.round(event.loaded / event.total * 100)); }
+    })).data;
+  },
+  trashFile: async (path: string) => (await http.delete('/files', { params: { path } })).data,
+  moveFile: async (from: string, to: string) => (await http.post<{ success: boolean; entry: Entry }>('/files/move', { from, to })).data,
+  copy: async (from: string, to: string) => (await http.post<{ success: boolean; entry: Entry }>('/files/copy', { from, to })).data,
+  paste: async (from: string, to: string, type: 'copy' | 'move') => (await http.post<{ success: boolean; count: number }>('/files/paste', { from, to, type })).data,
+  permanentDelete: async (id: string) => (await http.post<{ success: boolean }>('/files/permanent', { id })).data,
+  emptyTrash: async () => (await http.post<{ success: boolean }>('/trash/empty', {})).data,
+  moveFolder: async (from: string, to: string) => (await http.post<{ success: boolean; entry: Entry }>('/files/moveFolder', { from, to })).data,
+  restore: async (id: string) => (await http.post(`/trash/${encodeURIComponent(id)}/restore`, {})).data,
+  trash: async () => (await http.get<{ entries: TrashEntry[] }>('/trash')).data.entries,
+  status: async () => (await http.get<Status>('/status')).data,
+  content: (path: string, inline = false) => `/api/files/content?path=${encodeURIComponent(path)}${inline ? '&inline=1' : ''}`,
+  settings: async () => (await http.get<SettingsInfo>('/settings')).data,
+  saveFolder: async (folderPath: string) => (await http.put('/settings', { folderPath })).data,
+  clearFolder: async () => (await http.delete('/settings')).data,
+  shutdown: async () => (await http.post('/shutdown', {})).data,
 };
+
+export function failure(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const message = error.response?.data?.message;
+    if (typeof message === 'string') {
+      const known: Record<string, string> = {
+        'File or folder already exists': 'Ya existe un archivo o carpeta con ese nombre.',
+      };
+      return known[message] || message;
+    }
+    if (error.code === 'ERR_CANCELED') return 'Cancelado';
+  }
+  return 'No se pudo completar la operación. Comprueba la conexión e inténtalo de nuevo.';
+}
+export function expired(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 401;
+}

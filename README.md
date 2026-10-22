@@ -1,84 +1,406 @@
-# CloudLocal
+# CloudLocal — Private Local File Server
+
+**Un ejecutable pone en marcha tu nube local; los demás equipos entran desde el navegador.** Los archivos quedan en el ordenador servidor, que debe permanecer encendido y despierto. No se necesitan clientes, códigos de vinculación ni otra aplicación en Ubuntu, móviles u otros ordenadores para subir, consultar y descargar archivos.
+
+![CloudLocal](diagrama.svg)
+
+---
 
 ## Descripción
-**CloudLocal** es un sistema de gestión de archivos que permite a los usuarios subir, descargar y gestionar archivos de manera sencilla, simula ser un almacenamiento en la nube, pero de manera local, usando un ordenador que ya no se esté utilizando en casa o en el trabajo. Con este sistema, puedes tener tu propia "nube personal" sin necesidad de depender de servicios de terceros.
 
-## Estructura del Proyecto
-- **Frontend**: React + Vite
-  - Componentes: `FileManager`, `FileUpload`
-  - Hooks: `useFileOperations`
-- **Backend**: Express.js
-  - Rutas: `fileRouter`
-  - Controladores: `fileController`
-  - Servicios: `fileService`
+CloudLocal es un servidor de archivos local privado que se ejecuta como un único ejecutable portátil. Ofrece una interfaz web completa con:
 
-## Diagrama de Estructura
+### Interfaz de usuario
 
-A continuación se muestra un diagrama que muestra la estructura del proyecto:
+- **Sidebar** con navegación por secciones (Archivos, Papelera, Configuración)
+- **Navegación de carpetas** con breadcrumbs y botón de retroceso
+- **Tabla de archivos** con columnas de nombre, detalles y acciones
+- **Vista en cuadrícula** y vista en lista (alternable)
+- **Selección múltiple** con clic o Ctrl+A
+- **Barra de selección** inferior con acciones rápidas
+- **Búsqueda** en la carpeta actual
 
-![Diagrama de Estructura](diagrama.svg)
+### Operaciones de archivos
 
-## Tecnologías y Librerías Usadas
-- **Frontend**:
-  - React
-  - Vite
-  - Tailwind CSS
-  - Framer Motion
-  - Axios
-- **Backend**:
-  - Express.js
-  - CORS
-  - Multer
+- **Drag & Drop externo**: sube archivos arrastrándolos desde el explorador del sistema
+- **Drag & Drop interno**: mueve archivos y carpetas arrastrándolos sobre carpetas destino
+- **Copiar / Cortar / Pegar**: Ctrl+C, Ctrl+X, Ctrl+V para duplicar o mover entre carpetas
+- **Renombrado inline**: F2 para renombrar archivos y carpetas directamente
+- **Nueva carpeta**: botón en toolbar o Ctrl+Alt+N para crear carpetas
+- **Vista previa** de imágenes, vídeo y audio en modal con cierre por Escape o click exterior
+- **Papelera** con restauración (vía botón en UI)
+- **Descarga individual** de archivos y descarga ZIP (vía API)
 
-## Requisitos Previos
-- [Bun](https://bun.sh/) (v0.1 o superior)
+### Apariencia y accesibilidad
 
-## Inicialización del Proyecto
+- **Modo oscuro**: toggle grande y visible, persistencia en localStorage, detección automática del tema del sistema, sincronización instantánea entre pestañas
+- **Indicadores de foco**: `:focus-visible` visible en todos los controles interactivos (3px solid accent, offset 2px)
+- **Atajos de teclado**: Ctrl+A (seleccionar todo), Ctrl+C (copiar), Ctrl+X (cortar), Ctrl+V (pegar), Ctrl+Alt+N (nueva carpeta), F2 (renombrar), Delete (a papelera), Escape (cerrar modal/renaming)
+- **Diseño responsive**: adaptado para escritorio, tablet y móvil
+- **Accesibilidad**: skip-link, roles ARIA, navegación completa por teclado
 
-### Clonar el Repositorio
-```bash
-git clone https://github.com/AlexisVarela2811/CloudLocal.git
-cd CloudLocal
+---
+
+## Instalación
+
+### Windows (ejecutable portátil)
+
+1. Descarga `launcher/dist/CloudLocal.exe` (construido en un equipo Windows x64)
+2. Ejecuta el archivo. El servidor funciona en segundo plano, sin consola
+3. Abre `http://localhost:80` (o el puerto configurado) en el navegador
+4. Configura una contraseña de entre 12 y 256 caracteres en la pantalla de acceso inicial
+5. Desde otros equipos de la red, abre `http://<IP-SERVIDOR>:80` e inicia sesión
+
+Para detenerlo, espera a que finalicen las transferencias y pulsa **Detener Server**. Se cierra únicamente la instancia que atiende esa dirección, no otros procesos de Node. Para reiniciar, ejecuta otra vez `CloudLocal.exe` y recarga la página; tus archivos y contraseña se conservan. Consulta [Detener y reiniciar](docs/server-launcher.md#detener-y-reiniciar).
+
+### Desarrollo (desde el código fuente)
+
+#### Requisitos
+
+- [Node.js](https://nodejs.org/) 22.12 o posterior con npm
+- Un editor con soporte TypeScript y React (VS Code recomendado)
+
+#### Construcción del candidato local
+
+```sh
+# 1. Instalar dependencias (workspaces client + server, luego launcher)
+npm ci
+cd launcher
+npm ci
+cd ..
+
+# 2. Instalar navegador para tests E2E (si se ejecutarán tests de navegador)
+npx playwright install chromium
+
+# 3. Compilar frontend (TypeScript + Vite)
+npm run build:frontend
+
+# 4. Ejecutar tests (server + client + launcher)
+npm test
+
+# 5. Construir ejecutable portátil
+npm run build:exe
 ```
 
-### Ejecucion del proyecto
+#### Lanzar servidor + cliente embebido
 
-1. Instala las dependencias:
-   ```bash
-   bun install
-   ```   
-2. Crea un archivo `.env` en la carpeta del servidor y configura las variables necesarias:
-
-```plaintext
-# Configuración del servidor
-PORT=5000                           # Puerto del servidor
-HOST=0.0.0.0                        # Dirección IP del servidor
-
-# Orígenes permitidos para CORS
-ORIGINS=http://localhost:5173,http://ipejemplo:5173,http://ipejemplo:5173
+```sh
+cd server
+npm start            # Sirve API + frontend embebido en http://localhost:5000
 ```
-3. Asegúrate de que tu archivo `vite.config.ts` esté configurado correctamente. Aquí tienes un ejemplo de configuración:
 
-```typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+#### Desarrollo independiente de React
 
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    host: '0.0.0.0',
-    port: 5173
-  },
-})
+```sh
+cd client
+npm run dev          # Inicia Vite en http://localhost:5173 con HMR
 ```
-4. Ejecuta el proyecto:
-   ```bash
-   bun start
-   ``` 
 
-## Pruebas Locales
-Una vez que ambos servidores (frontend y backend) estén en funcionamiento, puedes acceder a la aplicación en tu navegador en la dirección [http://localhost:5173](http://localhost:5173) o en el puerto que hayas configurado en el archivo `.env` y en el `vite.config.ts` ademas verificar que `api.ts` este apuntado al backend .
+### Otros componentes
 
-## Contribuciones
-Las contribuciones son bienvenidas. Por favor, abre un issue o un pull request.
+| Componente | Descripción |
+|---|---|
+| `server/` | API REST (Node.js) que gestiona el sistema de archivos |
+| `client/` | Interfaz web React con TypeScript + TailwindCSS |
+| `launcher/` | Empaquetado portátil (Node.js SEA) — produce `CloudLocal.exe` |
+
+---
+
+## Arquitectura
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                        Red LAN                          │
+│                                                         │
+│  ┌──────────┐    HTTP     ┌──────────────────┐         │
+│  │  Navegador│ ──────────► │   server/        │         │
+│  │  (client/)│             │   (API + static) │         │
+│  └──────────┘             │                  │         │
+│  ┌──────────┐             │  ┌────────────┐  │         │
+│  │  Móvil   │ ──────────► │  │ .cloudlocal│  │         │
+│  └──────────┘             │  │ /state     │  │         │
+│                           │  └────────────┘  │         │
+│                           │  ┌────────────┐  │         │
+│                           │  │ .cloudlocal│  │         │
+│                           │  │ /files     │  │         │
+│                           │  └────────────┘  │         │
+│                           └──────────────────┘         │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Server (`server/`)
+
+API REST con autenticación basada en cookie (scrypt + token de sesión). Gestiona:
+
+- Listado y navegación de carpetas
+- Subida de archivos con barra de progreso
+- Descarga y vistas previas
+- Papelera (borrado temporal; eliminación permanente y vaciado vía API)
+- Configuración de carpeta de datos
+- Cierre graceful del servidor HTTP
+
+### Client (`client/`)
+
+Aplicación React con TypeScript organizada en:
+
+- `App.tsx` — Orquestación principal (auth, routing, estado, shortcuts de teclado)
+- `components/Access.tsx` — Pantalla de autenticación (acceso con contraseña)
+- `components/Preview.tsx` — Modal de vista previa (imágenes, vídeo, audio, PDF)
+- `components/Settings.tsx` — Configuración y toggle de modo oscuro (toggle grande, 64px ancho)
+- `components/DragAndDrop.tsx` — Overlay de arrastrar y soltar (subida externa)
+- `components/UploadQueue.tsx` — Cola de subida con progreso y retry/cancel
+- `hooks/useDragUpload.ts` — Hook para arrastrar archivos externos
+- `api/api.ts` — Cliente HTTP Axios (todos los endpoints)
+- `workspace.mjs` — Utilidades (formateo, breadcrumb, tipado de preview)
+
+### Launcher (`launcher/`)
+
+Bundler que combina servidor + frontend en un ejecutable portátil usando Node.js SEA (Single-Executable Application). Produce `launcher/dist/CloudLocal.exe`.
+
+---
+
+## API — Endpoints
+
+### Autenticación
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `POST` | `/api/setup` | Configurar contraseña inicial (solo localhost) |
+| `POST` | `/api/login` | Iniciar sesión con contraseña |
+| `POST` | `/api/logout` | Cerrar sesión |
+| `GET` | `/api/session` | Estado de sesión actual |
+
+> **Cookie**: `cloudlocal_session` (HttpOnly, SameSite=Strict, 12 h). Todas las peticiones API requieren esta cookie.
+
+### Archivos
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/api/files` | Listar archivos (`?folder=&q=`) |
+| `POST` | `/api/folders` | Crear carpeta (`{folder, name}`) |
+| `POST` | `/api/files/upload` | Subir archivo multipart (`?folder=`) |
+| `DELETE` | `/api/files` | Enviar a papelera (`?path=`) |
+| `POST` | `/api/files/copy` | Copiar archivo/folder (`{from, to}`) |
+| `POST` | `/api/files/move` | Mover archivo (`{from, to}`) |
+| `POST` | `/api/files/moveFolder` | Mover carpeta (`{from, to}`) |
+| `POST` | `/api/files/permanent` | Eliminación permanente (`{id}`) |
+| `GET` | `/api/files/zip` | Descargar como ZIP (`?paths[]=`) |
+| `GET` | `/api/files/content` | Obtener contenido (`?path=`) |
+
+### Papelera
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/api/trash` | Listar archivos en papelera |
+| `POST` | `/api/trash/:id/restore` | Restaurar archivo |
+| `POST` | `/api/trash/empty` | Vaciar papelera (todos) |
+| `DELETE` | `/api/trash` | Borrar archivo permanentemente |
+
+### Estado
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/api/status` | Espacio en disco, límite de subida, URLs |
+| `GET` | `/api/session` | Estado de sesión actual |
+
+### Dispositivos
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/api/devices/` | Listar dispositivos vinculados |
+| `GET` | `/api/devices/offers` | Listar ofertas pendientes |
+| `POST` | `/api/devices/pair-code` | Generar código de emparejamiento |
+| `POST` | `/api/devices/:id/offers` | Enviar oferta a dispositivo |
+| `GET` | `/api/devices/:id/entries` | Listar entradas compartidas |
+| `GET` | `/api/devices/:id/content` | Obtener contenido compartido |
+| `DELETE` | `/api/devices/:id` | Desvincular dispositivo |
+
+### Configuración
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/api/settings` | Obtener configuración |
+| `PUT` | `/api/settings` | Guardar carpeta (`{folderPath}`) |
+| `DELETE` | `/api/settings` | Restablecer carpeta por defecto |
+
+### Shutdown
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `POST` | `/api/shutdown` | Apagar el servidor (requiere sesión) |
+
+---
+
+## Variables de entorno
+
+| Variable | Descripción | Valor por defecto |
+|---|---|---|
+| `HOST` | Interfaz de red a escuchar (no `CLOUDLOCAL_HOST`) | `0.0.0.0` |
+| `CLOUDLOCAL_PORT` | Puerto HTTP principal del servidor | `5000` |
+| `PORT` | Alternativa a `CLOUDLOCAL_PORT` (solo server standalone) | `5000` |
+| `CLOUDLOCAL_FALLBACK_PORT` | Puerto de respaldo si el principal falla | `5000` |
+| `CLOUDLOCAL_DATA_DIR` | Ruta de la carpeta donde se almacenan los archivos | `.cloudlocal/files` |
+| `CLOUDLOCAL_STATE_DIR` | Ruta del directorio de estado y credenciales | `.cloudlocal/state` |
+| `CLOUDLOCAL_MAX_UPLOAD` | Tamaño máximo de archivo en bytes | `536870912` (512 MiB) |
+
+> El launcher (`CloudLocal.exe`) fija `CLOUDLOCAL_PORT=80` automáticamente; no se necesita configurar.
+
+---
+
+## Funcionalidades destacadas
+
+### Sidebar
+
+Panel lateral fijo con navegación rápida a Archivos, Papelera y Configuración. Incluye indicador de estado del servidor (en línea/desconectado) y botón para cerrar sesión. En móvil se muestra como panel deslizable.
+
+### Navegación de carpetas
+
+- **Breadcrumbs**: ruta actual clickeable (`/ > documentos > fotos > 2025`)
+- **Botón de retroceso**: flecha izquierda para volver a la carpeta padre
+- **Doble clic en carpetas**: navega directamente dentro
+
+### Tabla de archivos
+
+Vista tabular con columnas de nombre, tamaño/modificación y acciones (vista previa, descarga, eliminar). Las carpetas son navegables con clic; los archivos muestran acciones contextuales. Soporta vista en lista y vista en cuadrícula (alternable con botón en toolbar).
+
+### Drag & Drop externo
+
+Arrastra archivos desde el explorador del sistema directamente a la ventana para subirlos. Se muestra un overlay con confirmación visual. La barra de progreso aparece en la esquina inferior derecha.
+
+### Drag & Drop interno
+
+Arrastra un archivo o carpeta sobre otra carpeta para moverlo directamente. La carpeta destino se resalta para indicar que es un punto de drop válido.
+
+### Copiar, cortar y pegar
+
+Selección múltiple con clic o Ctrl+A. Copiar (Ctrl+C) y cortar (Ctrl+X) al portapapeles interno. Pegar (Ctrl+V) en la carpeta actual. Las operaciones se procesan en serie.
+
+### Renombrado inline
+
+Selecciona un archivo y pulsa F2. El nombre se convierte en un campo editable. Pulsa Enter para confirmar o Escape para cancelar. La validación incluye:
+- No permitir nombres vacíos
+- No permitir duplicados en la carpeta
+- No permitir nombres de sistema (`CON`, `PRN`, `NUL`, etc.)
+
+### Atajos de teclado
+
+| Atajo | Acción |
+|---|---|
+| `Ctrl+A` | Seleccionar todo |
+| `Ctrl+C` | Copiar al portapapeles |
+| `Ctrl+X` | Cortar (mover) al portapapeles |
+| `Ctrl+V` | Pegar en carpeta actual |
+| `Ctrl+Alt+N` | Nueva carpeta |
+| `F2` | Renombrar elemento seleccionado |
+| `Delete` | Enviar a papelera |
+| `Escape` | Cerrar modal, cancelar renaming |
+| `Tab` | Navegación entre controles (focus visible) |
+
+> `Ctrl+N` no se intercepta (queda para el navegador). Solo `Ctrl+Alt+N` crea carpetas.
+
+### Vista previa
+
+- **Imágenes**: se muestra en un modal con fondo oscuro. Cierre con Escape o clic fuera. La imagen se escala al viewport.
+- **Vídeo**: reproductor HTML5 integrado.
+- **Audio**: reproductor de audio HTML5.
+- **PDF**: se abre en una nueva pestaña del navegador.
+
+### Papelera
+
+- **Mover a papelera**: Delete (seleccionados) o botón eliminar
+- **Restaurar**: botón "Restaurar" en la UI (restaura al path original)
+- **Eliminación permanente** y **vaciar papelera**: solo disponibles vía API
+
+### Modo oscuro
+
+Actívalo en la sección Configuración mediante un toggle grande (64×34px) con track y thumb. Se guarda en `localStorage` (`cloudlocal-theme: "dark"` / `"light"`), se detecta automáticamente si el sistema operativo usa tema oscuro, y se sincroniza instantáneamente entre todas las pestañas abiertas vía `storage` event. Las variables CSS se aplican mediante `data-theme` en el `<html>`.
+
+### Diseño responsive
+
+| Breakpoint | Comportamiento |
+|---|---|
+| `> 1024px` | Sidebar fijo, tabla completa |
+| `768px – 1024px` | Sidebar fijo, espacio reducido |
+| `481px – 768px` | Sidebar deslizable, columna de detalles oculta |
+| `≤ 480px` | Sidebar deslizable, acciones compactadas |
+
+---
+
+## Contribución
+
+### Guía para desarrolladores
+
+#### Estructura del proyecto
+
+```
+CloudLocal/
+├── server/           # API REST (Node.js)
+│   ├── src/          # server.js, storage.js, router, controller
+│   └── test/         # Tests unitarios
+├── client/           # Frontend React (TypeScript + Vite)
+│   ├── src/
+│   │   ├── api/      # Cliente HTTP Axios (api.ts)
+│   │   ├── components/
+│   │   │   ├── Access.tsx        # Pantalla de acceso
+│   │   │   ├── DragAndDrop.tsx   # Overlay de drag & drop
+│   │   │   ├── Preview.tsx       # Modal de vista previa
+│   │   │   ├── Settings.tsx      # Configuración y toggle dark mode
+│   │   │   ├── UploadQueue.tsx   # Cola de subida con progreso
+│   │   │   └── Devices.tsx       # Gestión de dispositivos LAN
+│   │   ├── hooks/
+│   │   │   └── useDragUpload.ts  # Hook de drag & drop
+│   │   ├── App.tsx         # Orquestación principal
+│   │   └── index.css       # Estilos globales (variables, focus, themes)
+│   └── public/
+├── launcher/         # Empaquetado portátil (Node.js SEA)
+│   └── src/
+│       ├── main.cjs
+│       ├── runtime.cjs
+│       └── tray.cjs
+└── odd/              # Especificaciones y tareas (ODD)
+```
+
+#### Flujo de trabajo
+
+1. Clona el repositorio y abre la carpeta raíz
+2. Instala dependencias: `npm ci` desde la raíz; después, `cd launcher`, `npm ci` y `cd ..`
+3. Compila `client` con `npm run build:frontend`
+4. Ejecuta tests con `npm test`
+5. Ejecuta `server` con `npm start` (desde `server/`)
+6. Para desarrollo React en caliente: `npm run dev` en `client/`
+7. Construye el ejecutable con `npm run build:exe`
+
+#### Convenciones
+
+- **TypeScript**: strict mode habilitado. No uses `any` salvo necesidad documentada.
+- **Componentes React**: funcionales con hooks. Nombres `PascalCase`.
+- **CSS**: TailwindCSS como base, variables CSS personalizadas para theming. Sin modificar `index.css` salvo indicación.
+- **Comentarios**: en español. JSDoc para funciones exportadas.
+- **Tests**: unitarios en `test/` por componente.
+- **Commits**: estilo [Conventional Commits](https://www.conventionalcommits.org/).
+
+#### Validación antes de push
+
+```sh
+# Compilar cliente (TypeScript + Vite)
+npm run build:frontend
+
+# Ejecutar tests (server + client + launcher)
+npm test
+```
+
+#### Crear un cambio
+
+1. Crea una rama descriptiva: `feat/nueva-funcion` o `fix/problema-descriptivo`
+2. Implementa y verifica con los tests
+3. Commit con mensaje convencional: `feat(client): add dark mode toggle`
+4. Push y abre Pull Request
+
+---
+
+## Documentación adicional
+
+- [Servidor portable y configuración](docs/server-launcher.md)
+- [API y autenticación](docs/api.md)
+- [Notas de la versión 0.0.1](docs/release-0.0.1.md)
