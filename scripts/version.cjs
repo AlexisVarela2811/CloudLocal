@@ -1,17 +1,16 @@
 /**
  * CloudLocal versioning script.
  * Usage:
- *   npm run version:patch   # 0.1.0 → 0.1.1
- *   npm run version:minor   # 0.1.0 → 0.2.0
- *   npm run version:major   # 0.1.0 → 1.0.0
+ *   npm run version:patch   # 0.0.1 → 0.0.2
+ *   npm run version:minor   # 0.0.1 → 0.1.0
+ *   npm run version:major   # 0.0.1 → 1.0.0
  *
- * Also updates launcher and server package.json files,
- * creates a git tag, and updates CHANGELOG.md.
+ * Updates version in root, launcher, and server package.json files.
+ * Does NOT commit or tag - user must do git operations manually.
  */
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 const BUMP_TYPE = process.argv[2];
 
@@ -57,16 +56,6 @@ console.log(`Version bumped: ${rootPkg.version} → ${newVersion}`);
 console.log(`- Updated ${rootPkg.version}`);
 console.log(`- Updated launcher ${launcherPkg.version}`);
 console.log(`- Updated server ${serverPkg.version}`);
-
-// Create git commit and tag
-try {
-  execSync(`git add package.json launcher/package.json server/package.json`, { stdio: 'inherit' });
-  execSync(`git commit -m "chore: bump version to ${newVersion}"`, { stdio: 'inherit' });
-  execSync(`git tag -a "v${newVersion}" -m "Release v${newVersion}"`, { stdio: 'inherit' });
-  console.log(`\n✓ Created git tag: v${newVersion}`);
-} catch (err) {
-  console.warn(`\n⚠ Git commit/tag failed (not a git repo or already committed?): ${err.message}`);
-}
-
 console.log(`\n✅ CloudLocal v${newVersion} ready!`);
-console.log(`   To push: git push origin main && git push origin v${newVersion}`);
+console.log(`   To push: git add -A && git commit -m "chore: bump version to ${newVersion}"`);
+console.log(`            git push origin main`);

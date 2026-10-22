@@ -11,16 +11,36 @@ async function main() {
   const output = path.join(__dirname, '../dist');
   const nodeExe = path.join(path.dirname(require.resolve('node-win-x64/package.json')), 'bin/node.exe');
   if (!fs.existsSync(nodeExe)) throw new Error('Pinned Node 22.23.2 Windows binary missing');
+
   const assets = {};
-  function collect(dir) {
+  function collect(dir, base) {
     for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
       const file = path.join(dir, item.name);
-      if (item.isDirectory()) collect(file);
-      else if (item.isFile()) assets[path.relative(dist, file).split(path.sep).join('/')] = file;
+      if (item.isDirectory()) collect(file, base);
+      else if (item.isFile()) assets[path.relative(base, file).split(path.sep).join('/')] = file;
     }
   }
   if (!fs.existsSync(path.join(dist, 'index.html'))) throw new Error('Build client/dist first');
-  collect(dist);
+
+  // Collect client assets
+  collect(dist, dist);
+
+  // Collect tray-hook-win32-x64 package (binary + package.json)
+  // Must embed with path that doesn't start with @ (runtime.cjs regex rejects it)
+  try {
+    const trayPkg = path.join(__dirname, '../node_modules/@phtdacosta/tray-hook-win32-x64');
+    if (fs.existsSync(trayPkg)) {
+      for (const item of fs.readdirSync(trayPkg)) {
+        const file = path.join(trayPkg, item);
+        if (fs.statSync(file).isFile()) {
+          // Rename: strip @phtdacosta/ prefix so path matches runtime.cjs regex
+          const safeName = `tray-hook-bin/${item}`;
+          assets[safeName] = file;
+        }
+      }
+    }
+  } catch { /* tray binary not present; extraction at runtime will fail gracefully */ }
+
   fs.mkdirSync(output, { recursive: true });
   const bundle = path.join(output, 'server.cjs');
   await esbuild.build({ entryPoints: [path.join(root, 'launcher/src/main.cjs')], outfile: bundle,

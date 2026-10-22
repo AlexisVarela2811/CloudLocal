@@ -26,7 +26,7 @@ function materializeAssets(cache, names, getAsset) {
   return destination;
 }
 
-function launch({ home, env, proc, log, start, urlsFor, publish, clientDir }) {
+function launch({ home, env, proc, log, start, urlsFor, publish, clientDir, onTray }) {
   const options = { ...packagedOptions(env, home), ...(clientDir ? { clientDir } : {}) };
   // start owns the preferred-port/fallback-port logic; choose 80 only for this executable.
   if (env.CLOUDLOCAL_PORT === undefined && env.PORT === undefined) env.CLOUDLOCAL_PORT = '80';
@@ -41,6 +41,7 @@ function launch({ home, env, proc, log, start, urlsFor, publish, clientDir }) {
       else { publisher = { stop: () => {} }; }
       log('Try http://cloudlocal.local' + (port === 80 ? '' : `:${port}`) + ' if mDNS works; use the IP link above otherwise.');
     }
+    if (onTray) onTray(port, urls);
   }
   const instance = start({ ...options, onReady: ready });
   function shutdown() {
@@ -52,7 +53,9 @@ function launch({ home, env, proc, log, start, urlsFor, publish, clientDir }) {
   proc.once('SIGINT', shutdown);
   proc.once('SIGTERM', shutdown);
   // A piped stdin closing is also a graceful stop for supervised isolated runs.
-  if (proc.stdin && !proc.stdin.isTTY) {
+  // When running as SEA .exe, stdin is unreliable (pipelines from spawn close immediately),
+  // so only shutdown on stdin end if it's not a SEA build.
+  if (proc.stdin && !proc.stdin.isTTY && !proc._isSea) {
     proc.stdin.once('end', shutdown);
     proc.stdin.resume();
   }
