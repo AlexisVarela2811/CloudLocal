@@ -236,6 +236,11 @@ function App() {
         if (first) startRename(first.path, first.name);
       } else if (isCtrl && event.key === 's' && !isInputFocused) {
         event.preventDefault();
+      } else if (isCtrl && event.key === 'n' && view === 'files' && !isInputFocused) {
+        event.preventDefault();
+        event.stopPropagation();
+        setNewFolder('');
+        setShowNewFolder(true);
       }
     }
 
@@ -256,6 +261,40 @@ function App() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [renaming]);
+
+  // ── Theme toggle from Settings + cross-tab sync ─────────
+  useEffect(() => {
+    const saved = (localStorage.getItem('cloudlocal-theme') as 'dark' | 'light') || 'light';
+    if (saved === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    function onThemeChange(event: Event) {
+      const detail = (event as CustomEvent).detail;
+      if (detail?.theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    }
+    window.addEventListener('cloudlocal-theme-change', onThemeChange);
+    // Sync when localStorage changes from another tab
+    function onStorage(event: StorageEvent) {
+      if (event.key === 'cloudlocal-theme') {
+        if (event.newValue === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+      }
+    }
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('cloudlocal-theme-change', onThemeChange);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
 
   function onExpired() { loseSession(); }
 

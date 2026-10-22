@@ -85,20 +85,21 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
       <div className="settings-row theme-row">
         <span className="theme-label-text">Modo oscuro</span>
         <div className="theme-switch">
-          <input
+          <button
             id="dark-mode-toggle"
-            type="checkbox"
+            type="button"
             role="switch"
-            checked={darkMode}
-            onChange={toggleDarkMode}
+            aria-checked={darkMode}
+            onClick={toggleDarkMode}
             aria-labelledby="dark-mode-label"
-          />
-          <span className="theme-switch-track" aria-hidden="true">
-            <span className="theme-switch-thumb" />
-          </span>
-          <span className="theme-switch-label">
-            {darkMode ? 'Activado' : 'Desactivado'}
-          </span>
+          >
+            <span className="toggle-track">
+              <span className="toggle-thumb" />
+            </span>
+            <span className="toggle-label-text">
+              {darkMode ? 'Activado' : 'Desactivado'}
+            </span>
+          </button>
         </div>
       </div>
 
