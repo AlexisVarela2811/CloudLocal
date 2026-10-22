@@ -65,5 +65,30 @@ async function main() {
   }
 
   console.log(`Built CloudLocal.exe: ${exePath}`);
+
+  // Hide console window: change subsystem from CONSOLE (3) to GUI (2)
+  // node.exe has subsystem=3 (console). We change to 2 (windows/GUI) so no terminal appears.
+  const exeData = fs.readFileSync(exePath);
+  const peOff = exeData.readUInt32LE(0x3c);
+  const optHeaderOff = peOff + 4 + 20; // PE sig + COFF header
+  const subOff = optHeaderOff + 68; // PE32+ optional header field
+  const curSub = exeData.readUInt16LE(subOff);
+  if (curSub === 3) {
+    exeData.writeUInt16LE(2, subOff);
+    fs.writeFileSync(exePath, exeData);
+    console.log('Console hidden (subsystem 3→2)');
+  } else {
+    console.log(`Subsystem already ${curSub}`);
+  }
+
+  // Inject cloud logo icon using inject-icon.cjs
+  const iconScript = path.join(__dirname, 'inject-icon.cjs');
+  if (fs.existsSync(iconScript)) {
+    try {
+      execFileSync(process.execPath, [iconScript], { stdio: 'inherit' });
+    } catch (err) {
+      console.warn('Icon injection skipped:', err.message);
+    }
+  }
 }
 main().catch(err => { console.error(err); process.exitCode = 1; });
