@@ -101,24 +101,13 @@ function createApp({ dataDir = path.join(__dirname, 'upload'), stateDir = path.j
         // Respond first, then shutdown
         res.json({ message: 'Server shutting down...' });
         setTimeout(() => {
-            process.exit(0);
-        }, 500);
-    }));
-    app.use('/api', (req, res) => res.status(404).json({ message: 'Not found' }));
-    app.post('/api/shutdown', jsonBody, handle(async (req, res) => {
-        if (!auth.valid(token(req))) return res.status(401).json({ message: 'Authentication required' });
-        // Respond first so the client gets the signal
-        res.json({ message: 'Server shutting down...' });
-        setTimeout(() => {
             console.log('CloudLocal: shutting down...');
             app.locals.closeDeviceHub();
-            // Gracefully close the server
             server.close(() => {
                 console.log('CloudLocal: stopped');
-                // Force exit after 2s in case close hangs
-                setTimeout(() => process.exit(0), 2000).unref();
+                process.exit(0);
             });
-            // Fallback force exit
+            // Force exit after 3s in case close hangs
             setTimeout(() => process.exit(0), 3000).unref();
         }, 500);
     }));
@@ -132,6 +121,8 @@ function createApp({ dataDir = path.join(__dirname, 'upload'), stateDir = path.j
         const status = error.code === 'LIMIT_FILE_SIZE' ? 413 : error.status >= 400 && error.status < 500 ? error.status : 500;
         res.status(status).json({ message: status === 500 ? 'Internal server error' : status === 413 ? 'File too large' : error.message || 'Invalid request' });
     });
+    // Catch-all 404 must be last
+    app.use('/api', (req, res) => res.status(404).json({ message: 'Not found' }));
     return app;
 }
 module.exports = { createApp };
