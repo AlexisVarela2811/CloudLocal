@@ -143,14 +143,8 @@ a { color: var(--accent); text-decoration: none; }
 .logo-icon {
   width: 32px;
   height: 32px;
-  background: var(--accent);
-  color: white;
-  border-radius: var(--radius-sm);
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  font-size: .95rem;
   flex-shrink: 0;
+  border-radius: var(--radius-sm);
 }
 .logo-text {
   color: #f1f5f9;

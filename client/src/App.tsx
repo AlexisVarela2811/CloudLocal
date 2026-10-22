@@ -504,7 +504,7 @@ function App() {
         </button>
 
         <div className="sidebar-logo">
-          <span className="logo-icon" aria-hidden="true">C</span>
+          <img src="/cloudlocal.svg" alt="CloudLocal" className="logo-icon" />
           <span className="logo-text">CloudLocal</span>
         </div>
 
