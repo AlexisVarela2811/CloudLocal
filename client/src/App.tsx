@@ -309,6 +309,15 @@ function App() {
     };
   }, []);
 
+  // ── Restore shutdown state when server is alive on mount ──
+  useEffect(() => {
+    let active = true;
+    api.status()
+      .then(() => { if (active) persistShutdownState({ active: true, shuttingDown: false }); })
+      .catch(() => { /* server is dead — leave localStorage as-is */ });
+    return () => { active = false; };
+  }, []);
+
   function onExpired() { loseSession(); }
 
   // ── Rename helpers ───────────────────────────────────────
@@ -584,28 +593,27 @@ function App() {
                 aria-label="Elegir archivos para subir"
               />
             </label>
-            {shutdownState.active && (
-              <button
-                className="btn-danger"
-                disabled={shutdownState.shuttingDown}
-                onClick={async () => {
-                  setShutdownState(prev => ({ ...prev, shuttingDown: true }));
-                  persistShutdownState({ ...shutdownState, shuttingDown: true });
-                  try {
-                    await api.shutdown();
-                    setShutdownState({ active: false, shuttingDown: false });
-                    persistShutdownState({ active: false, shuttingDown: false });
-                  } catch (cause) {
-                    setError(failure(cause));
-                    setShutdownState({ active: true, shuttingDown: false });
-                    persistShutdownState({ active: true, shuttingDown: false });
-                  }
-                }}
-              >
-                <FaServer aria-hidden="true" />
-                <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Detener Server'}</span>
-              </button>
-            )}
+            <button
+              className="btn-danger"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem', padding: '.45rem .7rem', borderRadius: 'var(--radius-sm)', fontSize: '.8rem', fontWeight: 500, cursor: 'pointer' }}
+              disabled={shutdownState.shuttingDown || !shutdownState.active}
+              onClick={async () => {
+                setShutdownState(prev => ({ ...prev, shuttingDown: true }));
+                persistShutdownState({ ...shutdownState, shuttingDown: true });
+                try {
+                  await api.shutdown();
+                  setShutdownState({ active: false, shuttingDown: false });
+                  persistShutdownState({ active: false, shuttingDown: false });
+                } catch (cause) {
+                  setError(failure(cause));
+                  setShutdownState({ active: true, shuttingDown: false });
+                  persistShutdownState({ active: true, shuttingDown: false });
+                }
+              }}
+            >
+              <FaServer aria-hidden="true" />
+              <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Detener Server'}</span>
+            </button>
             <button className="btn-ghost" onClick={async () => {
               if (saving) return; setSaving(true);
               try { await api.logout(); setSession({ ...session, authenticated: false }); setSelected([]); setPreview(null); setNotice('Sesión cerrada.'); }
