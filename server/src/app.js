@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createStorage } = require('./storage');
 const { createAuth } = require('./auth');
-const { createDeviceHub } = require('./devices');
+
 const { fileRouter } = require('./routers/fileRouter');
 const { controllers, handle } = require('./controller/fileController');
 const { isLoopback, isPrivatePeer, validHost, originMatches } = require('./network');
@@ -84,9 +84,7 @@ function createApp({ dataDir = path.join(__dirname, 'upload'), stateDir = path.j
         cookie(res, '', true);
         res.status(204).end();
     });
-    const deviceHub = createDeviceHub({ storage, stateDir, isAdmin: req => auth.valid(token(req)) });
-    app.locals.closeDeviceHub = () => deviceHub.close();
-    app.use('/api/devices', deviceHub.router);
+
     app.use('/api', (req, res, next) => auth.valid(token(req)) ? next() : res.status(401).json({ message: 'Authentication required' }));
     app.use('/api/settings', createSettingsRouter(settings, dataDir));
     const actions = controllers(storage);

@@ -39,10 +39,6 @@ CloudLocal es un servidor de archivos local privado que se ejecuta como un únic
 - **Diseño responsive**: adaptado para escritorio, tablet y móvil
 - **Accesibilidad**: skip-link, roles ARIA, navegación completa por teclado
 
-### Integración de red
-
-- **Gestión de dispositivos**: compartir carpetas entre equipos de la LAN vía companion service
-
 ---
 
 ## Instalación
@@ -154,7 +150,6 @@ Aplicación React con TypeScript organizada en:
 - `components/Settings.tsx` — Configuración y toggle de modo oscuro (toggle grande, 64px ancho)
 - `components/DragAndDrop.tsx` — Overlay de arrastrar y soltar (subida externa)
 - `components/UploadQueue.tsx` — Cola de subida con progreso y retry/cancel
-- `components/Devices.tsx` — Gestión de dispositivos emparejados
 - `hooks/useDragUpload.ts` — Hook para arrastrar archivos externos
 - `api/api.ts` — Cliente HTTP Axios (todos los endpoints)
 - `workspace.mjs` — Utilidades (formateo, breadcrumb, tipado de preview)
@@ -408,5 +403,4 @@ npm test
 
 - [Servidor portable y configuración](docs/server-launcher.md)
 - [API y autenticación](docs/api.md)
-- [Acompañante y emparejamiento de dispositivos](docs/devices.md)
 - [Notas de la versión 0.0.1](docs/release-0.0.1.md)

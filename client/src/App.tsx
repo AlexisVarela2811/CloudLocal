@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   FaFolder, FaFile, FaDownload, FaTrash, FaUndo,
-  FaArrowLeft, FaPlus, FaUpload, FaSync, FaServer,
+  FaArrowLeft, FaPlus, FaUpload, FaSync,
   FaSignOutAlt, FaCopy, FaWifi, FaQuestionCircle,
   FaSpinner, FaExclamationTriangle, FaFolderOpen,
   FaFilePdf, FaEye, FaArrowsAlt,
-  FaImage, FaVideo, FaMusic
+  FaImage, FaVideo, FaMusic, FaPowerOff
 } from 'react-icons/fa';
 import { api, expired, failure, type Entry, type Session, type Status, type TrashEntry } from './api/api';
 
@@ -35,7 +35,7 @@ import { Access } from './components/Access';
 import { Preview } from './components/Preview';
 import { DragAndDrop } from './components/DragAndDrop';
 import { SettingsPanel } from './components/Settings';
-import { breadcrumbs, bytes, exceedsLimit, previewKind, sortEntries, visibleServerUrls } from './workspace.mjs';
+import { breadcrumbs, bytes, exceedsLimit, previewKind, sortEntries } from './workspace.mjs';
 
 type View = 'files' | 'trash' | 'settings';
 
@@ -80,7 +80,6 @@ function App() {
   const [creating, setCreating] = useState(false);
   const [folderName, setFolderName] = useState('');
   const [saving, setSaving] = useState(false);
-  const [copyError, setCopyError] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [revision, setRevision] = useState(0);
   const [dragOver, setDragOver] = useState<string | null>(null);
@@ -452,17 +451,6 @@ function App() {
       else setError(failure(cause));
     }
   }
-  async function copyUrl(url: string) {
-    setCopyError('');
-    try {
-      await navigator.clipboard.writeText(url);
-      setNotice('Dirección copiada.');
-    }
-    catch {
-      setCopyError('No se pudo copiar automáticamente. Selecciona y copia la dirección del enlace.');
-    }
-  }
-
   if (!session)
     return <main className="auth-gate" role="status">
       {entryError ? <>
@@ -493,8 +481,6 @@ function App() {
     </>;
 
   const crumbs = breadcrumbs(folder);
-  const serverUrls = visibleServerUrls(status?.urls, window.location.origin);
-
   return (
     <div className="app-shell">
 
@@ -525,14 +511,6 @@ function App() {
           </button>
         </nav>
 
-        <button className="device-link" onClick={() => {
-          setView('files');
-          setSidebarOpen(false);
-          requestAnimationFrame(() => document.getElementById('connect-devices-card')?.scrollIntoView({ behavior: 'smooth' }));
-        }}>
-          <FaServer aria-hidden="true" />
-          <span>Conectar otro dispositivo</span>
-        </button>
 
         <div className="sidebar-status">
           <span className="status-dot" aria-hidden="true" />
@@ -598,7 +576,6 @@ function App() {
               <h1 className="page-title">
                 {view === 'trash' ? 'Papelera' : view === 'settings' ? 'Configuración' : 'Mis archivos'}
               </h1>
-              {view === 'files' && <p className="page-subtitle">Gestiona tus archivos en tu red local. Crea carpetas, sube archivos y comparte con otros dispositivos.</p>}
               {view === 'trash' && <p className="page-subtitle">Restaura o elimina permanentemente los archivos borrados.</p>}
             </div>
           </div>
@@ -675,7 +652,7 @@ function App() {
                 }
               }}
             >
-              <FaServer aria-hidden="true" />
+              <FaPowerOff aria-hidden="true" />
               <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Detener Server'}</span>
             </button>
             <button className="btn-ghost" onClick={async () => {
@@ -693,38 +670,6 @@ function App() {
         <div className="workspace-body">
           {view === 'files' ? (
             <>
-              <section id="connect-devices-card" className="card card-accent" aria-labelledby="conn-title">
-                <div className="card-header-icon">
-                  <FaServer aria-hidden="true" />
-                </div>
-                <div className="card-content">
-                  <h2 id="conn-title">Conectar otro dispositivo</h2>
-                  <p>En el otro ordenador o móvil, abre una de estas direcciones en el navegador y entra con la contraseña de CloudLocal. No necesitas instalar ni vincular otro equipo.</p>
-                  {serverUrls.length ? (
-                    <div className="url-list">
-                      {serverUrls.map(url => (
-                        <div key={url} className="url-row">
-                          <code className="url-text">{url}</code>
-                          <button className="btn-copy" onClick={() => copyUrl(url)} title="Copiar URL">
-                            <FaCopy aria-hidden="true" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="no-url">No hay una dirección LAN disponible. Consulta la dirección IP y el puerto reales en el ordenador servidor.</p>
-                  )}
-                  {copyError && <p className="error-text">{copyError}</p>}
-                  <div className="disk-info-row">
-                    <span className="disk-space">
-                      Espacio del disco:{' '}
-                      {status ? `${bytes(status.storage.free)} libres de ${bytes(status.storage.total)}` : 'No disponible'}
-                    </span>
-                    <span className="disk-badge">HTTP · Solo red local</span>
-                  </div>
-                </div>
-              </section>
-
               <div className="toolbar">
                 <div className="search-row">
                   <div className="search-wrapper">

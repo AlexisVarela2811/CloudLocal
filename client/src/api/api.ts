@@ -5,14 +5,12 @@ export interface Entry { name: string; path: string; type: 'file' | 'directory';
 export interface TrashEntry { id: string; name: string; path: string; deletedAt: string }
 export interface Session { configured: boolean; authenticated: boolean; localSetup: boolean }
 export interface Status { storage: { total: number; free: number }; maxUploadBytes: number; urls: string[]; warning: string }
-export interface Device { id: string; name: string; shares: { id: string; label: string }[]; online: boolean; lastSeen: string | null }
 export interface SettingsInfo {
   folderPath: string | null;
   activeFolderPath: string;
   envOverride: boolean;
   needsRestart: boolean;
 }
-export interface Offer { id: string; deviceId: string; name: string; size: number; status: 'pending' | 'accepted' | 'delivered' | 'declined' | 'failed'; expiresAt: string }
 
 export const api = {
   session: async () => (await http.get<Session>('/session')).data,
@@ -41,13 +39,6 @@ export const api = {
   trash: async () => (await http.get<{ entries: TrashEntry[] }>('/trash')).data.entries,
   status: async () => (await http.get<Status>('/status')).data,
   content: (path: string, inline = false) => `/api/files/content?path=${encodeURIComponent(path)}${inline ? '&inline=1' : ''}`,
-  devices: async () => (await http.get<{ devices: Device[] }>('/devices/')).data.devices,
-  offers: async () => (await http.get<{ offers: Offer[] }>('/devices/offers')).data.offers,
-  pairCode: async () => (await http.post<{ code: string; expiresAt: string }>('/devices/pair-code', {})).data,
-  revoke: async (id: string) => (await http.delete(`/devices/${encodeURIComponent(id)}`)).data,
-  sharedEntries: async (id: string, share: string, path: string, signal: AbortSignal) => (await http.get<{ entries: Entry[] }>(`/devices/${encodeURIComponent(id)}/entries`, { params: { share, path }, signal, timeout: 35000 })).data.entries,
-  sharedContent: (id: string, share: string, path: string) => `/api/devices/${encodeURIComponent(id)}/content?share=${encodeURIComponent(share)}&path=${encodeURIComponent(path)}`,
-  sendOffer: async (id: string, path: string) => (await http.post<{ offer: Offer }>(`/devices/${encodeURIComponent(id)}/offers`, { path })).data.offer,
   settings: async () => (await http.get<SettingsInfo>('/settings')).data,
   saveFolder: async (folderPath: string) => (await http.put('/settings', { folderPath })).data,
   clearFolder: async () => (await http.delete('/settings')).data,
@@ -60,12 +51,6 @@ export function failure(error: unknown): string {
     if (typeof message === 'string') {
       const known: Record<string, string> = {
         'File or folder already exists': 'Ya existe un archivo o carpeta con ese nombre.',
-        'Device unavailable': 'El equipo no está disponible. Comprueba que el acompañante esté conectado y vuelve a intentarlo.',
-        'Device not found': 'Este equipo ya no está vinculado. Actualiza la lista.',
-        'Share not found': 'La carpeta compartida ya no está disponible. Actualiza la lista.',
-        'Device busy': 'El equipo está ocupado. Vuelve a intentarlo.',
-        'Relay byte limit exceeded': 'El archivo supera el límite de transferencia del servidor.',
-        'Too many codes': 'Se han generado demasiados códigos. Espera un minuto antes de volver a intentarlo.'
       };
       return known[message] || message;
     }
