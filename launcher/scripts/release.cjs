@@ -1,39 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
-// launcher/scripts/release.cjs
-// Creates a local 0.0.1 release candidate with provenance metadata.
-//
-// Usage:
-//   node scripts/release.cjs [--help] [version-tag]
-//
-// Options:
-//   --help    Print usage and exit (exit 0).
-//
-// Version tag (default: 0.0.1-rc.1)
-//   Must match X.Y.Z-rc.N pattern (e.g. 0.0.1-rc.1).
-//
-// Produces a directory under launcher/dist/release/<candidateName>/
-// and a .zip archive + .zip.sha256 sibling in launcher/dist/release/.
-//
-// Candidate payload files (explicit allowlist):
-//   CloudLocal.exe           — built executable (SEA)
-//   LICENSE                  — project MIT license (from project root)
-//   NODE-LICENSE.txt         — Node.js license (from launcher/resources/)
-//   THIRD-PARTY-NOTICES.txt  — third-party notices for production deps
-//   README.md                — user instructions (from project root)
-//   RELEASE-NOTES.md         — unsigned local candidate note
-//   candidate.json           — machine-readable provenance
-//   SHA256SUMS               — checksums for payload files (excludes itself)
-//
-// Archive: launcher/dist/release/<candidateName>.zip (sibling of candidate dir)
-// Archive checksum: launcher/dist/release/<candidateName>.zip.sha256
-//
-// SHA256SUMS covers exactly all payload files INCLUDING candidate.json,
-// excluding itself. The .zip is built ONCE from the immutable directory;
-// its checksum is written as a .zip.sha256 SIBLING AFTER creation,
-// never inside the candidate directory itself.
-
+// launcher/scripts/release.cjs — creates a local 0.0.1 release candidate
+// with provenance metadata, SHA256SUMS, and a .zip archive sibling.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -97,7 +66,10 @@ function runtimeSourceSha256() {
   function walk(dir) {
     for (const name of fs.readdirSync(dir).sort()) {
       const file = path.join(dir, name);
-      if (fs.statSync(file).isDirectory()) { walk(file); continue; }
+      if (fs.statSync(file).isDirectory()) {
+        walk(file);
+        continue;
+      }
       hash.update(path.relative(PROJECT_ROOT, file).split(path.sep).join('/'));
       hash.update('\0');
       hash.update(fs.readFileSync(file));
@@ -290,7 +262,6 @@ function main() {
   fs.mkdirSync(candidateRoot, { recursive: true });
 
   try {
-    // 1. Copy the executable
     fs.copyFileSync(exePath, path.join(candidateRoot, 'CloudLocal.exe'));
     const exeHashActual = sha256file(path.join(candidateRoot, 'CloudLocal.exe'));
     if (exeHashActual !== exeHash) {
@@ -299,13 +270,9 @@ function main() {
       return;
     }
 
-    // 2. Copy LICENSE
     fs.copyFileSync(requiredSourceFiles.LICENSE, path.join(candidateRoot, 'LICENSE'));
-
-    // 3. Copy NODE-LICENSE.txt
     fs.copyFileSync(requiredSourceFiles.NODE_LICENSE, path.join(candidateRoot, 'NODE-LICENSE.txt'));
 
-    // 4. Collect third-party notices
     const tpLines = collectThirdPartyNotices();
     const thirdPartyContent = [
       '# Third-Party Notices',
@@ -326,7 +293,7 @@ function main() {
     ].join('\n') + '\n';
     fs.writeFileSync(path.join(candidateRoot, 'THIRD-PARTY-NOTICES.txt'), thirdPartyContent);
 
-    // 5. Bundle user instructions without links to files outside this archive.
+    // Bundle user instructions without links to files outside this archive.
     fs.writeFileSync(path.join(candidateRoot, 'README.md'), [
       '# CloudLocal 0.0.1 — candidato local para Windows x64', '',
       'Extrae todos los archivos del ZIP en una carpeta y ejecuta CloudLocal.exe.',
@@ -350,7 +317,6 @@ function main() {
       'Consulta RELEASE-NOTES.md, LICENSE, NODE-LICENSE.txt y THIRD-PARTY-NOTICES.txt.', ''
     ].join('\n'));
 
-    // 6. Create RELEASE-NOTES.md with unsigned local candidate note
     fs.writeFileSync(path.join(candidateRoot, 'RELEASE-NOTES.md'), [
       '# CloudLocal Release Notes',
       '',
@@ -397,7 +363,6 @@ function main() {
       '- Git status unknown (provenance may be incomplete).',
     ].join('\n') + '\n');
 
-    // 7. Create candidate.json with truthful provenance
     const candidate = {
       name: 'CloudLocal',
       version: versionTag,
@@ -437,7 +402,6 @@ function main() {
     };
     fs.writeFileSync(path.join(candidateRoot, 'candidate.json'), JSON.stringify(candidate, null, 2) + '\n');
 
-    // 8. Create SHA256SUMS for all payload files (including candidate.json, excluding SHA256SUMS itself)
     const payloadFiles = [
       'CloudLocal.exe',
       'LICENSE',
@@ -457,11 +421,9 @@ function main() {
     }
     fs.writeFileSync(path.join(candidateRoot, 'SHA256SUMS'), sumLines.join('\n') + '\n');
 
-    // 9. Create .zip archive using bsdtar (ONCE, from immutable directory)
     const zipPath = path.join(releaseDir, candidateName + '.zip');
     createZipWithBsdtar(candidateRoot, zipPath);
 
-    // 10. Write .zip.sha256 as SIBLING — never inside candidate
     const zipHash = sha256file(zipPath);
     fs.writeFileSync(zipPath + '.sha256', zipHash + '  ' + candidateName + '.zip\n');
 

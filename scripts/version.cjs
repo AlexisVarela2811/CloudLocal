@@ -1,14 +1,5 @@
-/**
- * CloudLocal versioning script.
- * Usage:
- *   npm run version:patch   # 0.0.1 → 0.0.2
- *   npm run version:minor   # 0.0.1 → 0.1.0
- *   npm run version:major   # 0.0.1 → 1.0.0
- *
- * Updates version in root, launcher, and server package.json files.
- * Does NOT commit or tag - user must do git operations manually.
- */
-
+// CloudLocal versioning script — bumps patch/minor/major in all package.json files
+// (root, launcher, server). Does NOT commit or tag.
 const fs = require('fs');
 const path = require('path');
 

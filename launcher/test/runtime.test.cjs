@@ -38,13 +38,39 @@ test('launcher starts server only, advertises fallback URLs and stops publisher 
   const home = fixture(t);
   const calls = [];
   const listeners = {};
-  const proc = { env: { HOST: '127.0.0.1', PORT: '0', CLOUDLOCAL_NO_MDNS: '1' }, on: (signal, cb) => { listeners[signal] = cb; }, once: (signal, cb) => { listeners[signal] = cb; } };
-  const server = { listening: true, address: () => ({ port: 42512 }), close: cb => { calls.push('close'); cb?.(); } };
+  const proc = {
+    env: { HOST: '127.0.0.1', PORT: '0', CLOUDLOCAL_NO_MDNS: '1' },
+    on: (signal, cb) => { listeners[signal] = cb; },
+    once: (signal, cb) => { listeners[signal] = cb; },
+  };
+  const server = {
+    listening: true,
+    address: () => ({ port: 42512 }),
+    close: cb => { calls.push('close'); cb?.(); },
+  };
   const app = { locals: { closeDeviceHub: () => calls.push('hub') } };
   const logs = [];
-  const result = launch({ home, env: proc.env, proc, log: message => logs.push(message),
-    start: opts => { calls.push(opts); queueMicrotask(() => opts.onReady(42512)); return { app, server, shutdown: () => { calls.push('shutdown'); app.locals.closeDeviceHub(); server.close(); } }; },
-    urlsFor: port => [`http://127.0.0.1:${port}`], publish: () => { calls.push('publish'); return { stop: () => calls.push('stop') }; } });
+  const result = launch({
+    home,
+    env: proc.env,
+    proc,
+    log: message => logs.push(message),
+    start: opts => {
+      calls.push(opts);
+      queueMicrotask(() => opts.onReady(42512));
+      return {
+        app,
+        server,
+        shutdown: () => {
+          calls.push('shutdown');
+          app.locals.closeDeviceHub();
+          server.close();
+        },
+      };
+    },
+    urlsFor: port => [`http://127.0.0.1:${port}`],
+    publish: () => { calls.push('publish'); return { stop: () => calls.push('stop') }; },
+  });
   assert.equal(calls[0].dataDir, path.join(home, '.cloudlocal', 'files'));
   assert.equal(calls[0].clientDir, undefined);
   assert.equal(calls.includes('publish'), false);

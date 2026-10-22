@@ -1,29 +1,11 @@
 #!/usr/bin/env node
 'use strict';
 
-// launcher/scripts/release-verify.cjs
-// Verifies a release candidate directory for integrity, provenance, and allowed content.
-//
-// Usage:
-//   node scripts/release-verify.cjs <candidate-directory>
-//   node scripts/release-verify.cjs --help
-//
-// Checks:
-//   1. Candidate directory exists and is a directory
-//   2. CloudLocal.exe exists and is a regular file (not symlink)
-//   3. SHA256SUMS exists and all listed checksums verify (one-to-one with allowlist)
-//   4. candidate.json exists and has required provenance fields
-//   5. Only allowed files are present (explicit allowlist, complete match)
-//   6. candidate.json unsigned flag is truthful
-//   7. All listed SHA256SUMS files are regular files (no symlinks, no dirs)
-//
-// Exit 0 = PASS, Exit 1 = FAIL (with diagnostic messages).
-
+// launcher/scripts/release-verify.cjs — verifies a release candidate directory
+// for integrity, provenance, and allowed content.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-
-// ── --help support ─────────────────────────────────────────────────────────
 
 function printHelp() {
   console.log('Usage: node launcher/scripts/release-verify.cjs <candidate-directory>');
@@ -51,7 +33,6 @@ function printHelp() {
   process.exitCode = 0;
 }
 
-// ── Allowed files (explicit allowlist — complete one-to-one match required) ─
 const ALLOWED_FILES = [
   'CloudLocal.exe',
   'LICENSE',
@@ -65,15 +46,12 @@ const ALLOWED_FILES = [
 
 const ALLOWED_SET = new Set(ALLOWED_FILES);
 
-// ── Required provenance fields in candidate.json ───────────────────────────
 const REQUIRED_FIELDS = [
   'name', 'version', 'productVersion', 'platform', 'arch',
   'unsigned', 'unsignedNote', 'sha256', 'git', 'files', 'builtAt',
 ];
 
 const REQUIRED_GIT_FIELDS = ['commit', 'branch', 'dirty'];
-
-// ── Helpers ────────────────────────────────────────────────────────────────
 
 let _errors = 0;
 
@@ -101,12 +79,9 @@ function isRegularFile(filePath) {
   }
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────
-
 function main() {
   const args = process.argv.slice(2);
 
-  // Check for --help
   if (args.includes('--help')) {
     printHelp();
     return;
@@ -114,7 +89,6 @@ function main() {
 
   const arg = args[0];
 
-  // 1. Validate argument
   if (!arg) {
     console.error('Usage: node scripts/release-verify.cjs <candidate-directory>');
     console.error('       node scripts/release-verify.cjs --help');
@@ -122,8 +96,6 @@ function main() {
     return;
   }
 
-  // Accept the candidate directory path as-is (resolve to absolute)
-  // No regex restrictions on legitimate CLI path forms
   let candidateDir;
   try {
     candidateDir = path.resolve(arg);
@@ -133,7 +105,6 @@ function main() {
     return;
   }
 
-  // 2. Check directory exists
   if (!fs.existsSync(candidateDir)) {
     fail('Candidate directory does not exist: ' + candidateDir);
     process.exitCode = 1;
@@ -157,7 +128,6 @@ function main() {
 
   let checks = 0;
 
-  // 3. Check CloudLocal.exe exists and is a regular file
   checks++;
   const exePath = path.join(candidateDir, 'CloudLocal.exe');
   if (!fs.existsSync(exePath)) {
@@ -165,7 +135,7 @@ function main() {
   } else if (!isRegularFile(exePath)) {
     fail('CloudLocal.exe is not a regular file (symlink or special)');
   } else {
-    const exeStat = fs.statSync(exePath); // follow symlinks for size check
+    const exeStat = fs.statSync(exePath);
     if (exeStat.size < 64 * 1024) {
       fail('CloudLocal.exe is suspiciously small (' + exeStat.size + ' bytes) — likely not a valid executable');
     } else {
@@ -173,7 +143,6 @@ function main() {
     }
   }
 
-  // 4. Check SHA256SUMS exists, verify checksums, check completeness
   checks++;
   const sumPath = path.join(candidateDir, 'SHA256SUMS');
   if (!fs.existsSync(sumPath)) {
@@ -246,7 +215,6 @@ function main() {
     }
   }
 
-  // 5. Check candidate.json provenance
   checks++;
   const provPath = path.join(candidateDir, 'candidate.json');
   if (!fs.existsSync(provPath)) {
@@ -315,7 +283,6 @@ function main() {
     }
   }
 
-  // 6. Explicit allowlist check — complete one-to-one match, no extras
   checks++;
   const actualFiles = new Set();
   try {
@@ -347,7 +314,6 @@ function main() {
     pass('Allowlist complete — all ' + ALLOWED_FILES.length + ' required files present, no extras');
   }
 
-  // 7. Check all payload files are regular files (not symlinks, dirs, reparse)
   checks++;
   let allRegular = true;
   for (const file of ALLOWED_FILES) {
@@ -361,7 +327,6 @@ function main() {
     pass('All payload files are regular files (no symlinks or directories)');
   }
 
-  // 8. Check README and LICENSE exist
   if (isRegularFile(path.join(candidateDir, 'README.md'))) {
     pass('README.md present');
   } else {
@@ -395,7 +360,6 @@ function main() {
     fail('THIRD-PARTY-NOTICES.txt missing or not a regular file');
   }
 
-  // Summary
   console.log('');
   console.log('--- Verification Summary ---');
   if (_errors === 0) {

@@ -5,7 +5,6 @@ const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 
-// ── Cross-platform notification (best-effort, never throws) ───────────
 function sendNotification(title, body) {
   try {
     if (process.platform === 'win32') {
@@ -43,8 +42,6 @@ function sendNotification(title, body) {
   } catch { /* silently ignore */ }
 }
 
-// ── System helpers ──────────────────────────────────────────────────────
-
 function getLANIP() {
   const ifaces = os.networkInterfaces();
   for (const name of Object.keys(ifaces)) {
@@ -81,14 +78,9 @@ function saveUrls(port, urls) {
   } catch { /* ignore */ }
 }
 
-// ── Startup helpers (called from server when ready) ───────────────────
-
 /**
- * Notify the user that CloudLocal is running.
- * - Windows: toast notification
- * - macOS: native notification
- * - Linux: notify-send
- * Also auto-opens the browser to the LAN URL.
+ * Notify the user that CloudLocal is running (non-blocking), auto-opens
+ * the browser to the LAN URL.
  *
  * @param {number}   port  — the port the server is listening on
  * @param {string[]} urls  — all URLs the server is reachable at
@@ -100,7 +92,6 @@ function openTray(port, urls) {
     const url = `http://${lanIp}:${port}`;
     console.log('[notify] LAN IP:', lanIp, 'URL:', url);
 
-    // Save URLs to file
     saveUrls(port, urls);
     console.log('[notify] URLs saved');
 

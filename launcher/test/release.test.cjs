@@ -1,14 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
-// launcher/test/release.test.cjs
-// Deterministic tests for release candidate creation and verification.
-//
-// Uses Node's built-in --test runner with isolated project fixtures under
-// .cache/rc-test-*. Each fixture is a full copy of the scripts + minimal
-// structure needed to exercise release.cjs and release-verify.cjs end-to-end.
-// All fixtures are cleaned up after the test suite.
-
+// launcher/test/release.test.cjs — release candidate creation and verification tests
+// using isolated fixtures under .cache/rc-test-*.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -16,7 +10,6 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 
-// ── Fixture infrastructure ─────────────────────────────────────────────────
 const CACHE_DIR = path.join(__dirname, '..', '..', '.cache');
 
 function mkFixture() {
@@ -115,15 +108,11 @@ function runVerify(dirPath, extraArgs = []) {
   });
 }
 
-// ── Test: bsdtar availability ────────────────────────────────────────────
-
 test('release: bsdtar.exe path is discoverable on Windows', function() {
   if (process.platform !== 'win32') { this.skip(); return; }
   const tarExe = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
   assert.ok(fs.existsSync(tarExe), 'bsdtar.exe should exist at ' + tarExe);
 });
-
-// ── Test: --help ──────────────────────────────────────────────────────────
 
 test('release.cjs --help prints usage and exits 0', () => {
   const fixture = mkFixture();
@@ -148,8 +137,6 @@ test('release-verify.cjs --help prints usage and exits 0', () => {
     assert.ok(result.stdout.includes('Usage') || result.stdout.includes('help'));
   } finally { cleanFixture(fixture); }
 });
-
-// ── Test: full candidate creation + verify + extract e2e ──────────────────
 
 test('release.cjs creates candidate; verify passes; extract validates', () => {
   const fixture = mkFixture();
@@ -222,8 +209,6 @@ test('release.cjs creates candidate; verify passes; extract validates', () => {
   } finally { cleanFixture(fixture); }
 });
 
-// ── Test: no-clobber ─────────────────────────────────────────────────────
-
 test('release.cjs rejects existing candidate directory (no-clobber)', () => {
   const fixture = mkFixture();
   try {
@@ -241,8 +226,6 @@ test('release.cjs rejects existing candidate directory (no-clobber)', () => {
     );
   } finally { cleanFixture(fixture); }
 });
-
-// ── Test: missing required inputs — no partial output ────────────────────
 
 test('release.cjs fails without LICENSE (no partial output)', () => {
   const fixture = mkFixture();
@@ -270,8 +253,6 @@ test('release.cjs fails without NODE-LICENSE (no partial output)', () => {
   } finally { cleanFixture(fixture); }
 });
 
-// ── Test: errors ─────────────────────────────────────────────────────────
-
 test('release.cjs rejects invalid version tag', () => {
   const fixture = mkFixture();
   try {
@@ -292,8 +273,6 @@ test('release.cjs fails when CloudLocal.exe is missing', () => {
     assert.ok(result.stderr.includes('CloudLocal.exe') || result.stderr.includes('not found'));
   } finally { cleanFixture(fixture); }
 });
-
-// ── Test: tamper every listed file ───────────────────────────────────────
 
 test('release-verify: rejects — tampered CloudLocal.exe', () => {
   const fixture = mkFixture();
@@ -350,8 +329,6 @@ test('release-verify: rejects — missing checksum entries', () => {
   } finally { cleanFixture(fixture); }
 });
 
-// ── Test: symlink / file-type rejection ──────────────────────────────────
-
 test('release-verify: rejects — symlink in payload', () => {
   const fixture = mkFixture();
   try {
@@ -369,8 +346,6 @@ test('release-verify: rejects — symlink in payload', () => {
     assert.ok(result.stderr.includes('regular file') || result.stderr.includes('not a'));
   } finally { cleanFixture(fixture); }
 });
-
-// ── Test: checksum path traversal rejection ──────────────────────────────
 
 test('release-verify: rejects — SHA256SUMS with path traversal', () => {
   const fixture = mkFixture();
@@ -390,8 +365,6 @@ test('release-verify: rejects — SHA256SUMS with path traversal', () => {
     assert.ok(result.stderr.includes('Unsafe filename') || result.stderr.includes('traversal'));
   } finally { cleanFixture(fixture); }
 });
-
-// ── Test: no-clobber — verify doesn't mutate ─────────────────────────────
 
 test('release-verify: no-clobber — verify does not modify candidate', () => {
   const fixture = mkFixture();
@@ -417,8 +390,6 @@ test('release-verify: no-clobber — verify does not modify candidate', () => {
   } finally { cleanFixture(fixture); }
 });
 
-// ── Test: exact payload allowlist ────────────────────────────────────────
-
 test('release.cjs: candidate has exactly allowed files (no extras)', () => {
   const fixture = mkFixture();
   try {
@@ -438,8 +409,6 @@ test('release.cjs: candidate has exactly allowed files (no extras)', () => {
   } finally { cleanFixture(fixture); }
 });
 
-// ── Test: explicit candidate directory ───────────────────────────────────
-
 test('release-verify: accepts explicit candidate directory path', () => {
   const fixture = mkFixture();
   try {
@@ -452,8 +421,6 @@ test('release-verify: accepts explicit candidate directory path', () => {
     assert.equal(result.status, 0, 'Should accept explicit path: ' + result.stderr);
   } finally { cleanFixture(fixture); }
 });
-
-// ── Test: archive checksum not inside candidate ──────────────────────────
 
 test('release.cjs: .zip.sha256 is sibling outside candidate, not inside', () => {
   const fixture = mkFixture();
