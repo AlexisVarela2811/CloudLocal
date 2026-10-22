@@ -1,6 +1,6 @@
 {
     "name": "CloudLocal",
-    "version": "0.1.1",
+    "version": "0.0.1",
     "description": "Private local file server with web interface",
     "main": "launcher/src/main.cjs",
     "scripts": {
