@@ -25,6 +25,8 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(() => getSavedTheme() === 'dark');
+  const [shuttingDown, setShuttingDown] = useState(false);
+  const [shutdownMessage, setShutdownMessage] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -73,6 +75,18 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
     const next = !darkMode ? 'dark' : 'light';
     setDarkMode(next === 'dark');
     setSavedTheme(next);
+  }
+
+  async function shutdownServer() {
+    setShuttingDown(true);
+    setShutdownMessage('');
+    try {
+      await api.shutdown();
+      setShutdownMessage('Servidor deteniéndose...');
+    } catch (cause) {
+      setError(failure(cause));
+      setShuttingDown(false);
+    }
   }
 
   if (loading) return <div className="settings-panel"><p className="placeholder">Cargando configuración…</p></div>;
@@ -146,6 +160,18 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
 
       {message && <p className="notice" role="status">{message}</p>}
       {error && <p className="error" role="alert">{error}</p>}
+
+      <h2>Operaciones</h2>
+      <div className="settings-row">
+        <button
+          onClick={shutdownServer}
+          disabled={shuttingDown}
+          className="btn-danger"
+        >
+          {shuttingDown ? 'Apagando…' : 'Detener Server'}
+        </button>
+      </div>
+      {shutdownMessage && <p className="notice" role="status">{shutdownMessage}</p>}
     </section>
   );
 }

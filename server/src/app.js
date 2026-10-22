@@ -96,7 +96,32 @@ function createApp({ dataDir = path.join(__dirname, 'upload'), stateDir = path.j
     app.post('/api/trash/empty', jsonBody, actions.emptyTrash);
     app.post('/api/trash/:id/restore', jsonBody, actions.restore);
     app.get('/api/status', actions.status);
+    app.post('/api/shutdown', jsonBody, handle(async (req, res) => {
+        if (!auth.valid(token(req))) return res.status(401).json({ message: 'Authentication required' });
+        // Respond first, then shutdown
+        res.json({ message: 'Server shutting down...' });
+        setTimeout(() => {
+            process.exit(0);
+        }, 500);
+    }));
     app.use('/api', (req, res) => res.status(404).json({ message: 'Not found' }));
+    app.post('/api/shutdown', jsonBody, handle(async (req, res) => {
+        if (!auth.valid(token(req))) return res.status(401).json({ message: 'Authentication required' });
+        // Respond first so the client gets the signal
+        res.json({ message: 'Server shutting down...' });
+        setTimeout(() => {
+            console.log('CloudLocal: shutting down...');
+            app.locals.closeDeviceHub();
+            // Gracefully close the server
+            server.close(() => {
+                console.log('CloudLocal: stopped');
+                // Force exit after 2s in case close hangs
+                setTimeout(() => process.exit(0), 2000).unref();
+            });
+            // Fallback force exit
+            setTimeout(() => process.exit(0), 3000).unref();
+        }, 500);
+    }));
     const dist = clientDir;
     if (fs.existsSync(path.join(dist, 'index.html'))) {
         app.use(express.static(dist, { index: false }));

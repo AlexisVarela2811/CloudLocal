@@ -50,6 +50,7 @@ export const api = {
   settings: async () => (await http.get<SettingsInfo>('/settings')).data,
   saveFolder: async (folderPath: string) => (await http.put('/settings', { folderPath })).data,
   clearFolder: async () => (await http.delete('/settings')).data,
+  shutdown: async () => (await http.post('/shutdown', {})).data,
 };
 
 export function failure(error: unknown): string {

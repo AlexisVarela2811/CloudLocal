@@ -35,6 +35,7 @@ function start(options = {}) {
         !Number.isInteger(fallback) || fallback < 1 || fallback > 65535) throw new Error('Invalid port');
     let server;
     let stopped = false;
+    let shutdownCallback = null; // allow external shutdown (e.g. /api/shutdown endpoint)
     function announce(port) {
         const urls = urlsFor(port);
         app.locals.urls = urls;
@@ -57,11 +58,16 @@ function start(options = {}) {
         });
     }
     listen(preferred, true);
-    function shutdown() {
+    function shutdown(exitCode = 0) {
         if (stopped) return;
         stopped = true;
+        console.log('CloudLocal: shutting down...');
         app.locals.closeDeviceHub();
-        server.close();
+        server.close(() => {
+            console.log('CloudLocal: stopped');
+            if (shutdownCallback) shutdownCallback();
+            if (exitCode && require.main === module) process.exit(exitCode);
+        });
     }
     process.once('SIGTERM', shutdown);
     process.once('disconnect', shutdown);
