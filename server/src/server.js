@@ -3,6 +3,7 @@ const path = require('node:path');
 const { createApp } = require('./app');
 const { urlsFor } = require('./network');
 const { createSettings } = require('./settings');
+const mdns = require('./mdns');
 
 function start(options = {}) {
     const stateDirResolved = path.resolve(options.stateDir || path.join(__dirname, '../../.cloudlocal-state'));
@@ -41,6 +42,8 @@ function start(options = {}) {
         console.log(`CloudLocal: ${urls.join(', ')} — HTTP on a local network is not encrypted.`);
         if (process.send) process.send({ type: 'ready', port, urls });
         options.onReady?.(port, urls);
+        // Start mDNS advertiser so CloudLocal can be found as cloudlocal.local
+        mdns.start({ name: 'cloudlocal', port });
     }
     function listen(port, canFallback) {
         server = app.listen(port, host);
@@ -61,6 +64,7 @@ function start(options = {}) {
         if (stopped) return;
         stopped = true;
         app.locals.closeDeviceHub();
+        mdns.stop();
         server.close();
     }
     process.once('SIGTERM', shutdown);
