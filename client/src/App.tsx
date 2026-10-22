@@ -28,7 +28,7 @@ function getShutdownState(): { active: boolean; shuttingDown: boolean } {
   } catch {}
   return { active: true, shuttingDown: false };
 }
-function setShutdownState(value: { active: boolean; shuttingDown: boolean }) {
+function persistShutdownState(value: { active: boolean; shuttingDown: boolean }) {
   try { localStorage.setItem(SERVER_SHUTDOWN_KEY, JSON.stringify(value)); } catch {}
 }
 import { Access } from './components/Access';
@@ -252,8 +252,8 @@ function App() {
       } else if (isCtrl && event.key === 'n' && view === 'files' && !isInputFocused) {
         event.preventDefault();
         event.stopPropagation();
-        setNewFolder('');
-        setShowNewFolder(true);
+        setFolderName('');
+        setCreating(true);
       }
     }
 
@@ -589,13 +589,16 @@ function App() {
                 className="btn-danger"
                 disabled={shutdownState.shuttingDown}
                 onClick={async () => {
-                  setShutdownState({ ...shutdownState, shuttingDown: true });
+                  setShutdownState(prev => ({ ...prev, shuttingDown: true }));
+                  persistShutdownState({ ...shutdownState, shuttingDown: true });
                   try {
                     await api.shutdown();
                     setShutdownState({ active: false, shuttingDown: false });
+                    persistShutdownState({ active: false, shuttingDown: false });
                   } catch (cause) {
                     setError(failure(cause));
                     setShutdownState({ active: true, shuttingDown: false });
+                    persistShutdownState({ active: true, shuttingDown: false });
                   }
                 }}
               >
