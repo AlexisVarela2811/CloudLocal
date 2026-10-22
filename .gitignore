@@ -16,3 +16,7 @@ playwright-verify.*
 quick-check.mjs
 test.mjs
 verify-*.*
+odd/
+
+# Agent workspace (ODD) - no se sube a git
+odd/
