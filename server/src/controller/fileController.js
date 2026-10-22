@@ -44,12 +44,28 @@ function controllers(storage) {
             const { from, to } = req.body || {};
             if (!from || typeof from !== 'string') throw Object.assign(new Error('Missing from path'), { status: 400 });
             if (!to || typeof to !== 'string') throw Object.assign(new Error('Missing to folder'), { status: 400 });
+            // Check if 'to' is an existing directory → move into it
             try {
-                await storage.list(from);
-                const entry = await storage.moveFolder(from, to);
+                await storage.list(to);
+                // 'to' is a directory. Check if 'from' is dir or file.
+                let entry;
+                try {
+                    await storage.list(from);
+                    // from is also a directory → moveFolder
+                    entry = await storage.moveFolder(from, to);
+                } catch {
+                    // from is a file → move into to (2 args: to is targetFolder)
+                    entry = await storage.move(from, to);
+                }
                 res.json({ success: true, entry });
+                return;
             } catch (cause) {
-                const entry = await storage.move(from, to);
+                // 'to' is not a directory → treat as rename (same parent, new name)
+                if (cause.status === 409) throw cause;
+                const slashIndex = to.lastIndexOf('/');
+                const parentFolder = slashIndex > 0 ? to.slice(0, slashIndex) : ''; // strip trailing slash
+                const newName = slashIndex > 0 ? to.slice(slashIndex + 1) : to;
+                const entry = await storage.move(from, parentFolder, newName);
                 res.json({ success: true, entry });
             }
         }),

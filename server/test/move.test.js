@@ -175,3 +175,77 @@ test('POST /api/files/move: no extra copies — only renames on filesystem', asy
     // After move: moved/bytes.bin = 1 user file (same, no copy created)
     assert.equal(await countUserFiles(path.join(root, 'files')), 1);
 });
+
+test('POST /api/files/move: renames file within same folder', async t => {
+    const { request, json, root } = await fixture(t);
+    await request('/api/setup', json('POST', { password: 'correct horse battery' }));
+    const form1 = (name, text) => {
+        const b = new FormData();
+        b.append('file', new Blob([text]), name);
+        return { method: 'POST', body: b };
+    };
+    assert.equal((await request('/api/files/upload', form1('old-name.txt', 'rename test'))).status, 201);
+
+    const moveRes = await request('/api/files/move', json('POST', { from: 'old-name.txt', to: 'new-name.txt' }));
+    assert.equal(moveRes.status, 200);
+    const body = await moveRes.json();
+    assert.equal(body.success, true);
+    assert.equal(body.entry.name, 'new-name.txt');
+    assert.equal(body.entry.path, 'new-name.txt');
+    assert.equal(body.entry.type, 'file');
+
+    // Source gone
+    assert.rejects(fs.stat(path.join(root, 'files', 'old-name.txt')), { code: 'ENOENT' });
+    // Dest has content
+    assert.equal(await fs.readFile(path.join(root, 'files', 'new-name.txt'), 'utf8'), 'rename test');
+});
+
+test('POST /api/files/move: renames file inside subfolder', async t => {
+    const { request, json, root } = await fixture(t);
+    await request('/api/setup', json('POST', { password: 'correct horse battery' }));
+    const form1 = (name, text, folder) => {
+        const b = new FormData();
+        b.append('file', new Blob([text]), name);
+        return { method: 'POST', body: b };
+    };
+    assert.equal((await request('/api/folders', json('POST', { folder: '', name: 'sub' }))).status, 201);
+    assert.equal((await request('/api/files/upload?folder=sub', form1('old.txt', 'sub rename'))).status, 201);
+
+    const moveRes = await request('/api/files/move', json('POST', { from: 'sub/old.txt', to: 'sub/new.txt' }));
+    assert.equal(moveRes.status, 200);
+    const body = await moveRes.json();
+    assert.equal(body.success, true);
+    assert.equal(body.entry.name, 'new.txt');
+    assert.equal(body.entry.path, 'sub/new.txt');
+
+    assert.rejects(fs.stat(path.join(root, 'files', 'sub', 'old.txt')), { code: 'ENOENT' });
+    assert.equal(await fs.readFile(path.join(root, 'files', 'sub', 'new.txt'), 'utf8'), 'sub rename');
+});
+
+test('POST /api/files/move: renames folder within same parent', async t => {
+    const { request, json, root } = await fixture(t);
+    await request('/api/setup', json('POST', { password: 'correct horse battery' }));
+    assert.equal((await request('/api/folders', json('POST', { folder: '', name: 'old-folder' }))).status, 201);
+    assert.equal((await request('/api/files/upload?folder=old-folder', {
+        method: 'POST',
+        body: (() => {
+            const b = new FormData();
+            b.append('file', new Blob(['data']), 'f.txt');
+            return b;
+        })()
+    })).status, 201);
+
+    const moveRes = await request('/api/files/move', json('POST', { from: 'old-folder', to: 'new-folder' }));
+    assert.equal(moveRes.status, 200);
+    const body = await moveRes.json();
+    assert.equal(body.success, true);
+    assert.equal(body.entry.name, 'new-folder');
+    assert.equal(body.entry.path, 'new-folder');
+    assert.equal(body.entry.type, 'directory');
+
+    assert.rejects(fs.stat(path.join(root, 'files', 'old-folder')), { code: 'ENOENT' });
+
+    // Contents preserved
+    const entries = await (await request('/api/files?folder=new-folder')).json();
+    assert.ok(entries.entries.some(e => e.name === 'f.txt'));
+});
