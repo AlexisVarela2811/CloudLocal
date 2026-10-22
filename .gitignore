@@ -6,3 +6,13 @@ desktop/dist/
 launcher/dist/
 server/src/upload/
 .cloudlocal-state/
+
+# Screenshots
+screenshots/
+
+# Playwright & test scripts
+playwright-verify.*
+playwright-verify.*
+quick-check.mjs
+test.mjs
+verify-*.*
