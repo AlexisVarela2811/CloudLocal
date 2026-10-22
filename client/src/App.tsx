@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   FaFolder, FaFile, FaDownload, FaTrash, FaUndo,
   FaArrowLeft, FaPlus, FaUpload, FaSync,
-  FaSignOutAlt, FaCopy, FaWifi, FaQuestionCircle,
+  FaSignOutAlt, FaCopy, FaQuestionCircle,
   FaSpinner, FaExclamationTriangle, FaFolderOpen,
   FaFilePdf, FaEye, FaArrowsAlt,
-  FaImage, FaVideo, FaMusic, FaPowerOff
+  FaImage, FaVideo, FaMusic, FaPowerOff, FaBars, FaTimes
 } from 'react-icons/fa';
 import { api, expired, failure, type Entry, type Session, type Status, type TrashEntry } from './api/api';
 
@@ -80,7 +80,7 @@ function App() {
   const [creating, setCreating] = useState(false);
   const [folderName, setFolderName] = useState('');
   const [saving, setSaving] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth > 768);
   const [revision, setRevision] = useState(0);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [shutdownState, setShutdownState] = useState(getShutdownState());
@@ -485,8 +485,8 @@ function App() {
     <div className="app-shell">
 
       <aside className={`sidebar${sidebarOpen ? ' sidebar-open' : ''}`} aria-label="Navegación principal">
-        <button className="sidebar-toggle" aria-label="Abrir menú" onClick={() => setSidebarOpen(true)}>
-          <FaWifi aria-hidden="true" />
+        <button className="sidebar-close-btn" aria-label="Cerrar menú" onClick={() => setSidebarOpen(false)}>
+          <FaTimes aria-hidden="true" />
         </button>
 
         <div className="sidebar-logo">
@@ -550,8 +550,8 @@ function App() {
 
         <header className="topbar">
           <div className="topbar-left">
-            <button className="sidebar-close" aria-label="Cerrar menú" onClick={() => setSidebarOpen(false)}>
-              <FaWifi aria-hidden="true" />
+            <button className="mobile-menu-btn" aria-label="Abrir menú" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(true)}>
+              <FaBars aria-hidden="true" />
             </button>
             {folder !== '' && view === 'files' && (
               <button className="btn-back" onClick={() => go(folder.includes('/') ? folder.slice(0, folder.lastIndexOf('/')) : '')}>
