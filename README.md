@@ -10,16 +10,38 @@
 
 CloudLocal es un servidor de archivos local privado que se ejecuta como un único ejecutable portátil. Ofrece una interfaz web completa con:
 
+### Interfaz de usuario
+
 - **Sidebar** con navegación por secciones (Archivos, Papelera, Configuración)
+- **Navegación de carpetas** con breadcrumbs y botón de retroceso
 - **Tabla de archivos** con columnas de nombre, detalles y acciones
-- **Drag & Drop** para subir archivos arrastrándolos a la ventana
-- **Copy / Paste** con soporte para mover archivos entre carpetas
-- **Vista previa** de imágenes, vídeo y audio en modal con cierre por Escape o click exterior
+- **Vista en cuadrícula** y vista en lista (alternable)
+- **Selección múltiple** con clic o Ctrl+A
+- **Barra de selección** inferior con acciones rápidas
 - **Búsqueda** en la carpeta actual
-- **Papelera** con restauración y eliminación permanente
-- **Modo oscuro** con persistencia en localStorage y detección automática del tema del sistema
-- **Diseño responsive** adaptado para escritorio, tablet y móvil
-- **Gestión de dispositivos** para compartir carpetas entre equipos de la LAN
+
+### Operaciones de archivos
+
+- **Drag & Drop externo**: sube archivos arrastrándolos desde el explorador del sistema
+- **Drag & Drop interno**: mueve archivos y carpetas arrastrándolos sobre carpetas destino
+- **Copiar / Cortar / Pegar**: Ctrl+C, Ctrl+X, Ctrl+V para duplicar o mover entre carpetas
+- **Renombrado inline**: F2 para renombrar archivos y carpetas directamente
+- **Nueva carpeta**: botón en toolbar o Ctrl+N para crear carpetas
+- **Vista previa** de imágenes, vídeo y audio en modal con cierre por Escape o click exterior
+- **Papelera** con restauración, eliminación permanente y vaciado total
+- **Descarga ZIP**: comprime múltiples archivos en un solo ZIP para descargar
+
+### Apariencia y accesibilidad
+
+- **Modo oscuro**: toggle grande y visible, persistencia en localStorage, detección automática del tema del sistema, sincronización instantánea entre pestañas
+- **Indicadores de foco**: `:focus-visible` visible en todos los controles interactivos (3px solid accent, offset 2px)
+- **Atajos de teclado**: Ctrl+A (seleccionar todo), Ctrl+C (copiar), Ctrl+X (cortar), Ctrl+V (pegar), Ctrl+N (nueva carpeta), Ctrl+S (volver atrás), F2 (renombrar), Delete (a papelera), Escape (cerrar modal/renaming)
+- **Diseño responsive**: adaptado para escritorio, tablet y móvil
+- **Accesibilidad**: skip-link, roles ARIA, navegación completa por teclado
+
+### Integración de red
+
+- **Gestión de dispositivos**: compartir carpetas entre equipos de la LAN vía companion service
 
 ---
 
@@ -29,9 +51,9 @@ CloudLocal es un servidor de archivos local privado que se ejecuta como un únic
 
 1. Descarga `launcher/dist/CloudLocal.exe`
 2. Ejecuta el archivo y deja abierta su consola
-3. Abre `http://localhost:5000` (o el puerto que se indique) en el navegador
+3. Abre `http://localhost:80` (o el puerto configurado) en el navegador
 4. Configura una contraseña de al menos 12 caracteres en la pantalla de acceso inicial
-5. Desde otros equipos de la red, abre `http://<IP-SERVIDOR>:5000` e inicia sesión
+5. Desde otros equipos de la red, abre `http://<IP-SERVIDOR>:80` e inicia sesión
 
 ### Desarrollo (desde el código fuente)
 
@@ -65,7 +87,7 @@ npm run build        # Compila TypeScript y genera el bundle estático
 
 ```sh
 cd server
-npm start            # Sirve API + frontend embebido en http://localhost:5000
+npm start            # Sirve API + frontend embebido en http://localhost:80
 ```
 
 #### Desarrollo independiente de React
@@ -82,7 +104,6 @@ npm run dev          # Inicia Vite en http://localhost:5173 con HMR
 | `server/` | API REST (Node.js) que gestiona el sistema de archivos |
 | `client/` | Interfaz web React con TypeScript + TailwindCSS |
 | `companion/` | Servicio auxiliar para conexión entre dispositivos |
-| `desktop/` | Aplicación de escritorio anterior (Electron, deprecated) |
 | `launcher/` | Empaquetado portátil (Node.js SEA) — produce `CloudLocal.exe` |
 
 ---
@@ -126,23 +147,20 @@ API REST con autenticación basada en contraseña. Gestiona:
 
 Aplicación React con TypeScript organizada en:
 
-- `App.tsx` — Orquestación principal (auth, routing, estado)
-- `components/Access.tsx` — Pantalla de autenticación
-- `components/Preview.tsx` — Modal de vista previa (imágenes, vídeo, audio)
-- `components/Settings.tsx` — Configuración y modo oscuro
-- `components/DragAndDrop.tsx` — Overlay de arrastrar y soltar
-- `components/UploadQueue.tsx` — Cola de subida con progreso
+- `App.tsx` — Orquestación principal (auth, routing, estado, shortcuts de teclado)
+- `components/Access.tsx` — Pantalla de autenticación (acceso con contraseña)
+- `components/Preview.tsx` — Modal de vista previa (imágenes, vídeo, audio, PDF)
+- `components/Settings.tsx` — Configuración y toggle de modo oscuro (toggle grande, 64px ancho)
+- `components/DragAndDrop.tsx` — Overlay de arrastrar y soltar (subida externa)
+- `components/UploadQueue.tsx` — Cola de subida con progreso y retry/cancel
 - `components/Devices.tsx` — Gestión de dispositivos emparejados
-- `api/api.ts` — Cliente HTTP Axios
+- `hooks/useDragUpload.ts` — Hook para arrastrar archivos externos
+- `api/api.ts` — Cliente HTTP Axios (todos los endpoints)
 - `workspace.mjs` — Utilidades (formateo, breadcrumb, tipado de preview)
 
 ### Companion (`companion/`)
 
 Servicio que facilita la comunicación P2P entre dispositivos mediante un protocolo de ofertas.
-
-### Desktop (`desktop/`)
-
-Aplicación Electron heredada. Se mantiene por compatibilidad pero no es necesaria para el flujo principal.
 
 ### Launcher (`launcher/`)
 
@@ -169,10 +187,10 @@ Empaquetador que combina servidor + frontend en un ejecutable portátil usando N
 | `POST` | `/api/files/upload` | Subir archivo multipart (`?folder=`) |
 | `DELETE` | `/api/files` | Enviar a papelera (`?path=`) |
 | `POST` | `/api/files/copy` | Copiar archivo/folder (`{from, to}`) |
-| `POST` | `/api/files/paste` | Pegar copia/mover (`{from, to, type}`) |
 | `POST` | `/api/files/move` | Mover archivo (`{from, to}`) |
 | `POST` | `/api/files/moveFolder` | Mover carpeta (`{from, to}`) |
-| `POST` | `/api/files/permanent` | Eliminación permanente (`{id}`) |
+| `POST` | `/api/files/permanentDelete` | Eliminación permanente (`{id}`) |
+| `GET` | `/api/files/zipDownload` | Descargar como ZIP (`?paths[]=`) |
 | `GET` | `/api/files/content` | Obtener contenido (`?path=`) |
 
 ### Papelera
@@ -181,7 +199,7 @@ Empaquetador que combina servidor + frontend en un ejecutable portátil usando N
 |---|---|---|
 | `GET` | `/api/trash` | Listar archivos en papelera |
 | `POST` | `/api/trash/:id/restore` | Restaurar archivo |
-| `POST` | `/api/trash/empty` | Vaciar papelera |
+| `POST` | `/api/trash/empty` | Vaciar papelera (todos) |
 | `DELETE` | `/api/trash` | Borrar archivo permanentemente |
 
 ### Estado
@@ -230,19 +248,51 @@ Empaquetador que combina servidor + frontend en un ejecutable portátil usando N
 
 ### Sidebar
 
-Panel lateral fijo con navegación rápida a Archivos, Papelera y Configuración. Incluye indicador de estado del servidor y botón para cerrar sesión. En móvil se muestra como panel deslizable.
+Panel lateral fijo con navegación rápida a Archivos, Papelera y Configuración. Incluye indicador de estado del servidor (en línea/desconectado) y botón para cerrar sesión. En móvil se muestra como panel deslizable.
+
+### Navegación de carpetas
+
+- **Breadcrumbs**: ruta actual clickeable (`/ > documentos > fotos > 2025`)
+- **Botón de retroceso**: flecha izquierda para volver a la carpeta padre
+- **Doble clic en carpetas**: navega directamente dentro
 
 ### Tabla de archivos
 
-Vista tabular con columnas de nombre, tamaño/modificación y acciones (vista previa, descarga, eliminar). Las carpetas son navegables con clic; los archivos muestran acciones contextuales.
+Vista tabular con columnas de nombre, tamaño/modificación y acciones (vista previa, descarga, eliminar). Las carpetas son navegables con clic; los archivos muestran acciones contextuales. Soporta vista en lista y vista en cuadrícula (alternable con botón en toolbar).
 
-### Drag & Drop
+### Drag & Drop externo
 
-Arrastra archivos desde el explorador del sistema directamente a la ventana para subirlos. Se muestra un overlay con confirmación visual.
+Arrastra archivos desde el explorador del sistema directamente a la ventana para subirlos. Se muestra un overlay con confirmación visual. La barra de progreso aparece en la esquina inferior derecha.
 
-### Copiar y pegar
+### Drag & Drop interno
 
-Selecciona archivos, usa las acciones de copiar/mover y pégalo en otra carpeta. También se puede arrastrar un archivo sobre una carpeta para moverlo.
+Arrastra un archivo o carpeta sobre otra carpeta para moverlo directamente. La carpeta destino se resalta para indicar que es un punto de drop válido.
+
+### Copiar, cortar y pegar
+
+Selección múltiple con clic o Ctrl+A. Copiar (Ctrl+C) y cortar (Ctrl+X) al portapapeles interno. Pegar (Ctrl+V) en la carpeta actual. Las operaciones se procesan en serie.
+
+### Renombrado inline
+
+Selecciona un archivo y pulsa F2. El nombre se convierte en un campo editable. Pulsa Enter para confirmar o Escape para cancelar. La validación incluye:
+- No permitir nombres vacíos
+- No permitir duplicados en la carpeta
+- No permitir nombres de sistema (`CON`, `PRN`, `NUL`, etc.)
+
+### Atajos de teclado
+
+| Atajo | Acción |
+|---|---|
+| `Ctrl+A` | Seleccionar todo |
+| `Ctrl+C` | Copiar al portapapeles |
+| `Ctrl+X` | Cortar (mover) al portapapeles |
+| `Ctrl+V` | Pegar en carpeta actual |
+| `Ctrl+N` | Nueva carpeta |
+| `Ctrl+S` | Volver a la carpeta padre |
+| `F2` | Renombrar elemento seleccionado |
+| `Delete` | Enviar a papelera |
+| `Escape` | Cerrar modal, cancelar renaming |
+| `Tab` | Navegación entre controles (focus visible) |
 
 ### Vista previa
 
@@ -251,10 +301,20 @@ Selecciona archivos, usa las acciones de copiar/mover y pégalo en otra carpeta.
 - **Audio**: reproductor de audio HTML5.
 - **PDF**: se abre en una nueva pestaña del navegador.
 
+### Papelera
+
+- **Mover a papelera**: Delete (seleccionados) o botón eliminar
+- **Restaurar**: restaura al path original
+- **Eliminar permanentemente**: elimina el archivo del almacenamiento
+- **Vaciar papelera**: elimina todos los elementos de forma masiva
+
+### Descarga ZIP
+
+Selecciona múltiples archivos y pulsa el botón de descarga ZIP. Los archivos se compriman en el servidor y se descargan como un único archivo `.zip`.
+
 ### Modo oscuro
 
-Actívalo en la sección Configuración. Se guarda en `localStorage` (`cloudlocal-theme: "dark"` / `"light"`) y se detecta automáticamente si el sistema operativo usa tema oscuro. Las variables CSS se aplican mediante `data-theme` en el `<html>`.
-
+Actívalo en la sección Configuración mediante un toggle grande (64×34px) con track y thumb. Se guarda en `localStorage` (`cloudlocal-theme: "dark"` / `"light"`), se detecta automáticamente si el sistema operativo usa tema oscuro, y se sincroniza instantáneamente entre todas las pestañas abiertas vía `storage` event. Las variables CSS se aplican mediante `data-theme` en el `<html>`.
 ### Diseño responsive
 
 | Breakpoint | Comportamiento |
@@ -275,18 +335,26 @@ Actívalo en la sección Configuración. Se guarda en `localStorage` (`cloudloca
 ```
 CloudLocal/
 ├── server/           # API REST (Node.js)
+│   ├── src/          # server.js, storage.js, router, controller
+│   └── test/         # Muestras de tests unitarios
+├── client/           # Frontend React (TypeScript + Vite)
 │   ├── src/
-│   └── test/
-├── client/           # Frontend React
-│   ├── src/
-│   │   ├── api/      # Cliente HTTP Axios
+│   │   ├── api/      # Cliente HTTP Axios (api.ts)
 │   │   ├── components/
-│   │   └── test/
+│   │   │   ├── Access.tsx        # Pantalla de acceso
+│   │   │   ├── DragAndDrop.tsx   # Overlay de drag & drop
+│   │   │   ├── Preview.tsx       # Modal de vista previa
+│   │   │   ├── Settings.tsx      # Configuración y toggle dark mode
+│   │   │   ├── UploadQueue.tsx   # Cola de subida con progreso
+│   │   │   └── Devices.tsx       # Gestión de dispositivos LAN
+│   │   ├── hooks/
+│   │   │   └── useDragUpload.ts  # Hook de drag & drop
+│   │   ├── App.tsx         # Orquestación principal
+│   │   └── index.css       # Estilos globales (variables, focus, themes)
 │   └── public/
 ├── companion/        # Servicio P2P
-├── desktop/          # Electron (legacy)
-├── launcher/         # Empaquetado portátil
-└── odd/              # Especificaciones y tareas
+├── launcher/         # Empaquetado portátil (Node.js SEA)
+└── odd/              # Especificaciones y tareas (ODD)
 ```
 
 #### Flujo de trabajo
@@ -296,7 +364,7 @@ CloudLocal/
 3. Compila `client` con `npm run build`
 4. Ejecuta `server` con `npm start`
 5. Para desarrollo React en caliente: `npm run dev` en `client/`
-6. Abre `http://localhost:5173` (Vite dev) o `http://localhost:5000` (server embebido)
+6. Abre `http://localhost:5173` (Vite dev) o `http://localhost:80` (server embebido)
 
 #### convenciones
 
@@ -358,8 +426,8 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Documentación adicional
 
-- [Uso del navegador](docs/browser.md)
 - [Servidor portable y configuración](docs/server-launcher.md)
 - [API y autenticación](docs/api.md)
-- [Escritorio anterior y sus pruebas](docs/desktop.md)
 - [Acompañante y emparejamiento de dispositivos](docs/devices.md)
+
+## Licencia
