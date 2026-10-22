@@ -81,11 +81,17 @@ async function main() {
     console.log(`Subsystem already ${curSub}`);
   }
 
-  // Inject cloud logo icon using inject-icon.cjs
-  const iconScript = path.join(__dirname, 'inject-icon.cjs');
+  // Inject cloud logo icon via PowerShell (uses Windows API successfully)
+  const iconScript = path.join(__dirname, 'inject-icon.ps1');
   if (fs.existsSync(iconScript)) {
     try {
-      execFileSync(process.execPath, [iconScript], { stdio: 'inherit' });
+      const icoPath = path.join(__dirname, 'cloudlocal.ico');
+      if (fs.existsSync(icoPath)) {
+        const { execSync } = require('node:child_process');
+        execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${iconScript}" "${exePath}" "${icoPath}"`, { stdio: 'inherit' });
+      } else {
+        console.warn('ICO file missing, skipping icon injection');
+      }
     } catch (err) {
       console.warn('Icon injection skipped:', err.message);
     }
