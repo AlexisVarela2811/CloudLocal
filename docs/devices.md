@@ -4,6 +4,8 @@
 
 El companion es un servicio que permite compartir carpetas entre dispositivos de la red LAN. Usa un protocolo de ofertas (offers) para conectar dispositivos de forma manual, sin necesidad de servidor centralizado.
 
+> **Nota**: el código fuente companion es legado, no se distribuye con el ejecutable y no es necesario para acceder por navegador.
+
 ## Arquitectura
 
 ```
@@ -18,7 +20,7 @@ Dispositivo A                         Dispositivo B
 └──────────────────┘                └──────────────────┘
 ```
 
-La conexión es P2P (peer-to-peer): los dispositivos se conectan directamente sin intermediario.
+La conexión es P2P (peer-to-peer): los dispositivos se conectan directamente sin intermediario, a través del mismo puerto HTTP del servidor (usualmente 80 o 5000).
 
 ## Emparejamiento de dispositivos
 
@@ -42,7 +44,7 @@ Respuesta:
 ```json
 {
   "code": "A1B2-C3D4",
-  "expires": "2025-01-15T10:35:00Z"
+  "expiresAt": "2025-01-15T10:35:00Z"
 }
 ```
 
@@ -73,45 +75,10 @@ En el dispositivo emisor (el que compartió la carpeta):
 GET /api/devices/
 ```
 
-Respuesta:
-```json
-{
-  "devices": [
-    {
-      "id": "dev-abc123",
-      "name": "Mi Laptop",
-      "sharedFolders": [
-        {
-          "path": "/shared/fotos",
-          "name": "Mis fotos",
-          "entries": [/* ... */]
-        }
-      ],
-      "connectedAt": "2025-01-15T10:30:00Z"
-    }
-  ]
-}
-```
-
 ### Listar ofertas pendientes
 
 ```
 GET /api/devices/offers
-```
-
-Respuesta:
-```json
-{
-  "offers": [
-    {
-      "id": "offer-xyz789",
-      "from": "dev-abc123",
-      "folder": "/shared/fotos",
-      "folderName": "Mis fotos",
-      "status": "pending"
-    }
-  ]
-}
 ```
 
 ### Enviar oferta a dispositivo
@@ -119,8 +86,7 @@ Respuesta:
 ```
 POST /api/devices/:id/offers
 {
-  "path": "/shared/folder",
-  "name": "Nombre visible"
+  "path": "/shared/folder"
 }
 ```
 
@@ -128,14 +94,14 @@ POST /api/devices/:id/offers
 
 ```
 GET /api/devices/:id/entries
-?folder=/shared/folder
+?share=/shared/folder&path=
 ```
 
 ### Obtener contenido compartido
 
 ```
 GET /api/devices/:id/content
-?folder=/shared/folder
+?share=/shared/folder&path=
 ```
 
 Devuelve el listado de archivos que puedes acceder remotamente.
@@ -153,7 +119,7 @@ Elimina el vínculo y quita el acceso a las carpetas compartidas.
 - **LAN only**: Los dispositivos deben estar en la misma red local.
 - **Sin autenticación P2P**: Una vez vinculado, el dispositivo tiene acceso total a las carpetas compartidas. No uses en redes públicas.
 - **Códigos de emparejamiento**: Válidos por 5 minutos. No los compartas con desconocidos.
-- **No cifrado**: El tráfico entre dispositivos no está cifrado. Si necesitas cifrado, usa VPN.
+- **Sin cifrado**: El tráfico entre dispositivos no está cifrado. Si necesitas cifrado, usa VPN.
 
 ## Flujo de trabajo típico
 
@@ -176,13 +142,13 @@ Ahora puedes ver y descargar los archivos de la otra máquina.
 ### No aparece el código
 
 - Asegúrate de que el dispositivo emisor está en la misma red LAN.
-- Verifica que el firewall permite conexiones entrantes.
+- Verifica que el firewall permite conexiones entrantes al puerto del servidor.
 - El código expira en 5 minutos.
 
 ### No se conecta el dispositivo
 
 - Verifica que ambos dispositivos pueden pinguearse entre sí.
-- Revisa que el puerto del companion (el mismo que el servidor, usualmente 80) está abierto.
+- Revisa que el puerto del companion (el mismo que el servidor, usualmente 80 o 5000) está abierto.
 - Intenta desvincular y volver a vincular.
 
 ### Carpetas vacías
