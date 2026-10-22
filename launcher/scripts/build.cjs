@@ -24,19 +24,6 @@ async function main() {
   }
   collect(dist, dist);
 
-  // Collect tray-hook-bin
-  try {
-    const trayPkg = path.join(__dirname, '../node_modules/@phtdacosta/tray-hook-win32-x64');
-    if (fs.existsSync(trayPkg)) {
-      for (const item of fs.readdirSync(trayPkg)) {
-        const file = path.join(trayPkg, item);
-        if (fs.statSync(file).isFile()) {
-          assets[`tray-hook-bin/${item}`] = file;
-        }
-      }
-    }
-  } catch { /* skip */ }
-
   fs.mkdirSync(output, { recursive: true });
   const bundle = path.join(output, 'server.cjs');
   await esbuild.build({
