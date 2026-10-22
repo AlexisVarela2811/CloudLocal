@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
-// ── Theme initialisation ──────────────────────────────────
 const THEME_KEY = 'cloudlocal-theme';
 
 function applyTheme(theme: 'dark' | 'light') {
@@ -62,7 +61,6 @@ window.addEventListener('cloudlocal-theme-change', (e: Event) => {
   if (detail?.theme) applyTheme(detail.theme);
 });
 
-// ── Public API ─────────────────────────────────────────────
 
 /** Toggle between dark and light themes. Returns the new theme value. */
 export function toggleTheme(): 'dark' | 'light' {
@@ -74,7 +72,6 @@ export function toggleTheme(): 'dark' | 'light' {
   return next;
 }
 
-// ── Render ────────────────────────────────────────────────
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

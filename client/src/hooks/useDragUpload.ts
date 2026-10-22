@@ -9,10 +9,6 @@ export interface UseDragUploadResult {
   onDrop: (e: React.DragEvent) => void;
 }
 
-/**
- * Global drag-and-drop state manager.
- * Tracks when a file is dragged over the app so we can show an overlay.
- */
 export function useDragUpload(): UseDragUploadResult {
   const [dragState, setDragState] = useState<DragState>('idle');
   const dragCounterRef = useRef(0);
@@ -49,9 +45,6 @@ export function useDragUpload(): UseDragUploadResult {
   return { dragState, onDragEnter, onDragLeave, onDrop };
 }
 
-/**
- * Check if a drag event carries files.
- */
 export function isDragEventOverFiles(e: React.DragEvent): boolean {
   const types = e.dataTransfer?.types || [];
   return types.includes('Files');

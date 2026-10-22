@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Design tokens ──────────────────────────────────────── */
 :root {
   /* Colors */
   --bg:        #f7f8fa;
@@ -49,7 +48,6 @@
   --duration: 150ms;
 }
 
-/* ── Reset ─────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 body {
   margin: 0;
@@ -74,7 +72,6 @@ button { border: none; background: none; }
 }
 a { color: var(--accent); text-decoration: none; }
 
-/* ── Auth gate (full-screen) ──────────────────────────── */
 .auth-gate {
   min-height: 100vh;
   display: grid;
@@ -107,14 +104,12 @@ a { color: var(--accent); text-decoration: none; }
   border-left: 3px solid var(--accent);
 }
 
-/* ── App shell ─────────────────────────────────────────── */
 .app-shell {
   display: grid;
   grid-template-columns: 240px 1fr;
   min-height: 100vh;
 }
 
-/* ── Sidebar ───────────────────────────────────────────── */
 .sidebar {
   background: var(--sidebar);
   display: flex;
@@ -296,7 +291,6 @@ a { color: var(--accent); text-decoration: none; }
   z-index: 99;
 }
 
-/* ── Main area ─────────────────────────────────────────── */
 .main-area {
   min-width: 0;
   display: flex;
@@ -304,7 +298,6 @@ a { color: var(--accent); text-decoration: none; }
   background: var(--bg);
 }
 
-/* ── Topbar ────────────────────────────────────────────── */
 .topbar {
   background: var(--surface);
   border-bottom: 1px solid var(--line);
@@ -440,7 +433,6 @@ a { color: var(--accent); text-decoration: none; }
 
 .btn-label { white-space: nowrap; }
 
-/* ── Workspace body ────────────────────────────────────── */
 .workspace-body {
   flex: 1;
   padding: 1.25rem 1.75rem 3rem;
@@ -449,7 +441,6 @@ a { color: var(--accent); text-decoration: none; }
   margin: 0 auto;
 }
 
-/* ── Cards ─────────────────────────────────────────────── */
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -639,7 +630,6 @@ a { color: var(--accent); text-decoration: none; }
   font-weight: 600;
 }
 
-/* ── Toolbar / search ──────────────────────────────────── */
 .toolbar {
   display: flex;
   align-items: center;
@@ -647,7 +637,6 @@ a { color: var(--accent); text-decoration: none; }
   margin-bottom: 1.5rem;
 }
 
-/* ── Keyboard shortcut hints ───────────────────────────── */
 .shortcut-hint {
   font-size: 0.65rem;
   color: var(--muted2);
@@ -730,7 +719,6 @@ a { color: var(--accent); text-decoration: none; }
 }
 
 
-/* ── Folder form card ──────────────────────────────────── */
 .folder-form h3 { margin: 0 0 .5rem; font-size: .9rem; }
 .form-row {
   display: flex;
@@ -759,7 +747,6 @@ a { color: var(--accent); text-decoration: none; }
 }
 .btn-secondary:hover { background: var(--line2); color: var(--text); }
 
-/* ── Selection bar ─────────────────────────────────────── */
 .selection-bar {
   display: flex;
   align-items: center;
@@ -828,7 +815,6 @@ a { color: var(--accent); text-decoration: none; }
 .topbar-shutdown:hover { background: var(--danger) !important; color: #fff !important; }
 .topbar-shutdown:disabled { opacity: .4; cursor: not-allowed; }
 
-/* ── File table ────────────────────────────────────────── */
 .file-table {
   padding: 0;
   overflow: hidden;
@@ -965,7 +951,6 @@ a { color: var(--accent); text-decoration: none; }
 .btn-action.btn-delete:hover { background: var(--danger-bg); }
 .btn-action:disabled { opacity: .4; cursor: not-allowed; }
 
-/* ── Table error / placeholder ─────────────────────────── */
 .placeholder { color: var(--muted2); font-size: .82rem; }
 .table-error {
   display: flex;
@@ -986,7 +971,6 @@ a { color: var(--accent); text-decoration: none; }
 }
 .table-error button:hover { background: var(--danger-bg); }
 
-/* ── Back button / Trash view specific ───────────────── */
 .btn-back {
   display: inline-flex;
   align-items: center;
@@ -1027,7 +1011,6 @@ a { color: var(--accent); text-decoration: none; }
   font-weight: 500;
 }
 
-/* ── Notice bar ────────────────────────────────────────── */
 .notice-bar {
   margin-top: .75rem;
   padding: .6rem 1rem;
@@ -1039,7 +1022,6 @@ a { color: var(--accent); text-decoration: none; }
   font-weight: 500;
 }
 
-/* ── Settings panel polish ──────────────────────────── */
 .settings-panel {
   padding: 1.25rem;
   background: var(--surface);
@@ -1323,7 +1305,6 @@ a { color: var(--accent); text-decoration: none; }
 }
 .settings-panel .placeholder { padding: 1.5rem; text-align: center; }
 
-/* ── Access screen ─────────────────────────────────────── */
 .access-shell {
   min-height: 100vh;
   background: var(--sidebar);
@@ -1510,7 +1491,6 @@ a { color: var(--accent); text-decoration: none; }
   z-index: 1;
 }
 
-/* ── Dark mode: login card ─────────────────────────── */
 [data-theme="dark"] .access-shell {
   background: #0f172a;
 }
@@ -1575,7 +1555,6 @@ a { color: var(--accent); text-decoration: none; }
 
 .hint { color: var(--muted2); font-size: .78rem; line-height: 1.4; }
 
-/* ── Drag & drop overlay ───────────────────────────────── */
 .drag-overlay {
   position: fixed;
   inset: 0;
@@ -1604,7 +1583,6 @@ a { color: var(--accent); text-decoration: none; }
 .drag-overlay-text { font-size: 1.05rem; font-weight: 600; color: var(--text); margin-bottom: .4rem; }
 .drag-overlay-sub { font-size: .82rem; color: var(--muted); }
 
-/* ── Preview dialog ────────────────────────────────────── */
 .preview-panel {
   border: none;
   background: var(--surface);
@@ -1638,7 +1616,6 @@ a { color: var(--accent); text-decoration: none; }
 }
 .preview-panel button:hover { background: var(--line2); }
 
-/* ── Upload box (for UploadQueue component) ────────────── */
 .upload-box {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1779,7 +1756,6 @@ a { color: var(--accent); text-decoration: none; }
   padding: .6rem 1.25rem;
 }
 
-/* ── Grid view ─────────────────────────────────────── */
 .view-toggle {
   display: inline-flex;
   border: 1px solid var(--line);
@@ -2033,7 +2009,6 @@ a { color: var(--accent); text-decoration: none; }
   }
 }
 
-/* ── Accessibility ─────────────────────────────────── */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -2078,7 +2053,6 @@ a { color: var(--accent); text-decoration: none; }
   }
 }
 
-/* ── Responsive ────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .workspace-body { padding: 1rem 1.25rem 3rem; }
 }
@@ -2148,7 +2122,6 @@ a { color: var(--accent); text-decoration: none; }
   .action-group { flex-direction: column; }
 }
 
-/* ── Dark mode: full app ─────────────────────────── */
 [data-theme="dark"] {
   --bg: #0b0f19;
   --surface: #141b2d;
@@ -2313,7 +2286,6 @@ a { color: var(--accent); text-decoration: none; }
 }
 
 [data-theme="dark"] .grid-container {
-  /* grid items inherit from .card background */
 }
 
 [data-theme="dark"] .grid-item {

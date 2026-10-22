@@ -7,10 +7,6 @@ interface DragAndDropProps {
   folderPath: string;
 }
 
-/**
- * Global drag-and-drop overlay component.
- * Shows a "Soltar archivos" overlay when files are dragged over the app.
- */
 export function DragAndDrop({ onFilesDropped, folderPath }: DragAndDropProps) {
   const { dragState, onDragEnter, onDragLeave, onDrop } = useDragUpload();
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -25,7 +21,6 @@ export function DragAndDrop({ onFilesDropped, folderPath }: DragAndDropProps) {
     const dt = e.dataTransfer;
     if (!dt) return;
 
-    // Resolve files from DataTransfer, including directory trees
     const files = await resolveFiles(dt);
     if (files.length > 0) {
       onFilesDropped(files, folderPath);

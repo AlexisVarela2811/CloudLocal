@@ -25,7 +25,8 @@ export const api = {
     const data = new FormData();
     data.append('file', file);
     return (await http.post('/files/upload', data, {
-      params: { folder }, signal,
+      params: { folder },
+      signal,
       onUploadProgress: event => { if (event.total) onProgress(Math.round(event.loaded / event.total * 100)); }
     })).data;
   },

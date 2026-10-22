@@ -7,7 +7,10 @@ const offerLabels: Record<Offer['status'], string> = {
   pending: 'Pendiente de aceptación', accepted: 'Aceptado; transfiriendo', delivered: 'Entregado',
   declined: 'Rechazado', failed: 'Fallido'
 };
-function when(value: string) { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? '—' : new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(parsed); }
+function when(value: string) {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? '—' : new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(parsed);
+}
 
 export function SendOffer({ path, onClose, onExpired }: { path: string; onClose: () => void; onExpired: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -17,7 +20,11 @@ export function SendOffer({ path, onClose, onExpired }: { path: string; onClose:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState('');
-  useEffect(() => { const element = dialog.current; element?.showModal(); return () => { if (element?.open) element.close(); }; }, []);
+  useEffect(() => {
+    const element = dialog.current;
+    element?.showModal();
+    return () => { if (element?.open) element.close(); };
+  }, []);
   useEffect(() => {
     let active = true;
     api.devices().then(list => { if (active) { setDevices(list); setDeviceId(list[0]?.id || ''); } })
@@ -26,14 +33,23 @@ export function SendOffer({ path, onClose, onExpired }: { path: string; onClose:
     return () => { active = false; };
   }, [onExpired]);
   async function submit(event: FormEvent) {
-    event.preventDefault(); if (!deviceId || busy) return;
-    setBusy(true); setError('');
-    try { const offer = await api.sendOffer(deviceId, path); setResult(`Oferta ${offerLabels[offer.status].toLowerCase()}. El destinatario debe aceptarla y elegir dónde guardarla. No se ha entregado todavía.`); }
-    catch (cause) { if (expired(cause)) onExpired(); else setError(failure(cause)); }
+    event.preventDefault();
+    if (!deviceId || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const offer = await api.sendOffer(deviceId, path);
+      setResult(`Oferta ${offerLabels[offer.status].toLowerCase()}. El destinatario debe aceptarla y elegir dónde guardarla. No se ha entregado todavía.`);
+    }
+    catch (cause) {
+      if (expired(cause)) onExpired();
+      else setError(failure(cause));
+    }
     finally { setBusy(false); }
   }
   return <dialog ref={dialog} className="offer-panel" aria-labelledby="offer-title" onCancel={onClose}>
-    <h2 id="offer-title">Enviar a otro equipo</h2><p className="filename">{path}</p>
+    <h2 id="offer-title">Enviar a otro equipo</h2>
+    <p className="filename">{path}</p>
     <p>Se enviará una oferta, no el archivo todavía. El receptor debe aceptar y escoger dónde guardarlo; no se sobrescriben archivos.</p>
     {loading ? <p role="status">Cargando equipos…</p> : devices.length === 0 ? <p>No hay equipos vinculados. Vincula uno desde «Mis equipos».</p> : !result && <form onSubmit={submit}><label htmlFor="offer-device">Equipo de destino</label><select id="offer-device" value={deviceId} onChange={event => setDeviceId(event.target.value)}>{devices.map(device => <option key={device.id} value={device.id}>{device.name} ({device.online ? 'conectado' : 'desconectado: quedará en cola'})</option>)}</select><button className="primary" disabled={busy}>{busy ? 'Preparando oferta…' : 'Crear oferta'}</button></form>}
     {error && <p className="error" role="alert">{error}</p>}{result && <p className="notice" role="status">{result}</p>}
@@ -57,7 +73,10 @@ export function Devices({ onExpired }: { onExpired: () => void }) {
   const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState(false);
   const refresh = useCallback(() => setRevision(value => value + 1), []);
-  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   useEffect(() => {
     let active = true; setLoading(true); setError('');
     Promise.all([api.devices(), api.offers()]).then(([list, transfers]) => {
@@ -83,7 +102,12 @@ export function Devices({ onExpired }: { onExpired: () => void }) {
   async function code() {
     if (busy) return;
     setBusy(true); setError(''); setPair(null);
-    try { setPair(await api.pairCode()); } catch (cause) { if (expired(cause)) onExpired(); else setError(failure(cause)); }
+    try {
+      setPair(await api.pairCode());
+    } catch (cause) {
+      if (expired(cause)) onExpired();
+      else setError(failure(cause));
+    }
     finally { setBusy(false); }
   }
   async function revoke(item: Device) {

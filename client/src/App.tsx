@@ -91,7 +91,6 @@ function App() {
     setNotice('La sesión ha caducado. Entra otra vez para continuar.');
   }, []);
 
-  // Upload items (shared between file picker and drag-drop)
   const [uploadBusy, setUploadBusy] = useState(false);
   const cancelUploadRef = useRef(false);
   const uploadControllerRef = useRef<AbortController | null>(null);
@@ -181,28 +180,48 @@ function App() {
     startNextUpload();
   }
 
-  // Sort entries for keyboard shortcuts
   const sorted = sortEntries(entries);
 
-  useEffect(() => { let active = true; api.session().then(value => { if (active) setSession(value); }).catch(cause => { if (active) setEntryError(failure(cause)); }); return () => { active = false; }; }, []);
+  useEffect(() => {
+    let active = true;
+    api.session()
+      .then(value => { if (active) setSession(value); })
+      .catch(cause => { if (active) setEntryError(failure(cause)); });
+    return () => { active = false; };
+  }, []);
   useEffect(() => {
     if (!session?.authenticated) return;
     let active = true;
     setLoading(true); setError('');
     const load = view === 'files' ? api.files(folder, query) : api.trash();
-    load.then(result => { if (!active) return; if (view === 'files') setEntries(result as Entry[]); else setTrash(result as TrashEntry[]); })
-      .catch(cause => { if (!active) return; if (expired(cause)) loseSession(); else setError(failure(cause)); })
+    load
+      .then(result => {
+        if (!active) return;
+        if (view === 'files') setEntries(result as Entry[]);
+        else setTrash(result as TrashEntry[]);
+      })
+      .catch(cause => {
+        if (!active) return;
+        if (expired(cause)) loseSession();
+        else setError(failure(cause));
+      })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [session?.authenticated, folder, query, view, revision, loseSession]);
   useEffect(() => {
     if (!session?.authenticated) return;
     let active = true;
-    api.status().then(value => { if (active) setStatus(value); }).catch(cause => { if (active) { if (expired(cause)) loseSession(); else setNotice(`No se pudo consultar el espacio: ${failure(cause)}`); } });
+    api.status()
+      .then(value => { if (active) setStatus(value); })
+      .catch(cause => {
+        if (active) {
+          if (expired(cause)) loseSession();
+          else setNotice(`No se pudo consultar el espacio: ${failure(cause)}`);
+        }
+      });
     return () => { active = false; };
   }, [session?.authenticated, revision, loseSession]);
 
-  // ── Keyboard shortcuts ───────────────────────────────────
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       const isCtrl = event.ctrlKey || event.metaKey;
@@ -226,7 +245,10 @@ function App() {
       } else if (event.key === 'Delete' && selected.length > 0 && !isInputFocused) {
         event.preventDefault();
         if (selected.length === 1) {
-          action(() => api.trashFile(selected[0]), `«${selected[0].split('/').at(-1)}» está en la papelera.`).then(() => setSelected([]));
+          action(
+            () => api.trashFile(selected[0]),
+            `«${selected[0].split('/').at(-1)}» está en la papelera.`,
+          ).then(() => setSelected([]));
         } else {
           const names = selected.map(p => p.split('/').at(-1)).filter(Boolean);
           Promise.all(selected.map(p => api.trashFile(p).catch(() => null))).then(() => {
@@ -249,7 +271,14 @@ function App() {
         if (first) startRename(first.path, first.name);
       } else if (isCtrl && event.key === 's' && !isInputFocused) {
         event.preventDefault();
-      } else if (event.ctrlKey && event.altKey && !event.metaKey && event.key.toLowerCase() === 'n' && view === 'files' && !isInputFocused) {
+      } else if (
+        event.ctrlKey &&
+        event.altKey &&
+        !event.metaKey &&
+        event.key.toLowerCase() === 'n' &&
+        view === 'files' &&
+        !isInputFocused
+      ) {
         event.preventDefault();
         event.stopPropagation();
         setFolderName('');
@@ -261,7 +290,6 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selected, sorted, clipboard, preview, renaming, folder, action]);
 
-  // ── Click outside to cancel rename ───────────────────────
   useEffect(() => {
     if (!renaming) return;
     function handleClickOutside(event: MouseEvent) {
@@ -275,7 +303,6 @@ function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [renaming]);
 
-  // ── Theme toggle from Settings + cross-tab sync ─────────
   useEffect(() => {
     const saved = (localStorage.getItem('cloudlocal-theme') as 'dark' | 'light') || 'light';
     if (saved === 'dark') {
@@ -319,7 +346,6 @@ function App() {
 
   function onExpired() { loseSession(); }
 
-  // ── Rename helpers ───────────────────────────────────────
   function startRename(path: string, currentName: string) {
     const dotIndex = currentName.lastIndexOf('.');
     const isFile = dotIndex > 0 && !currentName.endsWith('.');
@@ -370,23 +396,47 @@ function App() {
   }
   function go(path: string) { setFolder(path); setQuery(''); setSelected([]); setPreview(null); setError(''); }
   async function action(task: () => Promise<unknown>, success: string) {
-    setSaving(true); setError(''); setNotice('');
-    try { await task(); setNotice(success); refresh(); }
-    catch (cause) { if (expired(cause)) loseSession(); else setError(failure(cause)); }
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      await task();
+      setNotice(success);
+      refresh();
+    }
+    catch (cause) {
+      if (expired(cause)) loseSession();
+      else setError(failure(cause));
+    }
     finally { setSaving(false); }
   }
   async function create(event: FormEvent) {
-    event.preventDefault(); if (saving || !folderName.trim()) return;
+    event.preventDefault();
+    if (saving || !folderName.trim()) return;
     const name = folderName.trim();
-    setSaving(true); setError('');
-    try { await api.folder(folder, name); setFolderName(''); setCreating(false); setNotice(`Carpeta «${name}» creada.`); refresh(); }
-    catch (cause) { if (expired(cause)) loseSession(); else setError(failure(cause)); }
+    setSaving(true);
+    setError('');
+    try {
+      await api.folder(folder, name);
+      setFolderName('');
+      setCreating(false);
+      setNotice(`Carpeta «${name}» creada.`);
+      refresh();
+    }
+    catch (cause) {
+      if (expired(cause)) loseSession();
+      else setError(failure(cause));
+    }
     finally { setSaving(false); }
   }
   function download(paths: string[]) {
     for (const path of paths) {
-      const link = document.createElement('a'); link.href = api.content(path); link.download = path.split('/').at(-1) || 'archivo';
-      document.body.append(link); link.click(); link.remove();
+      const link = document.createElement('a');
+      link.href = api.content(path);
+      link.download = path.split('/').at(-1) || 'archivo';
+      document.body.append(link);
+      link.click();
+      link.remove();
     }
     setNotice(`${paths.length} descarga${paths.length === 1 ? '' : 's'} individual${paths.length === 1 ? '' : 'es'} solicitada${paths.length === 1 ? '' : 's'} al navegador. Comprueba sus descargas.`);
   }
@@ -404,38 +454,62 @@ function App() {
   }
   async function copyUrl(url: string) {
     setCopyError('');
-    try { await navigator.clipboard.writeText(url); setNotice('Dirección copiada.'); }
-    catch { setCopyError('No se pudo copiar automáticamente. Selecciona y copia la dirección del enlace.'); }
+    try {
+      await navigator.clipboard.writeText(url);
+      setNotice('Dirección copiada.');
+    }
+    catch {
+      setCopyError('No se pudo copiar automáticamente. Selecciona y copia la dirección del enlace.');
+    }
   }
 
-  // ── Auth gate ──────────────────────────────────────────────
-  if (!session) return <main className="auth-gate" role="status">{entryError ? <><p className="error-text">{entryError}</p><button className="btn-retry" onClick={() => { setEntryError(''); api.session().then(setSession).catch(cause => setEntryError(failure(cause))); }}>Reintentar conexión</button></> : <p>Conectando con CloudLocal…</p>}</main>;
-  if (!session.authenticated) return <><Access session={session} onAccess={() => { setSession({ ...session, configured: true, authenticated: true }); refresh(); }} />{notice && <p className="session-notice" role="status">{notice}</p>}</>;
+  if (!session)
+    return <main className="auth-gate" role="status">
+      {entryError ? <>
+        <p className="error-text">{entryError}</p>
+        <button
+          className="btn-retry"
+          onClick={() => {
+            setEntryError('');
+            api.session()
+              .then(setSession)
+              .catch(cause => setEntryError(failure(cause)));
+          }}
+        >
+          Reintentar conexión
+        </button>
+      </> : <p>Conectando con CloudLocal…</p>}
+    </main>;
+  if (!session.authenticated)
+    return <>
+      <Access
+        session={session}
+        onAccess={() => {
+          setSession({ ...session, configured: true, authenticated: true });
+          refresh();
+        }}
+      />
+      {notice && <p className="session-notice" role="status">{notice}</p>}
+    </>;
 
   const crumbs = breadcrumbs(folder);
   const serverUrls = visibleServerUrls(status?.urls, window.location.origin);
 
-  // ── Main shell ─────────────────────────────────────────────
   return (
     <div className="app-shell">
 
-      {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside className={`sidebar${sidebarOpen ? ' sidebar-open' : ''}`} aria-label="Navegación principal">
-        {/* Mobile toggle */}
         <button className="sidebar-toggle" aria-label="Abrir menú" onClick={() => setSidebarOpen(true)}>
           <FaWifi aria-hidden="true" />
         </button>
 
-        {/* Logo */}
         <div className="sidebar-logo">
           <span className="logo-icon" aria-hidden="true">C</span>
           <span className="logo-text">CloudLocal</span>
         </div>
 
-        {/* Caption */}
         <p className="sidebar-caption">ESPACIO LOCAL</p>
 
-        {/* Navigation */}
         <nav className="sidebar-nav" aria-label="Secciones">
           <button className={`nav-item${view === 'files' ? ' active' : ''}`} onClick={() => { setView('files'); setSidebarOpen(false); }}>
             <FaFolder aria-hidden="true" />
@@ -451,7 +525,6 @@ function App() {
           </button>
         </nav>
 
-        {/* Device connection link */}
         <button className="device-link" onClick={() => {
           setView('files');
           setSidebarOpen(false);
@@ -461,13 +534,11 @@ function App() {
           <span>Conectar otro dispositivo</span>
         </button>
 
-        {/* Status */}
         <div className="sidebar-status">
           <span className="status-dot" aria-hidden="true" />
           <span>El servidor debe permanecer encendido y despierto.</span>
         </div>
 
-        {/* Footer – logout */}
         <div className="sidebar-footer">
           <button
             className="btn-logout"
@@ -493,22 +564,17 @@ function App() {
         </div>
       </aside>
 
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* ── Main Area ───────────────────────────────────────── */}
       <main className="main-area">
 
-        {/* Topbar */}
         <header className="topbar">
           <div className="topbar-left">
-            {/* Mobile close button */}
             <button className="sidebar-close" aria-label="Cerrar menú" onClick={() => setSidebarOpen(false)}>
               <FaWifi aria-hidden="true" />
             </button>
-            {/* Breadcrumb */}
             {folder !== '' && view === 'files' && (
               <button className="btn-back" onClick={() => go(folder.includes('/') ? folder.slice(0, folder.lastIndexOf('/')) : '')}>
                 <FaArrowLeft aria-hidden="true" /> Volver
@@ -528,7 +594,6 @@ function App() {
                 </span>
               ))}
             </nav>
-            {/* Title */}
             <div>
               <h1 className="page-title">
                 {view === 'trash' ? 'Papelera' : view === 'settings' ? 'Configuración' : 'Mis archivos'}
@@ -625,11 +690,9 @@ function App() {
           </div>
         </header>
 
-        {/* Workspace body */}
         <div className="workspace-body">
           {view === 'files' ? (
             <>
-              {/* ── Connect Device Card ─────────────────────── */}
               <section id="connect-devices-card" className="card card-accent" aria-labelledby="conn-title">
                 <div className="card-header-icon">
                   <FaServer aria-hidden="true" />
@@ -662,7 +725,6 @@ function App() {
                 </div>
               </section>
 
-              {/* ── Toolbar ─────────────────────────────────── */}
               <div className="toolbar">
                 <div className="search-row">
                   <div className="search-wrapper">
@@ -683,7 +745,6 @@ function App() {
                 </div>
               </div>
 
-              {/* ── New folder form ───────────────────────── */}
               {creating && (
                 <form className="card folder-form" onSubmit={create}>
                   <h3>Nueva carpeta</h3>
@@ -706,7 +767,6 @@ function App() {
                 </form>
               )}
 
-              {/* ── Selection bar ─────────────────────────── */}
               {selected.length > 0 && (
                 <div className="selection-bar" role="status">
                   <span>{selected.length} seleccionado{selected.length !== 1 ? 's' : ''}</span>
@@ -730,7 +790,6 @@ function App() {
                 </div>
               )}
 
-              {/* ── Upload card ───────────────────────────── */}
               <section className="card card-upload" aria-label="Subir archivos">
                 <div className="card-content">
                   <h3>Subir archivos</h3>
@@ -754,12 +813,10 @@ function App() {
                 </div>
               </section>
 
-              {/* ── Drag & Drop overlay ───────────────────── */}
               <DragAndDrop onFilesDropped={enqueueFiles} folderPath={folder || 'inicio'} />
 
               {fileView === 'list' ? (
                 <>
-                  {/* ── File list – list view ─────────────────── */}
                   <section className="card file-table" aria-label="Contenido de la carpeta"
                     onDragEnter={e => { if (e.dataTransfer?.types?.includes('Files')) e.currentTarget.classList.add('drag-active'); }}
                     onDragLeave={e => { const rel = e.relatedTarget as HTMLElement | null; if (rel instanceof HTMLElement && e.currentTarget.contains(rel)) return; e.currentTarget.classList.remove('drag-active'); }}
@@ -779,7 +836,6 @@ function App() {
                       setTimeout(() => { if (files.length > 0) enqueueFiles(files, folder || 'inicio'); }, 50);
                     }}
                   >
-                    {/* Table header */}
                     <div className="table-head">
                       <div className="col-check">
                         <input
@@ -800,10 +856,8 @@ function App() {
                       <div className="col-actions">ACCIONES</div>
                     </div>
 
-                    {/* Loading */}
                     {loading && <div className="table-row loading-row"><div className="col-check" /><div className="col-name"><span className="placeholder">Cargando archivos…</span></div><div className="col-details" /><div className="col-actions" /></div>}
 
-                    {/* Error */}
                     {error && !loading && (
                       <div className="table-row error-row">
                         <div className="col-check" />
@@ -816,7 +870,6 @@ function App() {
                       </div>
                     )}
 
-                    {/* Empty */}
                     {!loading && !error && sorted.length === 0 && (
                       <div className="table-row table-row-full">
                         <div className="table-cell-full">
@@ -825,7 +878,6 @@ function App() {
                       </div>
                     )}
 
-                    {/* File rows */}
                     {!loading && !error && sorted.map(entry => (
                       <div
                         key={entry.path}
@@ -838,7 +890,6 @@ function App() {
                           dt.effectAllowed = 'move';
                         }}
                       >
-                        {/* Checkbox / icon */}
                         <div className="col-check">
                           {entry.type === 'file' ? (
                             <input
@@ -850,7 +901,6 @@ function App() {
                           ) : <span className="checkbox-space" />}
                         </div>
 
-                        {/* Name */}
                         <div className="col-name"
                           onDragEnter={e => { if (entry.type !== 'directory') return; e.stopPropagation(); setDragOver(entry.path); }}
                           onDragLeave={() => { if (entry.type !== 'directory') return; setDragOver(null); }}
@@ -880,12 +930,10 @@ function App() {
                           )}
                         </div>
 
-                        {/* Details */}
                         <div className="col-details">
                           {entry.type === 'file' ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}` : `Carpeta · ${date(entry.modifiedAt)}`}
                         </div>
 
-                        {/* Actions */}
                         <div className="col-actions">
                           {entry.type === 'file' ? (
                             <span className="action-group">
@@ -929,7 +977,6 @@ function App() {
                   </section>
                 </>
               ) : (
-                /* ── File list – grid view ───────────────────── */
                 <section className="card file-grid" aria-label="Contenido de la carpeta"
                   onDragEnter={e => { if (e.dataTransfer?.types?.includes('Files')) e.currentTarget.classList.add('drag-active'); }}
                   onDragLeave={e => { const rel = e.relatedTarget as HTMLElement | null; if (rel instanceof HTMLElement && e.currentTarget.contains(rel)) return; e.currentTarget.classList.remove('drag-active'); }}
