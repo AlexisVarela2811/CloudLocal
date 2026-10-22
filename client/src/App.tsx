@@ -19,6 +19,18 @@ function isExtensionBlocked(name: string): boolean {
 function isExtensionBlockedList(filenames: string[]): string[] {
   return filenames.filter(isExtensionBlocked);
 }
+
+const SERVER_SHUTDOWN_KEY = 'cloudlocal-server-shutdown';
+function getShutdownState(): { active: boolean; shuttingDown: boolean } {
+  try {
+    const raw = localStorage.getItem(SERVER_SHUTDOWN_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { active: true, shuttingDown: false };
+}
+function setShutdownState(value: { active: boolean; shuttingDown: boolean }) {
+  try { localStorage.setItem(SERVER_SHUTDOWN_KEY, JSON.stringify(value)); } catch {}
+}
 import { Access } from './components/Access';
 import { Preview } from './components/Preview';
 import { DragAndDrop } from './components/DragAndDrop';
@@ -72,6 +84,7 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [revision, setRevision] = useState(0);
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [shutdownState, setShutdownState] = useState(getShutdownState());
   const refresh = useCallback(() => setRevision(value => value + 1), []);
   const loseSession = useCallback(() => {
     setSession(previous => previous ? { ...previous, authenticated: false } : previous);
@@ -571,6 +584,25 @@ function App() {
                 aria-label="Elegir archivos para subir"
               />
             </label>
+            {shutdownState.active && (
+              <button
+                className="btn-danger"
+                disabled={shutdownState.shuttingDown}
+                onClick={async () => {
+                  setShutdownState({ ...shutdownState, shuttingDown: true });
+                  try {
+                    await api.shutdown();
+                    setShutdownState({ active: false, shuttingDown: false });
+                  } catch (cause) {
+                    setError(failure(cause));
+                    setShutdownState({ active: true, shuttingDown: false });
+                  }
+                }}
+              >
+                <FaServer aria-hidden="true" />
+                <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Detener Server'}</span>
+              </button>
+            )}
             <button className="btn-ghost" onClick={async () => {
               if (saving) return; setSaving(true);
               try { await api.logout(); setSession({ ...session, authenticated: false }); setSelected([]); setPreview(null); setNotice('Sesión cerrada.'); }
