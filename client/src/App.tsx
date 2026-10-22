@@ -249,7 +249,7 @@ function App() {
         if (first) startRename(first.path, first.name);
       } else if (isCtrl && event.key === 's' && !isInputFocused) {
         event.preventDefault();
-      } else if (isCtrl && event.key === 'n' && view === 'files' && !isInputFocused) {
+      } else if (event.ctrlKey && event.altKey && !event.metaKey && event.key.toLowerCase() === 'n' && view === 'files' && !isInputFocused) {
         event.preventDefault();
         event.stopPropagation();
         setFolderName('');
@@ -309,14 +309,13 @@ function App() {
     };
   }, []);
 
-  // ── Restore shutdown state when server is alive on mount ──
+  // A session response confirms this server is reachable, even before login.
   useEffect(() => {
-    let active = true;
-    api.status()
-      .then(() => { if (active) persistShutdownState({ active: true, shuttingDown: false }); })
-      .catch(() => { /* server is dead — leave localStorage as-is */ });
-    return () => { active = false; };
-  }, []);
+    if (!session) return;
+    const restored = { active: true, shuttingDown: false };
+    setShutdownState(restored);
+    persistShutdownState(restored);
+  }, [session]);
 
   function onExpired() { loseSession(); }
 
@@ -578,10 +577,10 @@ function App() {
                 </button>
               </div>
             )}
-            <button className="btn-icon" onClick={() => setCreating(value => !value)} title="Nueva carpeta">
+            <button className="btn-icon" onClick={() => setCreating(value => !value)} title="Nueva carpeta (Ctrl+Alt+N)" aria-keyshortcuts="Control+Alt+N">
               <FaPlus aria-hidden="true" />
               <span className="btn-label">Nueva carpeta</span>
-              <span className="shortcut-hint">Ctrl+N</span>
+              <span className="shortcut-hint">Ctrl+Alt+N</span>
             </button>
             <label className={`btn-upload button-like${uploadBusy ? ' busy' : ''}`} title="Elegir archivos para subir">
               <FaUpload aria-hidden="true" />

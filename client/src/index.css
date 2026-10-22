@@ -799,14 +799,34 @@ a { color: var(--accent); text-decoration: none; }
   border-radius: var(--radius-sm);
   font-size: .8rem;
   font-weight: 500;
-  color: var(--danger) !important;
-  border: 1px solid var(--line) !important;
-  background: var(--surface);
-  transition: background var(--duration) var(--ease), color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  background: var(--danger-bg);
   cursor: pointer;
+  transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
+  flex-shrink: 0;
 }
-.btn-danger:hover { background: var(--danger-bg) !important; color: var(--danger) !important; border-color: var(--danger) !important; }
+.btn-danger:hover { background: var(--danger) !important; color: #fff !important; }
 .btn-danger:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Topbar shutdown button - always visible */
+.topbar-shutdown {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .35rem !important;
+  padding: .45rem .7rem !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: .8rem !important;
+  font-weight: 500 !important;
+  color: var(--danger) !important;
+  border: 1px solid var(--danger) !important;
+  background: var(--danger-bg) !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+.topbar-shutdown:hover { background: var(--danger) !important; color: #fff !important; }
+.topbar-shutdown:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ── File table ────────────────────────────────────────── */
 .file-table {

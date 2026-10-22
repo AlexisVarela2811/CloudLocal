@@ -26,16 +26,16 @@ CloudLocal es un servidor de archivos local privado que se ejecuta como un únic
 - **Drag & Drop interno**: mueve archivos y carpetas arrastrándolos sobre carpetas destino
 - **Copiar / Cortar / Pegar**: Ctrl+C, Ctrl+X, Ctrl+V para duplicar o mover entre carpetas
 - **Renombrado inline**: F2 para renombrar archivos y carpetas directamente
-- **Nueva carpeta**: botón en toolbar o Ctrl+N para crear carpetas
+- **Nueva carpeta**: botón en toolbar o Ctrl+Alt+N para crear carpetas
 - **Vista previa** de imágenes, vídeo y audio en modal con cierre por Escape o click exterior
-- **Papelera** con restauración, eliminación permanente y vaciado total
-- **Descarga ZIP**: comprime múltiples archivos en un solo ZIP para descargar
+- **Papelera** con restauración (vía botón en UI)
+- **Descarga individual** de archivos y descarga ZIP (vía API)
 
 ### Apariencia y accesibilidad
 
 - **Modo oscuro**: toggle grande y visible, persistencia en localStorage, detección automática del tema del sistema, sincronización instantánea entre pestañas
 - **Indicadores de foco**: `:focus-visible` visible en todos los controles interactivos (3px solid accent, offset 2px)
-- **Atajos de teclado**: Ctrl+A (seleccionar todo), Ctrl+C (copiar), Ctrl+X (cortar), Ctrl+V (pegar), Ctrl+N (nueva carpeta), Ctrl+S (volver atrás), F2 (renombrar), Delete (a papelera), Escape (cerrar modal/renaming)
+- **Atajos de teclado**: Ctrl+A (seleccionar todo), Ctrl+C (copiar), Ctrl+X (cortar), Ctrl+V (pegar), Ctrl+Alt+N (nueva carpeta), F2 (renombrar), Delete (a papelera), Escape (cerrar modal/renaming)
 - **Diseño responsive**: adaptado para escritorio, tablet y móvil
 - **Accesibilidad**: skip-link, roles ARIA, navegación completa por teclado
 
@@ -49,11 +49,13 @@ CloudLocal es un servidor de archivos local privado que se ejecuta como un únic
 
 ### Windows (ejecutable portátil)
 
-1. Descarga `launcher/dist/CloudLocal.exe`
-2. Ejecuta el archivo y deja abierta su consola
+1. Descarga `launcher/dist/CloudLocal.exe` (construido en un equipo Windows x64)
+2. Ejecuta el archivo. El servidor funciona en segundo plano, sin consola
 3. Abre `http://localhost:80` (o el puerto configurado) en el navegador
-4. Configura una contraseña de al menos 12 caracteres en la pantalla de acceso inicial
+4. Configura una contraseña de entre 12 y 256 caracteres en la pantalla de acceso inicial
 5. Desde otros equipos de la red, abre `http://<IP-SERVIDOR>:80` e inicia sesión
+
+Para detenerlo, espera a que finalicen las transferencias y pulsa **Detener Server**. Se cierra únicamente la instancia que atiende esa dirección, no otros procesos de Node. Para reiniciar, ejecuta otra vez `CloudLocal.exe` y recarga la página; tus archivos y contraseña se conservan. Consulta [Detener y reiniciar](docs/server-launcher.md#detener-y-reiniciar).
 
 ### Desarrollo (desde el código fuente)
 
@@ -62,32 +64,33 @@ CloudLocal es un servidor de archivos local privado que se ejecuta como un únic
 - [Node.js](https://nodejs.org/) 22.12 o posterior con npm
 - Un editor con soporte TypeScript y React (VS Code recomendado)
 
-#### Servidor
+#### Construcción del candidato local
 
 ```sh
-cd server
-npm ci --workspaces=false
-```
+# 1. Instalar dependencias (workspaces client + server, luego launcher)
+npm ci
+cd launcher
+npm ci
+cd ..
 
-#### Cliente web
+# 2. Instalar navegador para tests E2E (si se ejecutarán tests de navegador)
+npx playwright install chromium
 
-```sh
-cd client
-npm ci --workspaces=false
-```
+# 3. Compilar frontend (TypeScript + Vite)
+npm run build:frontend
 
-#### Compilar y construir
+# 4. Ejecutar tests (server + client + launcher)
+npm test
 
-```sh
-cd client
-npm run build        # Compila TypeScript y genera el bundle estático
+# 5. Construir ejecutable portátil
+npm run build:exe
 ```
 
 #### Lanzar servidor + cliente embebido
 
 ```sh
 cd server
-npm start            # Sirve API + frontend embebido en http://localhost:80
+npm start            # Sirve API + frontend embebido en http://localhost:5000
 ```
 
 #### Desarrollo independiente de React
@@ -103,7 +106,6 @@ npm run dev          # Inicia Vite en http://localhost:5173 con HMR
 |---|---|
 | `server/` | API REST (Node.js) que gestiona el sistema de archivos |
 | `client/` | Interfaz web React con TypeScript + TailwindCSS |
-| `companion/` | Servicio auxiliar para conexión entre dispositivos |
 | `launcher/` | Empaquetado portátil (Node.js SEA) — produce `CloudLocal.exe` |
 
 ---
@@ -128,20 +130,19 @@ npm run dev          # Inicia Vite en http://localhost:5173 con HMR
 │                           │  └────────────┘  │         │
 │                           └──────────────────┘         │
 │                                                         │
-│  ┌──────────┐    WebSocket│   companion/                │
-│  │  PC Remoto│ ──────────► │  (relay entre equipos)    │
-│  └──────────┘             └───────────────────────────┘
+└─────────────────────────────────────────────────────────┘
 ```
 
 ### Server (`server/`)
 
-API REST con autenticación basada en contraseña. Gestiona:
+API REST con autenticación basada en cookie (scrypt + token de sesión). Gestiona:
 
 - Listado y navegación de carpetas
 - Subida de archivos con barra de progreso
 - Descarga y vistas previas
-- Papelera (borrado temporal y permanente)
+- Papelera (borrado temporal; eliminación permanente y vaciado vía API)
 - Configuración de carpeta de datos
+- Cierre graceful del servidor HTTP
 
 ### Client (`client/`)
 
@@ -158,13 +159,9 @@ Aplicación React con TypeScript organizada en:
 - `api/api.ts` — Cliente HTTP Axios (todos los endpoints)
 - `workspace.mjs` — Utilidades (formateo, breadcrumb, tipado de preview)
 
-### Companion (`companion/`)
-
-Servicio que facilita la comunicación P2P entre dispositivos mediante un protocolo de ofertas.
-
 ### Launcher (`launcher/`)
 
-Empaquetador que combina servidor + frontend en un ejecutable portátil usando Node.js Secure Node (SEA).
+Bundler que combina servidor + frontend en un ejecutable portátil usando Node.js SEA (Single-Executable Application). Produce `launcher/dist/CloudLocal.exe`.
 
 ---
 
@@ -174,9 +171,12 @@ Empaquetador que combina servidor + frontend en un ejecutable portátil usando N
 
 | Método | Endpoint | Descripción |
 |---|---|---|
-| `POST` | `/api/setup` | Configurar contraseña inicial |
+| `POST` | `/api/setup` | Configurar contraseña inicial (solo localhost) |
 | `POST` | `/api/login` | Iniciar sesión con contraseña |
 | `POST` | `/api/logout` | Cerrar sesión |
+| `GET` | `/api/session` | Estado de sesión actual |
+
+> **Cookie**: `cloudlocal_session` (HttpOnly, SameSite=Strict, 12 h). Todas las peticiones API requieren esta cookie.
 
 ### Archivos
 
@@ -189,8 +189,8 @@ Empaquetador que combina servidor + frontend en un ejecutable portátil usando N
 | `POST` | `/api/files/copy` | Copiar archivo/folder (`{from, to}`) |
 | `POST` | `/api/files/move` | Mover archivo (`{from, to}`) |
 | `POST` | `/api/files/moveFolder` | Mover carpeta (`{from, to}`) |
-| `POST` | `/api/files/permanentDelete` | Eliminación permanente (`{id}`) |
-| `GET` | `/api/files/zipDownload` | Descargar como ZIP (`?paths[]=`) |
+| `POST` | `/api/files/permanent` | Eliminación permanente (`{id}`) |
+| `GET` | `/api/files/zip` | Descargar como ZIP (`?paths[]=`) |
 | `GET` | `/api/files/content` | Obtener contenido (`?path=`) |
 
 ### Papelera
@@ -229,18 +229,27 @@ Empaquetador que combina servidor + frontend en un ejecutable portátil usando N
 | `PUT` | `/api/settings` | Guardar carpeta (`{folderPath}`) |
 | `DELETE` | `/api/settings` | Restablecer carpeta por defecto |
 
+### Shutdown
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `POST` | `/api/shutdown` | Apagar el servidor (requiere sesión) |
+
 ---
 
 ## Variables de entorno
 
 | Variable | Descripción | Valor por defecto |
 |---|---|---|
-| `CLOUDLOCAL_PASSWORD` | Contraseña para acceso inicial. Si se establece, no se puede cambiar desde la UI. | Se solicita en el asistente |
-| `CLOUDLOCAL_DATA_DIR` | Ruta de la carpeta donde se almacenan los archivos. | `.cloudlocal/files` |
-| `CLOUDLOCAL_STATE_DIR` | Ruta del directorio de estado y credenciales. | `.cloudlocal/state` |
-| `CLOUDLOCAL_PORT` | Puerto HTTP del servidor. | `5000` |
-| `CLOUDLOCAL_HOST` | Interfaz de red a escuchar. | `0.0.0.0` |
-| `CLOUDLOCAL_MAX_UPLOAD` | Tamaño máximo de archivo en bytes. | `5368709120` (5 GiB) |
+| `HOST` | Interfaz de red a escuchar (no `CLOUDLOCAL_HOST`) | `0.0.0.0` |
+| `CLOUDLOCAL_PORT` | Puerto HTTP principal del servidor | `5000` |
+| `PORT` | Alternativa a `CLOUDLOCAL_PORT` (solo server standalone) | `5000` |
+| `CLOUDLOCAL_FALLBACK_PORT` | Puerto de respaldo si el principal falla | `5000` |
+| `CLOUDLOCAL_DATA_DIR` | Ruta de la carpeta donde se almacenan los archivos | `.cloudlocal/files` |
+| `CLOUDLOCAL_STATE_DIR` | Ruta del directorio de estado y credenciales | `.cloudlocal/state` |
+| `CLOUDLOCAL_MAX_UPLOAD` | Tamaño máximo de archivo en bytes | `536870912` (512 MiB) |
+
+> El launcher (`CloudLocal.exe`) fija `CLOUDLOCAL_PORT=80` automáticamente; no se necesita configurar.
 
 ---
 
@@ -287,12 +296,13 @@ Selecciona un archivo y pulsa F2. El nombre se convierte en un campo editable. P
 | `Ctrl+C` | Copiar al portapapeles |
 | `Ctrl+X` | Cortar (mover) al portapapeles |
 | `Ctrl+V` | Pegar en carpeta actual |
-| `Ctrl+N` | Nueva carpeta |
-| `Ctrl+S` | Volver a la carpeta padre |
+| `Ctrl+Alt+N` | Nueva carpeta |
 | `F2` | Renombrar elemento seleccionado |
 | `Delete` | Enviar a papelera |
 | `Escape` | Cerrar modal, cancelar renaming |
 | `Tab` | Navegación entre controles (focus visible) |
+
+> `Ctrl+N` no se intercepta (queda para el navegador). Solo `Ctrl+Alt+N` crea carpetas.
 
 ### Vista previa
 
@@ -304,17 +314,13 @@ Selecciona un archivo y pulsa F2. El nombre se convierte en un campo editable. P
 ### Papelera
 
 - **Mover a papelera**: Delete (seleccionados) o botón eliminar
-- **Restaurar**: restaura al path original
-- **Eliminar permanentemente**: elimina el archivo del almacenamiento
-- **Vaciar papelera**: elimina todos los elementos de forma masiva
-
-### Descarga ZIP
-
-Selecciona múltiples archivos y pulsa el botón de descarga ZIP. Los archivos se compriman en el servidor y se descargan como un único archivo `.zip`.
+- **Restaurar**: botón "Restaurar" en la UI (restaura al path original)
+- **Eliminación permanente** y **vaciar papelera**: solo disponibles vía API
 
 ### Modo oscuro
 
 Actívalo en la sección Configuración mediante un toggle grande (64×34px) con track y thumb. Se guarda en `localStorage` (`cloudlocal-theme: "dark"` / `"light"`), se detecta automáticamente si el sistema operativo usa tema oscuro, y se sincroniza instantáneamente entre todas las pestañas abiertas vía `storage` event. Las variables CSS se aplican mediante `data-theme` en el `<html>`.
+
 ### Diseño responsive
 
 | Breakpoint | Comportamiento |
@@ -336,7 +342,7 @@ Actívalo en la sección Configuración mediante un toggle grande (64×34px) con
 CloudLocal/
 ├── server/           # API REST (Node.js)
 │   ├── src/          # server.js, storage.js, router, controller
-│   └── test/         # Muestras de tests unitarios
+│   └── test/         # Tests unitarios
 ├── client/           # Frontend React (TypeScript + Vite)
 │   ├── src/
 │   │   ├── api/      # Cliente HTTP Axios (api.ts)
@@ -352,42 +358,41 @@ CloudLocal/
 │   │   ├── App.tsx         # Orquestación principal
 │   │   └── index.css       # Estilos globales (variables, focus, themes)
 │   └── public/
-├── companion/        # Servicio P2P
 ├── launcher/         # Empaquetado portátil (Node.js SEA)
+│   └── src/
+│       ├── main.cjs
+│       ├── runtime.cjs
+│       └── tray.cjs
 └── odd/              # Especificaciones y tareas (ODD)
 ```
 
 #### Flujo de trabajo
 
 1. Clona el repositorio y abre la carpeta raíz
-2. Instala dependencias por componente (`npm ci --workspaces=false` dentro de cada carpeta)
-3. Compila `client` con `npm run build`
-4. Ejecuta `server` con `npm start`
-5. Para desarrollo React en caliente: `npm run dev` en `client/`
-6. Abre `http://localhost:5173` (Vite dev) o `http://localhost:80` (server embebido)
+2. Instala dependencias: `npm ci` desde la raíz; después, `cd launcher`, `npm ci` y `cd ..`
+3. Compila `client` con `npm run build:frontend`
+4. Ejecuta tests con `npm test`
+5. Ejecuta `server` con `npm start` (desde `server/`)
+6. Para desarrollo React en caliente: `npm run dev` en `client/`
+7. Construye el ejecutable con `npm run build:exe`
 
-#### convenciones
+#### Convenciones
 
 - **TypeScript**: strict mode habilitado. No uses `any` salvo necesidad documentada.
 - **Componentes React**: funcionales con hooks. Nombres `PascalCase`.
 - **CSS**: TailwindCSS como base, variables CSS personalizadas para theming. Sin modificar `index.css` salvo indicación.
 - **Comentarios**: en español. JSDoc para funciones exportadas.
-- **Tests**: unitarios en `test/` por componente. E2E con `run-browser-smoke.cjs`.
+- **Tests**: unitarios en `test/` por componente.
 - **Commits**: estilo [Conventional Commits](https://www.conventionalcommits.org/).
 
 #### Validación antes de push
 
 ```sh
-# Compilar cliente
-npm --prefix client run build
+# Compilar cliente (TypeScript + Vite)
+npm run build:frontend
 
-# Lint
-npm --prefix client run lint
-
-# Ejecutar todos los tests
-node --test server/test/*.test.js companion/test/*.test.cjs
-node --test desktop/test/*.test.cjs
-node --test client/test/*.test.mjs
+# Ejecutar tests (server + client + launcher)
+npm test
 ```
 
 #### Crear un cambio
@@ -399,35 +404,9 @@ node --test client/test/*.test.mjs
 
 ---
 
-## Licencia
-
-MIT License
-
-Copyright (c) 2025 CloudLocal
-
-Se concede permiso, sin cargo, a cualquier persona que obtenga una copia
-de este software y los archivos de documentación asociados (el "Software"),
-para usar, copiar, modificar, fusionar, publicar, distribuir, sublicenciar
-y/o vender copias del Software, y permitir a las personas a whom se le
-proporcione hacerlo, sujeto a las siguientes condiciones:
-
-El aviso de copyright anterior y este aviso de permiso se incluirán en todas
-las copias o partes sustanciales del Software.
-
-EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO, EXPRESA
-O IMPLÍCITA, INCLUDING PERO NO LIMITADO A GARANTÍAS DE COMERCIALIZACIÓN,
-IDONEIDAD PARA UN PROPÓSITO PARTICULAR E INFRACCIÓN. NINGÚN AUTOR O
-PROPIETARIO DE LOS DERECHOS DE AUTOR SERÁ RESPONSABLE DE NINGUNA RECLAMACIÓN,
-DAÑOS U OTRA RESPONSABILIDAD, YA SEA EN UNA ACCIÓN DE CONTRATO, AGRAVIO O
-DE OTRO MODO, ARISING OUT OF, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
----
-
 ## Documentación adicional
 
 - [Servidor portable y configuración](docs/server-launcher.md)
 - [API y autenticación](docs/api.md)
 - [Acompañante y emparejamiento de dispositivos](docs/devices.md)
-
-## Licencia
+- [Notas de la versión 0.0.1](docs/release-0.0.1.md)
