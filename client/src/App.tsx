@@ -635,8 +635,7 @@ function App() {
               />
             </label>
             <button
-              className="btn-danger"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem', padding: '.45rem .7rem', borderRadius: 'var(--radius-sm)', fontSize: '.8rem', fontWeight: 500, cursor: 'pointer' }}
+              className="btn-danger topbar-shutdown"
               disabled={shutdownState.shuttingDown || !shutdownState.active}
               onClick={async () => {
                 setShutdownState(prev => ({ ...prev, shuttingDown: true }));
