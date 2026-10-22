@@ -30,11 +30,6 @@ CloudLocal usa autenticación básica con contraseña. Todas las rutas requieren
    curl http://localhost:80/api/session -H "Cookie: cloudlocal-auth=eyJhbGc..."
    ```
 
-4. **Logout**:
-   ```bash
-   curl -X POST http://localhost:80/api/logout
-   ```
-
 ### Almacenamiento
 
 La contraseña se guarda en `C:\Users\<usuario>\.cloudlocal\state\auth.json`:
@@ -44,10 +39,6 @@ La contraseña se guarda en `C:\Users\<usuario>\.cloudlocal\state\auth.json`:
   "createdAt": "2025-01-15T10:30:00Z"
 }
 ```
-
-**Importante**: Nunca compartas este archivo. Contiene el hash de tu contraseña.
-
----
 
 ## Archivos
 
@@ -95,32 +86,17 @@ POST /api/folders
 POST /api/files/upload?folder=/path/to/dir
 ```
 
-**Form-data**: `file` (multipart). Se soporta subida de múltiples archivos simultáneos.
-
-**Respuesta**:
-```json
-{
-  "success": true,
-  "uploaded": 2,
-  "files": ["file1.jpg", "file2.pdf"]
-}
-```
-
 ### Descarga de archivo
 
 ```
 GET /api/files/content?path=/path/to/file
 ```
 
-Devuelve el archivo raw con el `Content-Type` correcto.
-
 ### Descarga ZIP
 
 ```
 GET /api/files/zipDownload?paths[]=/path1&paths[]=/path2
 ```
-
-Comprime los archivos seleccionados y los descarga como un único `.zip`.
 
 ### Copiar archivo/carpeta
 
@@ -163,8 +139,6 @@ POST /api/files/permanentDelete
 }
 ```
 
----
-
 ## Papelera
 
 ### Listar
@@ -173,36 +147,17 @@ POST /api/files/permanentDelete
 GET /api/trash
 ```
 
-**Respuesta**:
-```json
-{
-  "entries": [
-    {
-      "id": "/trash/1234567890/foto.jpg",
-      "name": "foto.jpg",
-      "originalPath": "/docs/foto.jpg",
-      "trashedAt": "2025-01-15T10:30:00Z",
-      "size": 12345
-    }
-  ]
-}
-```
-
 ### Restaurar
 
 ```
 POST /api/trash/:id/restore
 ```
 
-Restaura el archivo a su path original (`originalPath`).
-
 ### Vaciar papelera
 
 ```
 POST /api/trash/empty
 ```
-
-Elimina **todos** los elementos de la papelera permanentemente.
 
 ### Eliminar permanentemente
 
@@ -212,10 +167,6 @@ DELETE /api/trash
   "id": "/trash/1234567890/foto.jpg"
 }
 ```
-
-Elimina solo el archivo especificado.
-
----
 
 ## Estado
 
@@ -234,14 +185,6 @@ GET /api/status
 }
 ```
 
-- `dataDir`: carpeta de archivos actual
-- `maxUpload`: límite por archivo (5 GiB por defecto)
-- `diskUsage`: bytes usados
-- `diskTotal`: bytes totales del disco
-- `urls`: URLs accesibles desde la red
-
----
-
 ## Dispositivos (Companion)
 
 ### Listar vinculados
@@ -259,14 +202,6 @@ POST /api/devices/pair-code
 }
 ```
 
-Respuesta:
-```json
-{
-  "code": "A1B2-C3D4",
-  "expires": "2025-01-15T10:35:00Z"
-}
-```
-
 ### Enviar oferta a dispositivo
 
 ```
@@ -277,22 +212,10 @@ POST /api/devices/:id/offers
 }
 ```
 
-### Listar ofertas pendientes
-
-```
-GET /api/devices/offers
-```
-
-### Listar entradas compartidas de un dispositivo
+### Listar entradas compartidas
 
 ```
 GET /api/devices/:id/entries
-```
-
-### Obtener contenido compartido
-
-```
-GET /api/devices/:id/content?folder=/shared/folder
 ```
 
 ### Desvincular dispositivo
@@ -300,8 +223,6 @@ GET /api/devices/:id/content?folder=/shared/folder
 ```
 DELETE /api/devices/:id
 ```
-
----
 
 ## Configuración
 
@@ -326,8 +247,6 @@ PUT /api/settings
 DELETE /api/settings
 ```
 
----
-
 ## Variables de entorno
 
 | Variable | Valor por defecto | Descripción |
@@ -339,15 +258,12 @@ DELETE /api/settings
 | `CLOUDLOCAL_HOST` | `0.0.0.0` | Interfaz a escuchar |
 | `CLOUDLOCAL_MAX_UPLOAD` | `5368709120` | Límite por archivo (5 GiB) |
 
----
-
 ## Límites y errores
 
 ### Límites por defecto
 
 - **Tamaño máximo por archivo**: 5 GiB (`5368709120` bytes)
 - **Mime types bloqueados**: `.exe`, `.bat`, `.cmd`, `.scr`, `.vbs`, `.js`, `.ps1`, `.reg`
-- **Archivos simultáneos en cola**: Ilimitados (depende del disco)
 
 ### Códigos de error
 
@@ -369,8 +285,6 @@ DELETE /api/settings
 }
 ```
 
----
-
 ## Autenticación con cookie
 
 El servidor usa cookies HTTP-only:
@@ -379,4 +293,4 @@ El servidor usa cookies HTTP-only:
 Set-Cookie: cloudlocal-auth=eyJhbGciOiJIUzI1NiJ9...; Path=/; HttpOnly; SameSite=Strict
 ```
 
-Todas las peticiones deben incluir esta cookie. Si expira, necesitas hacer `POST /api/login` otra vez.
+Todas las peticiones deben incluir esta cookie.
