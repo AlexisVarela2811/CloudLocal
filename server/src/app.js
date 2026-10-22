@@ -98,18 +98,10 @@ function createApp({ dataDir = path.join(__dirname, 'upload'), stateDir = path.j
     app.get('/api/status', actions.status);
     app.post('/api/shutdown', jsonBody, handle(async (req, res) => {
         if (!auth.valid(token(req))) return res.status(401).json({ message: 'Authentication required' });
-        // Respond first, then shutdown
+        if (typeof app.locals.shutdown !== 'function') return res.status(503).json({ message: 'Shutdown unavailable' });
+        // Let the response reach the browser before closing this server.
         res.json({ message: 'Server shutting down...' });
-        setTimeout(() => {
-            console.log('CloudLocal: shutting down...');
-            app.locals.closeDeviceHub();
-            server.close(() => {
-                console.log('CloudLocal: stopped');
-                process.exit(0);
-            });
-            // Force exit after 3s in case close hangs
-            setTimeout(() => process.exit(0), 3000).unref();
-        }, 500);
+        setTimeout(() => app.locals.shutdown(), 500);
     }));
     const dist = clientDir;
     if (fs.existsSync(path.join(dist, 'index.html'))) {

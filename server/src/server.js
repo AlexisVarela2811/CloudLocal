@@ -35,7 +35,7 @@ function start(options = {}) {
         !Number.isInteger(fallback) || fallback < 1 || fallback > 65535) throw new Error('Invalid port');
     let server;
     let stopped = false;
-    let shutdownCallback = null; // allow external shutdown (e.g. /api/shutdown endpoint)
+    let shutdownCallback = null;
     function announce(port) {
         const urls = urlsFor(port);
         app.locals.urls = urls;
@@ -69,6 +69,13 @@ function start(options = {}) {
             if (exitCode && require.main === module) process.exit(exitCode);
         });
     }
+    app.locals.shutdown = () => {
+        if (stopped) return;
+        // HTTP shutdown exits only this process, after graceful close or a bounded drain.
+        shutdownCallback = () => process.exit(0);
+        setTimeout(() => process.exit(0), 3000).unref();
+        shutdown();
+    };
     process.once('SIGTERM', shutdown);
     process.once('disconnect', shutdown);
     return { app, get server() { return server; }, shutdown };

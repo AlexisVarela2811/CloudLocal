@@ -3,6 +3,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const assert = require('node:assert/strict');
+const { chromium, expect } = require('@playwright/test');
 const root = path.resolve(__dirname, '../..');
 const exe = path.join(root, 'launcher/dist/CloudLocal.exe');
 
@@ -12,9 +13,10 @@ async function main() {
   const fixture = await fs.mkdtemp(path.join(cache, 'sea-smoke-'));
   const env = { ...process.env, HOST: '127.0.0.1', PORT: '0', CLOUDLOCAL_NO_MDNS: '1',
     CLOUDLOCAL_DATA_DIR: path.join(fixture, 'files'), CLOUDLOCAL_STATE_DIR: path.join(fixture, 'state'),
-    USERPROFILE: fixture, HOME: fixture };
+    USERPROFILE: fixture, HOME: fixture, TEMP: fixture, TMP: fixture, TMPDIR: fixture };
   delete env.CLOUDLOCAL_PORT;
   let child;
+  const browser = await chromium.launch({ headless: true });
   try {
     child = spawn(exe, [], { env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '', stderr = '';
@@ -53,13 +55,27 @@ async function main() {
     response = await fetch(base + '/api/files/content?path=probe.bin', { headers: { Cookie: cookie } });
     assert.equal(response.status, 200);
     assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes);
-    child.stdin.end();
-    const result = await Promise.race([exit, new Promise((_, reject) => setTimeout(() => reject(new Error('Shutdown timed out')), 5000))]);
-    assert.deepEqual(result, { code: 0, signal: null });
+    const page = await browser.newPage();
+    const [cookieName, cookieValue] = cookie.split('=');
+    await page.context().addCookies([{ name: cookieName, value: cookieValue, url: base + '/api', httpOnly: true, sameSite: 'Strict' }]);
+    await page.goto(base);
+    await expect(page.locator('.shortcut-hint')).toHaveText('Ctrl+Alt+N');
+    const stop = page.getByRole('button', { name: 'Detener Server', exact: true });
+    await expect(stop).toBeEnabled();
+    await stop.click();
+    let timer;
+    const result = await Promise.race([exit, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`Shutdown timed out; stdout=${stdout} stderr=${stderr}`)), 6000);
+    })]).finally(() => clearTimeout(timer));
+    assert.deepEqual(result, { code: 0, signal: null }, `stdout=${stdout} stderr=${stderr}`);
+    assert.equal(stderr, '');
+    assert.match(stdout, /CloudLocal: shutting down\.\.\./);
+    assert.match(stdout, /CloudLocal: stopped/);
     child = null;
-    await assert.rejects(fetch(base + '/api/session'));
-    console.log('PASS native SEA UI/assets, setup/login, byte upload/download, collision and shutdown');
+    await assert.rejects(fetch(base + '/api/session', { signal: AbortSignal.timeout(1000) }));
+    console.log('PASS native SEA UI/assets, setup/login, byte upload/download, collision, shortcut hint and browser-button process shutdown');
   } finally {
+    await browser.close();
     if (child && child.exitCode === null && child.signalCode === null) {
       child.kill('SIGTERM');
       await new Promise(resolve => child.once('exit', resolve));

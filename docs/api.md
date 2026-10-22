@@ -2,7 +2,7 @@
 
 ## Autenticación
 
-CloudLocal usa autenticación básica con contraseña. Todas las rutas requieren el token `cloudlocal-auth` en los headers.
+CloudLocal usa autenticación basada en cookie HttpOnly. Todas las rutas API (`/api/*`) requieren la cookie `cloudlocal_session` establecida tras el login.
 
 ### Endpoints
 
@@ -15,30 +15,53 @@ CloudLocal usa autenticación básica con contraseña. Todas las rutas requieren
 
 ### Flujo de autenticación
 
-1. **Setup** (primera vez):
+1. **Setup** (primera vez, solo desde localhost):
    ```bash
-   curl -X POST http://localhost:80/api/setup -H "Content-Type: application/json" -d '{"password":"tuContraseña123"}'
+   curl -X POST http://localhost:5000/api/setup \
+     -H "Content-Type: application/json" \
+     -d '{"password":"tuContraseña123"}'
    ```
+   El servidor responde `201` y establece la cookie `Set-Cookie: cloudlocal_session=...; HttpOnly; SameSite=Strict; Path=/api; Max-Age=43200`.
 
 2. **Login** (siempre después):
    ```bash
-   curl -X POST http://localhost:80/api/login -H "Content-Type: application/json" -d '{"password":"tuContraseña123"}'
+   curl -X POST http://localhost:5000/api/login \
+     -H "Content-Type: application/json" \
+     -d '{"password":"tuContraseña123"}' \
+     -b "cloudlocal_session=<token>"
    ```
 
-3. **Sesión activa**:
+3. **Sesión activa**: incluir la cookie en cada petición:
    ```bash
-   curl http://localhost:80/api/session -H "Cookie: cloudlocal-auth=eyJhbGc..."
+   curl http://localhost:5000/api/files \
+     -b "cloudlocal_session=abcdef123456..."
    ```
 
 ### Almacenamiento
 
-La contraseña se guarda en `C:\Users\<usuario>\.cloudlocal\state\auth.json`:
+La contraseña se almacena con hash scrypt en `C:\Users\<usuario>\.cloudlocal\state\auth.json`:
 ```json
 {
-  "passwordHash": "$2b$...",
+  "version": 1,
+  "salt": "<base64, 32 bytes>",
+  "hash": "<base64, 64 bytes>",
   "createdAt": "2025-01-15T10:30:00Z"
 }
 ```
+
+> La contraseña debe tener entre 12 y 256 caracteres. El hash usa scrypt con salt de 32 bytes y un hash de 64 bytes.
+
+### Seguridad de la cookie
+
+| Atributo | Valor |
+|---|---|
+| Nombre | `cloudlocal_session` |
+| HttpOnly | Sí (no accesible desde JavaScript) |
+| SameSite | `Strict` |
+| Path | `/api` |
+| Max-Age | 43200 s (12 h) |
+
+---
 
 ## Archivos
 
@@ -57,14 +80,14 @@ GET /api/files?folder=/path/to/dir&q=search
       "name": "foto.jpg",
       "type": "file",
       "size": 12345,
-      "modified": "2025-01-15T10:30:00Z"
+      "modifiedAt": "2025-01-15T10:30:00Z"
     },
     {
       "path": "/docs/fotos2025",
       "name": "fotos2025",
       "type": "directory",
       "size": 0,
-      "modified": "2025-01-15T10:30:00Z"
+      "modifiedAt": "2025-01-15T10:30:00Z"
     }
   ]
 }
@@ -86,6 +109,10 @@ POST /api/folders
 POST /api/files/upload?folder=/path/to/dir
 ```
 
+- Multipart/form-data, campo `file`
+- Límite por archivo: 512 MiB (configurable vía `CLOUDLOCAL_MAX_UPLOAD`)
+- Extensiones prohibidas: `.exe`, `.bat`, `.cmd`, `.scr`, `.vbs`, `.js`, `.ps1`, `.reg`
+
 ### Descarga de archivo
 
 ```
@@ -95,7 +122,7 @@ GET /api/files/content?path=/path/to/file
 ### Descarga ZIP
 
 ```
-GET /api/files/zipDownload?paths[]=/path1&paths[]=/path2
+GET /api/files/zip?paths[]=/path1&paths[]=/path2
 ```
 
 ### Copiar archivo/carpeta
@@ -130,14 +157,16 @@ POST /api/files/moveFolder
 DELETE /api/files?path=/path/to/file
 ```
 
-### Eliminación permanente
+### Eliminación permanente (API solo)
 
 ```
-POST /api/files/permanentDelete
+POST /api/files/permanent
 {
-  "id": "/path/to/file"
+  "id": "<trash-id>"
 }
 ```
+
+---
 
 ## Papelera
 
@@ -147,26 +176,42 @@ POST /api/files/permanentDelete
 GET /api/trash
 ```
 
-### Restaurar
+### Restaurar (UI disponible)
 
 ```
 POST /api/trash/:id/restore
 ```
 
-### Vaciar papelera
+### Vaciar papelera (API solo)
 
 ```
 POST /api/trash/empty
 ```
 
-### Eliminar permanentemente
+### Eliminar permanentemente (API solo)
 
 ```
 DELETE /api/trash
 {
-  "id": "/trash/1234567890/foto.jpg"
+  "id": "<trash-id>"
 }
 ```
+
+---
+
+## Shutdown
+
+`POST /api/shutdown` requiere una sesión válida, `Content-Type: application/json` y body `{}`.
+
+- `200`: `{ "message": "Server shutting down..." }`. Primero se envía la respuesta; después se cierra el servidor HTTP y termina únicamente el proceso de esa instancia.
+- `401`: `{ "message": "Authentication required" }`
+- `403`: `{ "message": "Local origin required" }`
+- `415`: `{ "message": "JSON required" }`
+- `503`: `{ "message": "Shutdown unavailable" }` (sin ciclo de vida HTTP conectado)
+
+El cierre dispone de hasta tres segundos para drenar conexiones antes de terminar el proceso.
+
+---
 
 ## Estado
 
@@ -177,13 +222,16 @@ GET /api/status
 **Respuesta**:
 ```json
 {
-  "dataDir": "C:\\Users\\alexi\\.cloudlocal\\files",
-  "maxUpload": 5368709120,
-  "diskUsage": 123456789,
-  "diskTotal": 500000000000,
-  "urls": ["http://192.168.1.6:80", "http://127.0.0.1:80"]
+  "storage": {
+    "total": 500000000000,
+    "free": 376543210000
+  },
+  "maxUploadBytes": 536870912,
+  "urls": ["http://192.168.1.6:5000", "http://127.0.0.1:5000"]
 }
 ```
+
+---
 
 ## Dispositivos (Companion)
 
@@ -198,7 +246,7 @@ GET /api/devices/
 ```
 POST /api/devices/pair-code
 {
-  "name": "Mi Laptop"
+  "name": "Mi Laptop"  // nombre del dispositivo
 }
 ```
 
@@ -207,15 +255,14 @@ POST /api/devices/pair-code
 ```
 POST /api/devices/:id/offers
 {
-  "path": "/shared/folder",
-  "name": "Mis fotos"
+  "path": "/shared/folder"
 }
 ```
 
 ### Listar entradas compartidas
 
 ```
-GET /api/devices/:id/entries
+GET /api/devices/:id/entries?share=/shared/folder&path=
 ```
 
 ### Desvincular dispositivo
@@ -223,6 +270,8 @@ GET /api/devices/:id/entries
 ```
 DELETE /api/devices/:id
 ```
+
+---
 
 ## Configuración
 
@@ -247,50 +296,53 @@ PUT /api/settings
 DELETE /api/settings
 ```
 
+---
+
 ## Variables de entorno
 
 | Variable | Valor por defecto | Descripción |
 |---|---|---|
-| `CLOUDLOCAL_PASSWORD` | (sin valor) | Contraseña fija. Si se establece, no se puede cambiar desde la UI |
+| `HOST` | `0.0.0.0` | Interfaz a escuchar (no `CLOUDLOCAL_HOST`) |
+| `CLOUDLOCAL_PORT` | `5000` | Puerto HTTP principal |
+| `PORT` | `5000` | Alternativa (solo server standalone) |
+| `CLOUDLOCAL_FALLBACK_PORT` | `5000` | Puerto de respaldo |
 | `CLOUDLOCAL_DATA_DIR` | `.cloudlocal/files` | Carpeta de archivos |
 | `CLOUDLOCAL_STATE_DIR` | `.cloudlocal/state` | Carpeta de estado (auth.json) |
-| `CLOUDLOCAL_PORT` | `80` | Puerto HTTP |
-| `CLOUDLOCAL_HOST` | `0.0.0.0` | Interfaz a escuchar |
-| `CLOUDLOCAL_MAX_UPLOAD` | `5368709120` | Límite por archivo (5 GiB) |
+| `CLOUDLOCAL_MAX_UPLOAD` | `536870912` | Límite por archivo (512 MiB) |
+| `CLOUDLOCAL_ENV_FILE` | `.env` (raíz del server) | Archivo de variables de entorno |
+
+> El launcher fija `CLOUDLOCAL_PORT=80` automáticamente al iniciar.
+
+---
 
 ## Límites y errores
 
 ### Límites por defecto
 
-- **Tamaño máximo por archivo**: 5 GiB (`5368709120` bytes)
+- **Tamaño máximo por archivo**: 512 MiB (`536870912` bytes)
 - **Mime types bloqueados**: `.exe`, `.bat`, `.cmd`, `.scr`, `.vbs`, `.js`, `.ps1`, `.reg`
+- **Sesiones máximas**: 1024
+- **Intentos fallidos**: bloqueo tras 5 intentos consecutivos (ventana de 15 min)
+- **Longitud de contraseña**: 12–256 caracteres
 
 ### Códigos de error
 
 | Código | Significado |
 |---|---|
-| `401` | No autenticado / sesión expirada |
 | `400` | Bad request (parámetros faltantes o inválidos) |
+| `401` | No autenticado / sesión expirada |
+| `403` | Origen externo no permitido |
 | `404` | No encontrado (archivo, carpeta, dispositivo) |
 | `409` | Conflicto (archivo ya existe, contraseña incorrecta) |
 | `413` | Payload demasiado grande |
+| `415` | Tipo de contenido no soportado |
+| `429` | Demasiadas solicitudes (subidas o intentos) |
 | `500` | Error del servidor |
 
 ### Respuesta de error
 
 ```json
 {
-  "error": "Archivo ya existe",
-  "path": "/docs/foto.jpg"
+  "message": "Archivo ya existe"
 }
 ```
-
-## Autenticación con cookie
-
-El servidor usa cookies HTTP-only:
-
-```
-Set-Cookie: cloudlocal-auth=eyJhbGciOiJIUzI1NiJ9...; Path=/; HttpOnly; SameSite=Strict
-```
-
-Todas las peticiones deben incluir esta cookie.
