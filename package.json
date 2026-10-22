@@ -1,12 +1,19 @@
 {
     "name": "CloudLocal",
+    "version": "0.1.1",
+    "description": "Private local file server with web interface",
+    "main": "launcher/src/main.cjs",
     "scripts": {
         "start:backend": "cd server && bun run start",
         "start:frontend": "cd client && bun run dev",
         "start": "concurrently \"bun run start:backend\" \"bun run start:frontend\"",
         "build:frontend": "cd client && bun run build",
         "lint:frontend": "cd client && bun run lint",
-        "preview:frontend": "cd client && bun run preview"
+        "preview:frontend": "cd client && bun run preview",
+        "version:patch": "node scripts/version.cjs patch",
+        "version:minor": "node scripts/version.cjs minor",
+        "version:major": "node scripts/version.cjs major",
+        "build:exe": "cd launcher && node scripts/build.cjs"
     },
     "workspaces": [
         "client",
