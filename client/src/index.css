@@ -1311,20 +1311,11 @@ a { color: var(--accent); text-decoration: none; }
   position: relative;
   z-index: 1;
 }
-/* Prominent "C" brand mark */
-.access-brand::before {
-  content: 'C';
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: white;
-  font-size: 1.35rem;
-  font-weight: 800;
+.access-brand img {
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(5,150,105,0.2);
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
 }
 /* Top accent bar on card */
 .access-panel {
@@ -1357,10 +1348,11 @@ a { color: var(--accent); text-decoration: none; }
 }
 /* Label styling */
 .access-panel label {
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: var(--muted);
-  margin-bottom: 0.25rem;
+  color: var(--text);
+  margin-bottom: 0.35rem;
+  letter-spacing: -0.01em;
 }
 /* Button - more refined */
 .access-panel .btn-primary {
@@ -1397,14 +1389,19 @@ a { color: var(--accent); text-decoration: none; }
 }
 /* Input - accent left border on focus */
 .access-panel input {
-  padding: 0.65rem 0.85rem;
-  border: 1.5px solid var(--line);
+  padding: 0.75rem 1rem;
+  border: 1.5px solid var(--line2);
   border-left: 3px solid transparent;
   border-radius: var(--radius);
-  font-size: 0.88rem;
-  background: var(--bg);
+  font-size: 0.92rem;
+  background: var(--surface);
   color: var(--text);
   transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease), border-left-color var(--duration) var(--ease);
+  font-weight: 500;
+}
+.access-panel input::placeholder {
+  color: var(--muted2);
+  font-weight: 400;
 }
 .access-panel input:focus {
   border-color: var(--accent);
@@ -1479,8 +1476,12 @@ a { color: var(--accent); text-decoration: none; }
   background: linear-gradient(90deg, var(--accent2), var(--accent));
 }
 [data-theme="dark"] .access-panel input {
-  background: var(--surface);
-  border-color: #334155;
+  background: #1a2332;
+  border-color: #374151;
+  color: #e2e8f0;
+}
+[data-theme="dark"] .access-panel input::placeholder {
+  color: #64748b;
 }
 [data-theme="dark"] .access-panel input:focus {
   border-color: var(--accent2);
@@ -1492,7 +1493,7 @@ a { color: var(--accent); text-decoration: none; }
   border-color: rgba(248, 113, 113, 0.2);
 }
 [data-theme="dark"] .access-panel label {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 [data-theme="dark"] .access-panel .eyebrow {
   color: var(--accent2);

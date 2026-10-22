@@ -23,7 +23,7 @@ export function Access({ session, onAccess }: { session: Session; onAccess: () =
     finally { setBusy(false); }
   }
   return <main className="access-shell">
-    <div className="access-brand"><span className="brand-mark" aria-hidden="true">C</span><span>CloudLocal</span></div>
+    <div className="access-brand"><img src="/cloudlocal.svg" alt="CloudLocal" className="brand-mark" /><span>CloudLocal</span></div>
     <section className="access-panel" aria-labelledby="access-title">
       <p className="eyebrow">Tu espacio en la red local</p>
       <h1 id="access-title">{setup ? 'Prepara tu nube' : 'Entra a tus archivos'}</h1>
