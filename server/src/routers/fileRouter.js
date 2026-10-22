@@ -13,7 +13,6 @@ function fileRouter(storage, maxUploadBytes) {
         if (!req.is('application/json')) return res.status(415).json({ message: 'JSON required' });
         json(req, res, next);
     }
-    // Blacklisted extensions for upload
     const forbiddenExts = new Set(['exe', 'bat', 'cmd', 'scr', 'vbs', 'js', 'ps1', 'reg']);
     let active = 0;
     const upload = multer({

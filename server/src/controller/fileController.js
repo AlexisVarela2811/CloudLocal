@@ -44,14 +44,11 @@ function controllers(storage) {
             const { from, to } = req.body || {};
             if (!from || typeof from !== 'string') throw Object.assign(new Error('Missing from path'), { status: 400 });
             if (!to || typeof to !== 'string') throw Object.assign(new Error('Missing to folder'), { status: 400 });
-            // Detect if source is a directory or file
             try {
                 await storage.list(from);
-                // It's a directory (even if empty)
                 const entry = await storage.moveFolder(from, to);
                 res.json({ success: true, entry });
             } catch (cause) {
-                // Not a directory — treat as file
                 const entry = await storage.move(from, to);
                 res.json({ success: true, entry });
             }

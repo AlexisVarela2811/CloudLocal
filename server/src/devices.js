@@ -100,9 +100,33 @@ function createDeviceHub({ storage, stateDir, isAdmin, now = Date.now, timeout =
     state.devices.push({ id, name, shares: shares.map(({ id, label }) => ({ id, label })), hash: createHash('sha256').update(token).digest('hex') }); save();
     res.json({ deviceId: id, token });
   }));
-  router.get('/', guarded((req, res) => { admin(req); res.json({ devices: state.devices.map(({ id, name, shares }) => ({ id, name, shares, online: now() - (seen.get(id) || 0) < 60000, lastSeen: seen.get(id) ? new Date(seen.get(id)).toISOString() : null })) }); }));
-  router.get('/offers', guarded((req, res) => { admin(req); res.json({ offers: state.offers.map(({ path: _path, ...o }) => o) }); }));
-  router.delete('/:id', guarded((req, res) => { owned(req); state.devices = state.devices.filter(d => d.id !== req.params.id); state.offers = state.offers.filter(o => o.deviceId !== req.params.id); seen.delete(req.params.id); notify(req.params.id); save(); for (const job of jobs.values()) if (job.deviceId === req.params.id) cancel(job, 404); res.json({ revoked: true }); }));
+  router.get('/', guarded((req, res) => {
+    admin(req);
+    res.json({
+      devices: state.devices.map(({ id, name, shares }) => ({
+        id,
+        name,
+        shares,
+        online: now() - (seen.get(id) || 0) < 60000,
+        lastSeen: seen.get(id) ? new Date(seen.get(id)).toISOString() : null
+      }))
+    });
+  }));
+  router.get('/offers', guarded((req, res) => {
+    admin(req);
+    res.json({ offers: state.offers.map(({ path: _path, ...o }) => o) });
+  }));
+  router.delete('/:id', guarded((req, res) => {
+    owned(req);
+    state.devices = state.devices.filter(d => d.id !== req.params.id);
+    state.offers = state.offers.filter(o => o.deviceId !== req.params.id);
+    seen.delete(req.params.id);
+    notify(req.params.id);
+    save();
+    for (const job of jobs.values())
+      if (job.deviceId === req.params.id) cancel(job, 404);
+    res.json({ revoked: true });
+  }));
   router.get('/:id/entries', guarded((req, res) => queue(req, res, 'list')));
   router.get('/:id/content', guarded((req, res) => queue(req, res, 'read')));
   router.post('/:id/offers', json, guarded(async (req, res) => {

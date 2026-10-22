@@ -329,7 +329,6 @@ function createStorage(root) {
     } catch (error) {
       if (error.code !== 'ENOENT') throw filesystemError(error);
     }
-    // Recursively copy folder and contents
     await fsp.mkdir(target);
     const entries = await fsp.readdir(source);
     for (const name of entries) {
@@ -401,7 +400,8 @@ function createStorage(root) {
     return { deleted: deletedIds.length };
   }
 
-  return { tempDir, list, mkdir, importFile, resolveFile, trash, listTrash, restore, usage, move, moveFolder, copy, copyFolder, permanentDelete, emptyTrash, validateExtension };
+  return { tempDir, list, mkdir, importFile, resolveFile, trash, listTrash, restore, usage,
+    move, moveFolder, copy, copyFolder, permanentDelete, emptyTrash, validateExtension };
 }
 
 // CRC32 lookup table

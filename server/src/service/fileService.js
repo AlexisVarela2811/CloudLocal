@@ -1,5 +1,10 @@
 const path = require('node:path');
-const mime = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', pdf: 'application/pdf', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', mp4: 'video/mp4', webm: 'video/webm' };
+const mime = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  gif: 'image/gif', webp: 'image/webp', avif: 'image/avif',
+  pdf: 'application/pdf', mp3: 'audio/mpeg', wav: 'audio/wav',
+  ogg: 'audio/ogg', mp4: 'video/mp4', webm: 'video/webm'
+};
 
 function filename(original) {
     // Windows clients send backslashes even when the server runs on POSIX.
