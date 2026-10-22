@@ -5,12 +5,11 @@ const esbuild = require('esbuild');
 const { inject } = require('postject');
 
 async function main() {
-  if (process.platform !== 'win32') throw new Error('This build produces only a Windows x64 executable');
+  if (process.platform !== 'win32') throw new Error('Windows x64 only');
   const root = path.resolve(__dirname, '../..');
-  const dist = path.join(root, 'client/dist');
+  const dist = path.join(root, 'client', 'dist');
   const output = path.join(__dirname, '../dist');
   const nodeExe = path.join(path.dirname(require.resolve('node-win-x64/package.json')), 'bin/node.exe');
-  if (!fs.existsSync(nodeExe)) throw new Error('Pinned Node 22.23.2 Windows binary missing');
 
   const assets = {};
   function collect(dir, base) {
@@ -20,41 +19,64 @@ async function main() {
       else if (item.isFile()) assets[path.relative(base, file).split(path.sep).join('/')] = file;
     }
   }
-  if (!fs.existsSync(path.join(dist, 'index.html'))) throw new Error('Build client/dist first');
-
-  // Collect client assets
+  if (!fs.existsSync(path.join(dist, 'index.html'))) {
+    throw new Error('Build client/dist first');
+  }
   collect(dist, dist);
 
-  // Collect tray-hook-win32-x64 package (binary + package.json)
-  // Must embed with path that doesn't start with @ (runtime.cjs regex rejects it)
+  // Collect tray-hook-bin
   try {
     const trayPkg = path.join(__dirname, '../node_modules/@phtdacosta/tray-hook-win32-x64');
     if (fs.existsSync(trayPkg)) {
       for (const item of fs.readdirSync(trayPkg)) {
         const file = path.join(trayPkg, item);
         if (fs.statSync(file).isFile()) {
-          // Rename: strip @phtdacosta/ prefix so path matches runtime.cjs regex
-          const safeName = `tray-hook-bin/${item}`;
-          assets[safeName] = file;
+          assets[`tray-hook-bin/${item}`] = file;
         }
       }
     }
-  } catch { /* tray binary not present; extraction at runtime will fail gracefully */ }
+  } catch { /* skip */ }
 
   fs.mkdirSync(output, { recursive: true });
   const bundle = path.join(output, 'server.cjs');
-  await esbuild.build({ entryPoints: [path.join(root, 'launcher/src/main.cjs')], outfile: bundle,
-    bundle: true, platform: 'node', format: 'cjs', target: 'node22',
-    define: { CLOUDLOCAL_ASSETS: JSON.stringify(Object.keys(assets)) } });
-  const config = path.join(output, 'sea.json');
-  const blob = path.join(output, 'sea.blob');
-  fs.writeFileSync(config, JSON.stringify({ main: bundle, output: blob, assets, disableExperimentalSEAWarning: true }));
-  execFileSync(nodeExe, ['--experimental-sea-config', config], { stdio: 'inherit' });
-  const exe = path.join(output, 'CloudLocal.exe');
-  fs.copyFileSync(nodeExe, exe);
-  await inject(exe, 'NODE_SEA_BLOB', fs.readFileSync(blob), {
+  await esbuild.build({
+    entryPoints: [path.join(root, 'launcher/src/main.cjs')],
+    outfile: bundle,
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    target: 'node22',
+    define: { CLOUDLOCAL_ASSETS: JSON.stringify(Object.keys(assets)) }
+  });
+
+  const seaConfig = path.join(output, 'sea.json');
+  const seaBlob = path.join(output, 'sea.blob');
+  fs.writeFileSync(seaConfig, JSON.stringify({
+    main: bundle, output: seaBlob, assets, disableExperimentalSEAWarning: true
+  }));
+  execFileSync(nodeExe, ['--experimental-sea-config', seaConfig], { stdio: 'inherit' });
+
+  const exePath = path.join(output, 'CloudLocal.exe');
+  fs.copyFileSync(nodeExe, exePath);
+  await inject(exePath, 'NODE_SEA_BLOB', fs.readFileSync(seaBlob), {
     sentinelFuse: 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2'
   });
-  console.log(`Built unsigned Windows x64 server: ${exe}`);
+
+  // Hide console window: change subsystem from CONSOLE (3) to GUI (2)
+  // node.exe has subsystem=3 (console). We change to 2 (windows/GUI) so no terminal appears.
+  const data = fs.readFileSync(exePath);
+  const peOffset = data.readUInt32LE(0x3c);
+  const optHeaderOffset = peOffset + 4 + 20; // PE sig + COFF header
+  const subsystemOffset = optHeaderOffset + 68; // PE32+ optional header field
+  const currentSubsys = data.readUInt16LE(subsystemOffset);
+  if (currentSubsys === 3) {
+    data.writeUInt16LE(2, subsystemOffset);
+    fs.writeFileSync(exePath, data);
+    console.log('Console hidden (subsystem 3→2)');
+  } else {
+    console.log(`Subsystem already ${currentSubsys}`);
+  }
+
+  console.log(`Built CloudLocal.exe: ${exePath}`);
 }
-main().catch(error => { console.error(error); process.exitCode = 1; });
+main().catch(err => { console.error(err); process.exitCode = 1; });
