@@ -791,8 +791,22 @@ a { color: var(--accent); text-decoration: none; }
 }
 .selection-bar button:hover { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
 .selection-bar button svg { width: 12px; height: 12px; }
-.btn-danger { color: var(--danger) !important; border-color: var(--line) !important; }
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .45rem .7rem;
+  border-radius: var(--radius-sm);
+  font-size: .8rem;
+  font-weight: 500;
+  color: var(--danger) !important;
+  border: 1px solid var(--line) !important;
+  background: var(--surface);
+  transition: background var(--duration) var(--ease), color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+  cursor: pointer;
+}
 .btn-danger:hover { background: var(--danger-bg) !important; color: var(--danger) !important; border-color: var(--danger) !important; }
+.btn-danger:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ── File table ────────────────────────────────────────── */
 .file-table {
