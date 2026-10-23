@@ -1292,7 +1292,8 @@ title="Vista previa"
                               )}
                               <button
                                 className="btn-action"
-                                title="Mover"
+                                aria-label={'Mover ' + entry.name}
+title="Mover"
                                 onClick={() => {
                                   setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.');
                                 }}
@@ -1321,7 +1322,8 @@ title="Eliminar"
                           {entry.type === 'directory' && (
                             <button
                               className="btn-action"
-                              title="Mover"
+                              aria-label={'Mover ' + entry.name}
+title="Mover"
                               onClick={() => {
                                 setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.');
                               }}

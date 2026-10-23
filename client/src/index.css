@@ -2216,6 +2216,10 @@ a {
   transition: border-color var(--duration) var(--ease);
 }
 
+.folder-form input:hover:not(:focus) {
+  border-color: var(--muted2);
+}
+
 .folder-form input:focus {
   border-color: var(--accent);
   outline: 3px solid var(--accent);
