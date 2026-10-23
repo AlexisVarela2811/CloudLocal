@@ -1032,6 +1032,7 @@ function App() {
                                     : setPreview(entry)
                                 }
                                 title="Vista previa"
+                                aria-label={'Vista previa de ' + entry.name}
                               >
                                 Vista previa
                               </button>
@@ -1041,6 +1042,7 @@ function App() {
                               download={entry.name}
                               className="btn-action"
                               title={`Descargar ${entry.name}`}
+                              aria-label={'Descargar ' + entry.name}
                             >
                               <FaDownload aria-hidden="true" />
                             </a>
@@ -1058,6 +1060,7 @@ function App() {
                                 }
                               }}
                               title={`Enviar ${entry.name} a papelera`}
+                              aria-label={'Enviar ' + entry.name + ' a papelera'}
                             >
                               <FaTrash aria-hidden="true" />
                             </button>
@@ -1189,13 +1192,13 @@ function App() {
                           {entry.type === 'directory' ? (
                             <FaFolder size={32} color="var(--accent)" />
                           ) : previewKind(entry.name) === 'pdf' ? (
-                            <FaFilePdf size={32} color="#dc2626" />
+                            <FaFilePdf size={32} color="var(--danger)" />
                           ) : previewKind(entry.name) === 'image' ? (
-                            <FaImage size={32} color="#059669" />
+                            <FaImage size={32} color="var(--state-done)" />
                           ) : previewKind(entry.name) === 'video' ? (
-                            <FaVideo size={32} color="#7c3aed" />
+                            <FaVideo size={32} color="var(--accent2)" />
                           ) : previewKind(entry.name) === 'audio' ? (
-                            <FaMusic size={32} color="#0891b2" />
+                            <FaMusic size={32} color="var(--muted2)" />
                           ) : (
                             <FaFile size={32} color="var(--muted)" />
                           )}
@@ -1279,7 +1282,7 @@ function App() {
                                   }
                                 >
                                   {previewKind(entry.name) === 'pdf' ? (
-                                    <FaFilePdf size={12} color="#dc2626" />
+                                    <FaFilePdf size={12} color="var(--danger)" />
                                   ) : (
                                     <FaEye size={12} />
                                   )}

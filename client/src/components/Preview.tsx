@@ -52,7 +52,6 @@ export function Preview({ entry, onClose }: { entry: Entry; onClose: () => void 
               width: 'auto',
               height: 'auto',
               objectFit: 'contain',
-              borderRadius: '6px',
               margin: '0 auto',
               cursor: 'zoom-out',
             }}
@@ -61,7 +60,7 @@ export function Preview({ entry, onClose }: { entry: Entry; onClose: () => void 
       ) : kind === 'audio' ? (
         <audio controls src={api.content(entry.path, true)} style={{ width: '100%', margin: '1rem 0' }} />
       ) : (
-        <video controls src={api.content(entry.path, true)} style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '6px' }} />
+        <video controls src={api.content(entry.path, true)} style={{ maxWidth: '100%', maxHeight: '70vh' }} />
       )}
     </dialog>
   );

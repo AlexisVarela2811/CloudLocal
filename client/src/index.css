@@ -2118,6 +2118,16 @@ a {
   max-width: 100%;
 }
 
+.rename-input:focus-visible {
+  border-color: var(--accent2);
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.rename-input:hover {
+  border-color: var(--accent2);
+}
+
 
 /* ── View toggle ────────────────────────────────────────── */
 .view-toggle {

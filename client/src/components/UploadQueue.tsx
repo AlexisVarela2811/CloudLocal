@@ -39,24 +39,24 @@ function stateLabel(s: UploadState): string {
 
 function stateBorderColor(s: UploadState): string {
   switch (s) {
-    case 'uploading': return 'var(--color-accent, #6366f1)';
-    case 'paused': return '#f59e0b';
-    case 'error': return '#ef4444';
-    case 'done': return '#22c55e';
-    case 'reconnecting': return 'var(--color-accent, #6366f1)';
-    case 'canceling': return 'var(--color-danger, #ef4444)';
+    case 'uploading': return 'var(--accent)';
+    case 'paused': return 'var(--state-paused)';
+    case 'error': return 'var(--danger)';
+    case 'done': return 'var(--state-done)';
+    case 'reconnecting': return 'var(--accent)';
+    case 'canceling': return 'var(--danger)';
     default: return 'transparent';
   }
 }
 
 function stateBarColor(s: UploadState): string {
   switch (s) {
-    case 'uploading': return 'var(--color-accent, #6366f1)';
-    case 'paused': return '#f59e0b';
-    case 'error': return '#ef4444';
-    case 'done': return '#22c55e';
-    case 'reconnecting': return 'var(--color-accent, #6366f1)';
-    default: return 'var(--color-accent, #6366f1)';
+    case 'uploading': return 'var(--accent)';
+    case 'paused': return 'var(--state-paused)';
+    case 'error': return 'var(--danger)';
+    case 'done': return 'var(--state-done)';
+    case 'reconnecting': return 'var(--accent)';
+    default: return 'var(--accent)';
   }
 }
 
