@@ -105,11 +105,8 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
             role="switch"
             aria-checked={darkMode}
             onClick={toggleDarkMode}
-            aria-labelledby="dark-mode-label"
           >
-            <span className="toggle-track">
-              <span className="toggle-thumb" />
-            </span>
+            <span className="toggle-track" />
             <span className="toggle-label-text">
               {darkMode ? 'Activado' : 'Desactivado'}
             </span>
@@ -118,7 +115,7 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
       </div>
 
       <h2>Carpeta de almacenamiento</h2>
-      
+
       {data.envOverride && (
         <div className="env-warning" role="alert">
           <p>La variable de entorno CLOUDLOCAL_DATA_DIR controla la carpeta actual. La configuración del navegador no la modificará.</p>
@@ -127,7 +124,7 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
 
       <div className="settings-row">
         <label htmlFor="storage-folder">Carpeta activa:</label>
-        <input id="storage-folder" value={data.activeFolderPath} readOnly />
+        <input id="storage-folder" value={data.activeFolderPath} readOnly className="input-readonly" />
       </div>
 
       {data.needsRestart && (
@@ -147,11 +144,13 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
                 onChange={e => setInput(e.target.value)}
                 placeholder="Ruta absoluta de la carpeta"
               />
-              <button onClick={apply} disabled={saving}>Guardar</button>
+              <button className="btn-primary" onClick={apply} disabled={saving}>
+                {saving ? 'Guardando…' : 'Guardar'}
+              </button>
             </div>
           </div>
           <div className="settings-row">
-            <button onClick={clear} disabled={clearing || !data.folderPath}>
+            <button className="btn-secondary" onClick={clear} disabled={clearing || !data.folderPath}>
               {clearing ? 'Restableciendo…' : 'Restablecer carpeta por defecto'}
             </button>
           </div>
@@ -164,9 +163,9 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
       <h2>Operaciones</h2>
       <div className="settings-row">
         <button
+          className="btn-danger"
           onClick={shutdownServer}
           disabled={shuttingDown}
-          className="btn-danger"
         >
           {shuttingDown ? 'Apagando…' : 'Detener Server'}
         </button>

@@ -451,6 +451,8 @@ function App() {
       else setError(failure(cause));
     }
   }
+
+  // ── Render: auth gate ─────────────────────────────────────────────
   if (!session)
     return <main className="auth-gate" role="status">
       {entryError ? <>
@@ -468,6 +470,8 @@ function App() {
         </button>
       </> : <p>Conectando con CloudLocal…</p>}
     </main>;
+
+  // ── Render: unauthenticated ───────────────────────────────────────
   if (!session.authenticated)
     return <>
       <Access
@@ -480,10 +484,13 @@ function App() {
       {notice && <p className="session-notice" role="status">{notice}</p>}
     </>;
 
+  // ── Render: authenticated app shell ──────────────────────────────
   const crumbs = breadcrumbs(folder);
+
   return (
     <div className="app-shell">
 
+      {/* ── Sidebar ──────────────────────────────────────────────────── */}
       <aside className={`sidebar${sidebarOpen ? ' sidebar-open' : ''}`} aria-label="Navegación principal">
         <button className="sidebar-close-btn" aria-label="Cerrar menú" onClick={() => setSidebarOpen(false)}>
           <FaTimes aria-hidden="true" />
@@ -497,20 +504,28 @@ function App() {
         <p className="sidebar-caption">ESPACIO LOCAL</p>
 
         <nav className="sidebar-nav" aria-label="Secciones">
-          <button className={`nav-item${view === 'files' ? ' active' : ''}`} onClick={() => { setView('files'); setSidebarOpen(false); }}>
+          <button
+            className={`nav-item${view === 'files' ? ' active' : ''}`}
+            onClick={() => { setView('files'); setSidebarOpen(false); }}
+          >
             <FaFolder aria-hidden="true" />
             <span>Archivos</span>
           </button>
-          <button className={`nav-item${view === 'trash' ? ' active' : ''}`} onClick={() => { setView('trash'); setSelected([]); setPreview(null); setSidebarOpen(false); }}>
+          <button
+            className={`nav-item${view === 'trash' ? ' active' : ''}`}
+            onClick={() => { setView('trash'); setSelected([]); setPreview(null); setSidebarOpen(false); }}
+          >
             <FaTrash aria-hidden="true" />
             <span>Papelera</span>
           </button>
-          <button className={`nav-item${view === 'settings' ? ' active' : ''}`} onClick={() => { setView('settings'); setSelected([]); setPreview(null); setSidebarOpen(false); }}>
+          <button
+            className={`nav-item${view === 'settings' ? ' active' : ''}`}
+            onClick={() => { setView('settings'); setSelected([]); setPreview(null); setSidebarOpen(false); }}
+          >
             <FaQuestionCircle aria-hidden="true" />
             <span>Configuración</span>
           </button>
         </nav>
-
 
         <div className="sidebar-status">
           <span className="status-dot" aria-hidden="true" />
@@ -546,18 +561,27 @@ function App() {
         <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
       )}
 
-      <main className="main-area">
+      {/* ── Main area ────────────────────────────────────────────────── */}
+      <div className="main-area">
 
+        {/* ── Topbar ─────────────────────────────────────────────────── */}
         <header className="topbar">
           <div className="topbar-left">
-            <button className="mobile-menu-btn" aria-label="Abrir menú" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(true)}>
+            <button
+              className="mobile-menu-btn"
+              aria-label="Abrir menú"
+              aria-expanded={sidebarOpen}
+              onClick={() => setSidebarOpen(true)}
+            >
               <FaBars aria-hidden="true" />
             </button>
+
             {folder !== '' && view === 'files' && (
               <button className="btn-back" onClick={() => go(folder.includes('/') ? folder.slice(0, folder.lastIndexOf('/')) : '')}>
                 <FaArrowLeft aria-hidden="true" /> Volver
               </button>
             )}
+
             <nav className="breadcrumb" aria-label="Ruta">
               {crumbs.map((crumb, index) => (
                 <span key={crumb.path}>
@@ -572,6 +596,7 @@ function App() {
                 </span>
               ))}
             </nav>
+
             <div>
               <h1 className="page-title">
                 {view === 'trash' ? 'Papelera' : view === 'settings' ? 'Configuración' : 'Mis archivos'}
@@ -579,6 +604,7 @@ function App() {
               {view === 'trash' && <p className="page-subtitle">Restaura o elimina permanentemente los archivos borrados.</p>}
             </div>
           </div>
+
           <div className="topbar-actions">
             {clipboard && (
               <button className="btn-icon" onClick={() => handlePaste(folder)} title="Pegar en esta carpeta">
@@ -586,6 +612,7 @@ function App() {
                 <span className="btn-label">Pegar</span>
               </button>
             )}
+
             {view === 'files' && (
               <div className="view-toggle" role="radiogroup" aria-label="Vista de archivos">
                 <button
@@ -597,9 +624,9 @@ function App() {
                   title="Vista de lista"
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <rect x="2" y="2" width="12" height="2" rx="0.5" fill="currentColor"/>
-                    <rect x="2" y="7" width="12" height="2" rx="0.5" fill="currentColor"/>
-                    <rect x="2" y="12" width="12" height="2" rx="0.5" fill="currentColor"/>
+                    <rect x="2" y="2" width="12" height="2" rx="0.5" fill="currentColor" />
+                    <rect x="2" y="7" width="12" height="2" rx="0.5" fill="currentColor" />
+                    <rect x="2" y="12" width="12" height="2" rx="0.5" fill="currentColor" />
                   </svg>
                 </button>
                 <button
@@ -611,29 +638,41 @@ function App() {
                   title="Vista de cuadrícula"
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none"/>
-                    <rect x="9" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none"/>
-                    <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none"/>
-                    <rect x="9" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+                    <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                    <rect x="9" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                    <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                    <rect x="9" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
                   </svg>
                 </button>
               </div>
             )}
-            <button className="btn-icon" onClick={() => setCreating(value => !value)} title="Nueva carpeta (Ctrl+Alt+N)" aria-keyshortcuts="Control+Alt+N">
+
+            <button
+              className="btn-icon"
+              onClick={() => setCreating(value => !value)}
+              title="Nueva carpeta (Ctrl+Alt+N)"
+              aria-keyshortcuts="Control+Alt+N"
+            >
               <FaPlus aria-hidden="true" />
               <span className="btn-label">Nueva carpeta</span>
               <span className="shortcut-hint">Ctrl+Alt+N</span>
             </button>
+
             <label className={`btn-upload button-like${uploadBusy ? ' busy' : ''}`} title="Elegir archivos para subir">
               <FaUpload aria-hidden="true" />
               <span className="btn-label">Elegir archivos</span>
               <input
-                type="file" multiple
-                onChange={e => { if (e.target.files?.length) selectFilePickerFiles(Array.from(e.target.files)); e.target.value = ''; }}
+                type="file"
+                multiple
+                onChange={e => {
+                  if (e.target.files?.length) selectFilePickerFiles(Array.from(e.target.files));
+                  e.target.value = '';
+                }}
                 disabled={uploadBusy}
                 aria-label="Elegir archivos para subir"
               />
             </label>
+
             <button
               className="btn-danger topbar-shutdown"
               disabled={shutdownState.shuttingDown || !shutdownState.active}
@@ -654,21 +693,34 @@ function App() {
               <FaPowerOff aria-hidden="true" />
               <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Detener Server'}</span>
             </button>
+
             <button className="btn-ghost" onClick={async () => {
-              if (saving) return; setSaving(true);
-              try { await api.logout(); setSession({ ...session, authenticated: false }); setSelected([]); setPreview(null); setNotice('Sesión cerrada.'); }
-              catch (cause: unknown) { if (expired(cause)) loseSession(); else setError(failure(cause)); }
-              finally { setSaving(false); }}
-            }>
+              if (saving) return;
+              setSaving(true);
+              try {
+                await api.logout();
+                setSession({ ...session, authenticated: false });
+                setSelected([]);
+                setPreview(null);
+                setNotice('Sesión cerrada.');
+              } catch (cause: unknown) {
+                if (expired(cause)) loseSession();
+                else setError(failure(cause));
+              } finally { setSaving(false); }
+            }}>
               <FaSignOutAlt aria-hidden="true" />
               <span className="btn-label">Cerrar sesión</span>
             </button>
           </div>
         </header>
 
+        {/* ── Workspace body ─────────────────────────────────────────── */}
         <div className="workspace-body">
+
+          {/* ── Files view ─────────────────────────────────────────────── */}
           {view === 'files' ? (
             <>
+              {/* Toolbar: search + refresh */}
               <div className="toolbar">
                 <div className="search-row">
                   <div className="search-wrapper">
@@ -680,15 +732,23 @@ function App() {
                       placeholder="Buscar en esta carpeta…"
                       aria-label="Buscar archivos"
                     />
-                    {query && <button className="btn-clear" onClick={() => setQuery('')} aria-label="Limpiar búsqueda">✕</button>}
+                    {query && (
+                      <button className="btn-clear" onClick={() => setQuery('')} aria-label="Limpiar búsqueda">✕</button>
+                    )}
                   </div>
-                  <button className="btn-icon btn-refresh" onClick={refresh} disabled={loading} title="Actualizar">
+                  <button
+                    className="btn-icon btn-refresh"
+                    onClick={refresh}
+                    disabled={loading}
+                    title="Actualizar"
+                  >
                     <FaSync aria-hidden="true" />
                     <span className="btn-label">Actualizar</span>
                   </button>
                 </div>
               </div>
 
+              {/* New folder form */}
               {creating && (
                 <form className="card folder-form" onSubmit={create}>
                   <h3>Nueva carpeta</h3>
@@ -698,7 +758,8 @@ function App() {
                       autoFocus
                       value={folderName}
                       onChange={e => setFolderName(e.target.value)}
-                      required maxLength={255}
+                      required
+                      maxLength={255}
                       placeholder="Nombre de la carpeta"
                     />
                     <button className="btn-primary" type="submit" disabled={saving || !folderName.trim()}>
@@ -711,6 +772,7 @@ function App() {
                 </form>
               )}
 
+              {/* Selection bar */}
               {selected.length > 0 && (
                 <div className="selection-bar" role="status">
                   <span>{selected.length} seleccionado{selected.length !== 1 ? 's' : ''}</span>
@@ -734,196 +796,290 @@ function App() {
                 </div>
               )}
 
+              {/* Upload card */}
               <section className="card card-upload" aria-label="Subir archivos">
                 <div className="card-content">
                   <h3>Subir archivos</h3>
-                  <p>{status ? `Sube archivos aquí. Tamaño máximo por archivo: ${bytes(status.maxUploadBytes)}.` : 'Sube tus archivos aquí.'}</p>
+                  <p>
+                    {status
+                      ? `Sube archivos aquí. Tamaño máximo por archivo: ${bytes(status.maxUploadBytes)}.`
+                      : 'Sube tus archivos aquí.'}
+                  </p>
                   <div className="upload-warning">
-                      <FaExclamationTriangle size={13} />
-                      <span>Algunos tipos de archivo no están permitidos</span>
-                    </div>
+                    <FaExclamationTriangle size={13} />
+                    <span>Algunos tipos de archivo no están permitidos</span>
+                  </div>
                   <div className="upload-actions-row">
                     <label className={`btn-accent button-like${uploadBusy ? ' busy' : ''}`}>
-                    <FaUpload aria-hidden="true" />
-                    <span>Elegir archivos</span>
-                    <input
-                      type="file" multiple
-                      onChange={e => { if (e.target.files?.length) selectFilePickerFiles(Array.from(e.target.files)); e.target.value = ''; }}
-                      disabled={uploadBusy}
-                      aria-label="Elegir archivos para subir"
-                    />
+                      <FaUpload aria-hidden="true" />
+                      <span>Elegir archivos</span>
+                      <input
+                        type="file"
+                        multiple
+                        onChange={e => {
+                          if (e.target.files?.length) selectFilePickerFiles(Array.from(e.target.files));
+                          e.target.value = '';
+                        }}
+                        disabled={uploadBusy}
+                        aria-label="Elegir archivos para subir"
+                      />
                     </label>
                   </div>
                 </div>
               </section>
 
+              {/* Drag & drop overlay */}
               <DragAndDrop onFilesDropped={enqueueFiles} folderPath={folder || 'inicio'} />
 
+              {/* ── File list view ───────────────────────────────────────── */}
               {fileView === 'list' ? (
-                <>
-                  <section className="card file-table" aria-label="Contenido de la carpeta"
-                    onDragEnter={e => { if (e.dataTransfer?.types?.includes('Files')) e.currentTarget.classList.add('drag-active'); }}
-                    onDragLeave={e => { const rel = e.relatedTarget as HTMLElement | null; if (rel instanceof HTMLElement && e.currentTarget.contains(rel)) return; e.currentTarget.classList.remove('drag-active'); }}
-                    onDragOver={e => { e.preventDefault(); }}
-                    onDrop={e => {
-                      e.preventDefault();
-                      e.currentTarget.classList.remove('drag-active');
-                      if (e.dataTransfer?.getData('application/x-cloudlocal-move')) return;
-                      const dt = e.dataTransfer;
-                      if (!dt?.files?.length) return;
-                      const files: File[] = [];
-                      for (let i = 0; i < dt.items?.length; i++) {
-                        const ent = dt.items[i].webkitGetAsEntry?.();
-                        if (ent?.isFile) { (ent as FileSystemFileEntry).file(f => files.push(f)); }
-                      }
-                      for (let j = 0; j < dt.files.length; j++) files.push(dt.files[j]);
-                      setTimeout(() => { if (files.length > 0) enqueueFiles(files, folder || 'inicio'); }, 50);
-                    }}
-                  >
-                    <div className="table-head">
-                      <div className="col-check">
-                        <input
-                          type="checkbox"
-                          aria-label="Seleccionar todo"
-                          checked={sorted.length > 0 && sorted.every(e => selected.includes(e.path))}
-                          onChange={e => {
-                            if (e.target.checked) {
-                              setSelected(sorted.map(en => en.path));
-                            } else {
-                              setSelected([]);
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="col-name">NOMBRE</div>
-                      <div className="col-details">DETALLES</div>
-                      <div className="col-actions">ACCIONES</div>
+                <section
+                  className="card file-table"
+                  aria-label="Contenido de la carpeta"
+                  onDragEnter={e => {
+                    if (e.dataTransfer?.types?.includes('Files')) e.currentTarget.classList.add('drag-active');
+                  }}
+                  onDragLeave={e => {
+                    const rel = e.relatedTarget as HTMLElement | null;
+                    if (rel instanceof HTMLElement && e.currentTarget.contains(rel)) return;
+                    e.currentTarget.classList.remove('drag-active');
+                  }}
+                  onDragOver={e => { e.preventDefault(); }}
+                  onDrop={e => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('drag-active');
+                    if (e.dataTransfer?.getData('application/x-cloudlocal-move')) return;
+                    const dt = e.dataTransfer;
+                    if (!dt?.files?.length) return;
+                    const files: File[] = [];
+                    for (let i = 0; i < dt.items?.length; i++) {
+                      const ent = dt.items[i].webkitGetAsEntry?.();
+                      if (ent?.isFile) { (ent as FileSystemFileEntry).file(f => files.push(f)); }
+                    }
+                    for (let j = 0; j < dt.files.length; j++) files.push(dt.files[j]);
+                    setTimeout(() => { if (files.length > 0) enqueueFiles(files, folder || 'inicio'); }, 50);
+                  }}
+                >
+                  <div className="table-head">
+                    <div className="col-check">
+                      <input
+                        type="checkbox"
+                        aria-label="Seleccionar todo"
+                        checked={sorted.length > 0 && sorted.every(e => selected.includes(e.path))}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setSelected(sorted.map(en => en.path));
+                          } else {
+                            setSelected([]);
+                          }
+                        }}
+                      />
                     </div>
+                    <div className="col-name">NOMBRE</div>
+                    <div className="col-details">DETALLES</div>
+                    <div className="col-actions">ACCIONES</div>
+                  </div>
 
-                    {loading && <div className="table-row loading-row"><div className="col-check" /><div className="col-name"><span className="placeholder">Cargando archivos…</span></div><div className="col-details" /><div className="col-actions" /></div>}
+                  {loading && (
+                    <div className="table-row loading-row">
+                      <div className="col-check" />
+                      <div className="col-name">
+                        <span className="placeholder">Cargando archivos…</span>
+                      </div>
+                      <div className="col-details" />
+                      <div className="col-actions" />
+                    </div>
+                  )}
 
-                    {error && !loading && (
-                      <div className="table-row error-row">
-                        <div className="col-check" />
-                        <div className="col-name">
-                          <div className="table-error">
-                            <p>{error}</p>
-                            <button onClick={refresh}>Reintentar</button>
-                          </div>
+                  {error && !loading && (
+                    <div className="table-row error-row">
+                      <div className="col-check" />
+                      <div className="col-name">
+                        <div className="table-error">
+                          <p>{error}</p>
+                          <button onClick={refresh}>Reintentar</button>
                         </div>
                       </div>
-                    )}
+                      <div className="col-details" />
+                      <div className="col-actions" />
+                    </div>
+                  )}
 
-                    {!loading && !error && sorted.length === 0 && (
-                      <div className="table-row table-row-full">
-                        <div className="table-cell-full">
-                          <span className="placeholder">{query ? 'No hay coincidencias en esta carpeta.' : 'Esta carpeta está vacía. Puedes crear una carpeta o subir archivos.'}</span>
-                        </div>
+                  {!loading && !error && sorted.length === 0 && (
+                    <div className="table-row table-row-full">
+                      <div className="table-cell-full">
+                        <span className="placeholder">
+                          {query
+                            ? 'No hay coincidencias en esta carpeta.'
+                            : 'Esta carpeta está vacía. Puedes crear una carpeta o subir archivos.'}
+                        </span>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {!loading && !error && sorted.map(entry => (
+                  {!loading && !error && sorted.map(entry => (
+                    <div
+                      key={entry.path}
+                      className={`table-row entry${dragOver === entry.path ? ' drag-target' : ''}`}
+                      draggable={entry.type === 'file' || entry.type === 'directory'}
+                      onDragStart={e => {
+                        e.stopPropagation();
+                        const dt = e.dataTransfer;
+                        dt.setData('application/x-cloudlocal-move', entry.path);
+                        dt.effectAllowed = 'move';
+                      }}
+                    >
+                      {/* Checkbox */}
+                      <div className="col-check">
+                        {entry.type === 'file' ? (
+                          <input
+                            type="checkbox"
+                            aria-label={`Seleccionar ${entry.name}`}
+                            checked={selected.includes(entry.path)}
+                            onChange={e =>
+                              setSelected(old =>
+                                e.target.checked
+                                  ? [...old, entry.path]
+                                  : old.filter(path => path !== entry.path)
+                              )
+                            }
+                          />
+                        ) : (
+                          <span className="checkbox-space" />
+                        )}
+                      </div>
+
+                      {/* Name */}
                       <div
-                        key={entry.path}
-                        className={`table-row entry${dragOver === entry.path ? ' drag-target' : ''}`}
-                        draggable={entry.type === 'file' || entry.type === 'directory'}
-                        onDragStart={e => {
+                        className="col-name"
+                        onDragEnter={e => {
+                          if (entry.type !== 'directory') return;
                           e.stopPropagation();
+                          setDragOver(entry.path);
+                        }}
+                        onDragLeave={() => {
+                          if (entry.type !== 'directory') return;
+                          setDragOver(null);
+                        }}
+                        onDragOver={e => {
+                          if (entry.type !== 'directory') return;
+                          e.preventDefault();
                           const dt = e.dataTransfer;
-                          dt.setData('application/x-cloudlocal-move', entry.path);
-                          dt.effectAllowed = 'move';
+                          dt.dropEffect = 'move';
+                        }}
+                        onDrop={e => {
+                          if (entry.type !== 'directory') return;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDragOver(null);
+                          const movedPath = e.dataTransfer?.getData('application/x-cloudlocal-move');
+                          if (movedPath) { movePath(movedPath, entry.path); }
                         }}
                       >
-                        <div className="col-check">
-                          {entry.type === 'file' ? (
-                            <input
-                              type="checkbox"
-                              aria-label={`Seleccionar ${entry.name}`}
-                              checked={selected.includes(entry.path)}
-                              onChange={e => setSelected(old => e.target.checked ? [...old, entry.path] : old.filter(path => path !== entry.path))}
-                            />
-                          ) : <span className="checkbox-space" />}
-                        </div>
+                        <span className="file-icon">
+                          {entry.type === 'directory' ? <FaFolder aria-hidden="true" /> : <FaFile aria-hidden="true" />}
+                        </span>
+                        {renaming?.path === entry.path ? (
+                          <input
+                            className="rename-input"
+                            value={renameInput}
+                            onChange={e => setRenameInput(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') submitRename();
+                              if (e.key === 'Escape') { setRenaming(null); setRenameInput(''); }
+                            }}
+                            onBlur={submitRename}
+                            autoFocus
+                            title={entry.name}
+                          />
+                        ) : entry.type === 'directory' ? (
+                          <button
+                            onClick={() => go(entry.path)}
+                            onDoubleClick={() => startRename(entry.path, entry.name)}
+                            className="file-name"
+                            title={entry.name}
+                          >
+                            {entry.name}
+                          </button>
+                        ) : (
+                          <span
+                            onDoubleClick={() => startRename(entry.path, entry.name)}
+                            className="file-name"
+                            title={entry.name}
+                          >
+                            {entry.name}
+                          </span>
+                        )}
+                      </div>
 
-                        <div className="col-name"
-                          onDragEnter={e => { if (entry.type !== 'directory') return; e.stopPropagation(); setDragOver(entry.path); }}
-                          onDragLeave={() => { if (entry.type !== 'directory') return; setDragOver(null); }}
-                          onDragOver={e => { if (entry.type !== 'directory') return; e.preventDefault(); const dt = e.dataTransfer; dt.dropEffect = 'move'; }}
-                          onDrop={e => {
-                            if (entry.type !== 'directory') return;
-                            e.preventDefault(); e.stopPropagation(); setDragOver(null);
-                            const movedPath = e.dataTransfer?.getData('application/x-cloudlocal-move');
-                            if (movedPath) { movePath(movedPath, entry.path); }
-                          }}
-                        >
-                          <span className="file-icon">{entry.type === 'directory' ? <FaFolder aria-hidden="true" /> : <FaFile aria-hidden="true" />}</span>
-                          {renaming?.path === entry.path ? (
-                            <input
-                              className="rename-input"
-                              value={renameInput}
-                              onChange={e => setRenameInput(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') { setRenaming(null); setRenameInput(''); } }}
-                              onBlur={submitRename}
-                              autoFocus
-                              title={entry.name}
-                            />
-                          ) : entry.type === 'directory' ? (
-                            <button onClick={() => go(entry.path)} onDoubleClick={() => startRename(entry.path, entry.name)} className="file-name" title={entry.name}>{entry.name}</button>
-                          ) : (
-                            <span onDoubleClick={() => startRename(entry.path, entry.name)} className="file-name" title={entry.name}>{entry.name}</span>
-                          )}
-                        </div>
+                      {/* Details */}
+                      <div className="col-details">
+                        {entry.type === 'file'
+                          ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}`
+                          : `Carpeta · ${date(entry.modifiedAt)}`}
+                      </div>
 
-                        <div className="col-details">
-                          {entry.type === 'file' ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}` : `Carpeta · ${date(entry.modifiedAt)}`}
-                        </div>
-
-                        <div className="col-actions">
-                          {entry.type === 'file' ? (
-                            <span className="action-group">
-                              {previewKind(entry.name) && (
-                                <button
-                                  className="btn-action"
-                                  onClick={() => previewKind(entry.name) === 'pdf'
+                      {/* Actions */}
+                      <div className="col-actions">
+                        {entry.type === 'file' ? (
+                          <span className="action-group">
+                            {previewKind(entry.name) && (
+                              <button
+                                className="btn-action"
+                                onClick={() =>
+                                  previewKind(entry.name) === 'pdf'
                                     ? window.open(api.content(entry.path, true), '_blank', 'noopener,noreferrer')
                                     : setPreview(entry)
-                                  }
-                                  title="Vista previa"
-                                >
-                                  Vista previa
-                                </button>
-                              )}
-                              <a
-                                href={api.content(entry.path)}
-                                download={entry.name}
-                                className="btn-action"
-                                title={`Descargar ${entry.name}`}
+                                }
+                                title="Vista previa"
                               >
-                                <FaDownload aria-hidden="true" />
-                              </a>
-                              <button
-                                className="btn-action btn-delete"
-                                disabled={saving}
-                                onClick={() => {
-                                  if (window.confirm(`¿Enviar «${entry.name}» a la papelera? Puedes restaurarlo después.`)) {
-                                    action(() => api.trashFile(entry.path), `«${entry.name}» está en la papelera.`).then(() => setSelected(old => old.filter(path => path !== entry.path)));
-                                  }
-                                }}
-                                title={`Enviar ${entry.name} a papelera`}
-                              >
-                                <FaTrash aria-hidden="true" />
+                                Vista previa
                               </button>
-                            </span>
-                          ) : null}
-                        </div>
+                            )}
+                            <a
+                              href={api.content(entry.path)}
+                              download={entry.name}
+                              className="btn-action"
+                              title={`Descargar ${entry.name}`}
+                            >
+                              <FaDownload aria-hidden="true" />
+                            </a>
+                            <button
+                              className="btn-action btn-delete"
+                              disabled={saving}
+                              onClick={() => {
+                                if (window.confirm(`¿Enviar «${entry.name}» a la papelera? Puedes restaurarlo después.`)) {
+                                  action(
+                                    () => api.trashFile(entry.path),
+                                    `«${entry.name}» está en la papelera.`
+                                  ).then(() =>
+                                    setSelected(old => old.filter(path => path !== entry.path))
+                                  );
+                                }
+                              }}
+                              title={`Enviar ${entry.name} a papelera`}
+                            >
+                              <FaTrash aria-hidden="true" />
+                            </button>
+                          </span>
+                        ) : null}
                       </div>
-                    ))}
-                  </section>
-                </>
+                    </div>
+                  ))}
+                </section>
               ) : (
-                <section className="card file-grid" aria-label="Contenido de la carpeta"
-                  onDragEnter={e => { if (e.dataTransfer?.types?.includes('Files')) e.currentTarget.classList.add('drag-active'); }}
-                  onDragLeave={e => { const rel = e.relatedTarget as HTMLElement | null; if (rel instanceof HTMLElement && e.currentTarget.contains(rel)) return; e.currentTarget.classList.remove('drag-active'); }}
+                /* ── File grid view ───────────────────────────────────────── */
+                <section
+                  className="card file-grid"
+                  aria-label="Contenido de la carpeta"
+                  onDragEnter={e => {
+                    if (e.dataTransfer?.types?.includes('Files')) e.currentTarget.classList.add('drag-active');
+                  }}
+                  onDragLeave={e => {
+                    const rel = e.relatedTarget as HTMLElement | null;
+                    if (rel instanceof HTMLElement && e.currentTarget.contains(rel)) return;
+                    e.currentTarget.classList.remove('drag-active');
+                  }}
                   onDragOver={e => { e.preventDefault(); }}
                   onDrop={e => {
                     e.preventDefault();
@@ -943,30 +1099,60 @@ function App() {
                   <div className="grid-container">
                     {loading && (
                       <div className="grid-item grid-loading">
-                        <div className="grid-icon"><FaSpinner className="fa-spin" size={24} /></div>
+                        <div className="grid-icon">
+                          <FaSpinner className="fa-spin" size={24} />
+                        </div>
                         <span className="placeholder">Cargando…</span>
                       </div>
                     )}
+
                     {error && (
                       <div className="grid-item grid-error">
-                        <div className="grid-icon"><FaExclamationTriangle size={24} /></div>
+                        <div className="grid-icon">
+                          <FaExclamationTriangle size={24} />
+                        </div>
                         <span className="error-text">{error}</span>
                         <button onClick={refresh} className="btn-action">Reintentar</button>
                       </div>
                     )}
+
                     {sorted.map(entry => (
                       <div
                         key={entry.path}
                         className={`grid-item entry${selected.includes(entry.path) ? ' selected' : ''}`}
-                        onClick={(e) => { e.stopPropagation(); setSelected(old => selected.includes(entry.path) ? old.filter(p => p !== entry.path) : [...old, entry.path]); }}
-                        onDoubleClick={() => entry.type === 'directory' ? go(entry.path) : startRename(entry.path, entry.name)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelected(old =>
+                            selected.includes(entry.path)
+                              ? old.filter(p => p !== entry.path)
+                              : [...old, entry.path]
+                          );
+                        }}
+                        onDoubleClick={() =>
+                          entry.type === 'directory'
+                            ? go(entry.path)
+                            : startRename(entry.path, entry.name)
+                        }
                         draggable={true}
-                        onDragStart={(e) => { e.dataTransfer.setData('application/x-cloudlocal-move', entry.path); e.dataTransfer.effectAllowed = 'move'; }}
-                        onDragOver={(e) => { if (entry.type === 'directory') { e.preventDefault(); e.stopPropagation(); setDragOver(entry.path); } }}
-                        onDragLeave={() => { if (entry.type === 'directory') setDragOver(null); }}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('application/x-cloudlocal-move', entry.path);
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDragOver={(e) => {
+                          if (entry.type === 'directory') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDragOver(entry.path);
+                          }
+                        }}
+                        onDragLeave={() => {
+                          if (entry.type === 'directory') setDragOver(null);
+                        }}
                         onDrop={(e) => {
                           if (entry.type !== 'directory') return;
-                          e.preventDefault(); e.stopPropagation(); setDragOver(null);
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDragOver(null);
                           const movedPath = e.dataTransfer?.getData('application/x-cloudlocal-move');
                           if (movedPath) { movePath(movedPath, entry.path); }
                         }}
@@ -974,9 +1160,32 @@ function App() {
                         role="listitem"
                         aria-label={`${entry.name}${entry.type === 'directory' ? ' carpeta' : ' archivo'}`}
                         aria-selected={selected.includes(entry.path)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(old => selected.includes(entry.path) ? old.filter(p => p !== entry.path) : [...old, entry.path]); } }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelected(old =>
+                              selected.includes(entry.path)
+                                ? old.filter(p => p !== entry.path)
+                                : [...old, entry.path]
+                            );
+                          }
+                        }}
                       >
-                        <div className="grid-icon" data-icon-type={entry.type === 'directory' ? 'folder' : previewKind(entry.name)} onClick={(e) => { e.stopPropagation(); entry.type === 'directory' ? go(entry.path) : startRename(entry.path, entry.name); }}>
+                        {/* Icon */}
+                        <div
+                          className="grid-icon"
+                          data-icon-type={
+                            entry.type === 'directory'
+                              ? 'folder'
+                              : previewKind(entry.name)
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            entry.type === 'directory'
+                              ? go(entry.path)
+                              : startRename(entry.path, entry.name);
+                          }}
+                        >
                           {entry.type === 'directory' ? (
                             <FaFolder size={32} color="var(--accent)" />
                           ) : previewKind(entry.name) === 'pdf' ? (
@@ -991,15 +1200,25 @@ function App() {
                             <FaFile size={32} color="var(--muted)" />
                           )}
                         </div>
+
+                        {/* Checkbox */}
                         <div className="grid-check">
                           <input
                             type="checkbox"
                             checked={selected.includes(entry.path)}
-                            onChange={() => setSelected(old => selected.includes(entry.path) ? old.filter(p => p !== entry.path) : [...old, entry.path])}
+                            onChange={() =>
+                              setSelected(old =>
+                                selected.includes(entry.path)
+                                  ? old.filter(p => p !== entry.path)
+                                  : [...old, entry.path]
+                              )
+                            }
                             aria-label={`Seleccionar ${entry.name}`}
                             onClick={e => e.stopPropagation()}
                           />
                         </div>
+
+                        {/* Name */}
                         <span className="grid-name" title={entry.path}>
                           {renaming?.path === entry.path ? (
                             <input
@@ -1013,48 +1232,109 @@ function App() {
                               }}
                               onClick={e => e.stopPropagation()}
                               className="rename-input"
-                              style={{ width: '100%', textAlign: 'center' }}
                             />
                           ) : (
-                            <button onClick={(e) => { e.stopPropagation(); startRename(entry.path, entry.name); }} title={entry.name}>{entry.name}</button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startRename(entry.path, entry.name);
+                              }}
+                              title={entry.name}
+                            >
+                              {entry.name}
+                            </button>
                           )}
                           {entry.type === 'directory' && <small>{bytes(entry.size)}</small>}
                         </span>
+
+                        {/* Actions */}
                         <div className="grid-actions">
                           {entry.type === 'file' && (
                             <>
-                              <button className="btn-action" title="Descargar" onClick={() => download([entry.path])}>
+                              <button
+                                className="btn-action"
+                                title="Descargar"
+                                onClick={() => download([entry.path])}
+                              >
                                 <FaDownload size={12} />
                               </button>
                               {previewKind(entry.name) && (
-                                <button className="btn-action" title="Vista previa" onClick={() => previewKind(entry.name) === 'pdf' ? window.open(api.content(entry.path, true), '_blank', 'noopener,noreferrer') : setPreview({ path: entry.path, name: entry.name, size: entry.size, modifiedAt: entry.modifiedAt, type: 'file' as const })}>
-                                  {previewKind(entry.name) === 'pdf' ? <FaFilePdf size={12} color="#dc2626" /> : <FaEye size={12} />}
+                                <button
+                                  className="btn-action"
+                                  title="Vista previa"
+                                  onClick={() =>
+                                    previewKind(entry.name) === 'pdf'
+                                      ? window.open(
+                                          api.content(entry.path, true),
+                                          '_blank',
+                                          'noopener,noreferrer'
+                                        )
+                                      : setPreview({
+                                          path: entry.path,
+                                          name: entry.name,
+                                          size: entry.size,
+                                          modifiedAt: entry.modifiedAt,
+                                          type: 'file' as const,
+                                        })
+                                  }
+                                >
+                                  {previewKind(entry.name) === 'pdf' ? (
+                                    <FaFilePdf size={12} color="#dc2626" />
+                                  ) : (
+                                    <FaEye size={12} />
+                                  )}
                                 </button>
                               )}
-                              <button className="btn-action" title="Mover" onClick={() => { setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.'); }}>
+                              <button
+                                className="btn-action"
+                                title="Mover"
+                                onClick={() => {
+                                  setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.');
+                                }}
+                              >
                                 <FaArrowsAlt size={12} />
                               </button>
-                              <button className="btn-action btn-delete" title="Eliminar" onClick={() => {
-                                if (window.confirm(`¿Enviar «${entry.name}» a la papelera? Puedes restaurarlo después.`)) {
-                                  action(() => api.trashFile(entry.path), `«${entry.name}» está en la papelera.`).then(() => setSelected(old => old.filter(path => path !== entry.path)));
-                                }
-                              }}>
+                              <button
+                                className="btn-action btn-delete"
+                                title="Eliminar"
+                                onClick={() => {
+                                  if (window.confirm(`¿Enviar «${entry.name}» a la papelera? Puedes restaurarlo después.`)) {
+                                    action(
+                                      () => api.trashFile(entry.path),
+                                      `«${entry.name}» está en la papelera.`
+                                    ).then(() =>
+                                      setSelected(old => old.filter(path => path !== entry.path))
+                                    );
+                                  }
+                                }}
+                              >
                                 <FaTrash size={12} />
                               </button>
                             </>
                           )}
                           {entry.type === 'directory' && (
-                            <button className="btn-action" title="Mover" onClick={() => { setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.'); }}>
+                            <button
+                              className="btn-action"
+                              title="Mover"
+                              onClick={() => {
+                                setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.');
+                              }}
+                            >
                               <FaArrowsAlt size={12} />
                             </button>
                           )}
                         </div>
                       </div>
                     ))}
+
                     {!loading && !error && sorted.length === 0 && (
                       <div className="grid-item grid-empty">
-                        <div className="grid-icon"><FaFolderOpen size={32} color="var(--muted2)" /></div>
-                        <span className="placeholder">Carpeta vacía — crea una carpeta o sube archivos</span>
+                        <div className="grid-icon">
+                          <FaFolderOpen size={32} color="var(--muted2)" />
+                        </div>
+                        <span className="placeholder">
+                          Carpeta vacía — crea una carpeta o sube archivos
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1062,6 +1342,7 @@ function App() {
               )}
             </>
           ) : view === 'trash' ? (
+            // ── Trash view ─────────────────────────────────────────────
             <>
               <button className="btn-back" onClick={() => setView('files')}>
                 <FaArrowLeft aria-hidden="true" /> Volver a archivos
@@ -1073,14 +1354,26 @@ function App() {
                   <div className="col-details">DETALLES</div>
                   <div className="col-actions">ACCIONES</div>
                 </div>
-                {loading && <div className="table-row table-row-full"><div className="table-cell-full"><span className="placeholder">Cargando papelera…</span></div></div>}
-                {error && (
-                  <div className="table-row table-row-full error-row">
+
+                {loading && (
+                  <div className="table-row table-row-full">
                     <div className="table-cell-full">
-                      <div className="table-error"><p>{error}</p><button onClick={refresh}>Reintentar</button></div>
+                      <span className="placeholder">Cargando papelera…</span>
                     </div>
                   </div>
                 )}
+
+                {error && (
+                  <div className="table-row table-row-full error-row">
+                    <div className="table-cell-full">
+                      <div className="table-error">
+                        <p>{error}</p>
+                        <button onClick={refresh}>Reintentar</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {!loading && !error && trash.length === 0 && (
                   <div className="table-row table-row-full">
                     <div className="table-cell-full">
@@ -1091,11 +1384,14 @@ function App() {
                     </div>
                   </div>
                 )}
+
                 {!loading && !error && trash.map(item => (
                   <div key={item.id} className="table-row">
                     <div className="col-check" />
                     <div className="col-name">
-                      <span className="file-icon"><FaFile aria-hidden="true" /></span>
+                      <span className="file-icon">
+                        <FaFile aria-hidden="true" />
+                      </span>
                       <span className="file-name" title={item.path}>
                         {item.name}
                         <small>Antes: {item.path}</small>
@@ -1106,7 +1402,9 @@ function App() {
                       <button
                         className="btn-action"
                         disabled={saving}
-                        onClick={() => action(() => api.restore(item.id), `«${item.name}» restaurado.`)}
+                        onClick={() =>
+                          action(() => api.restore(item.id), `«${item.name}» restaurado.`)
+                        }
                       >
                         <FaUndo aria-hidden="true" /> Restaurar
                       </button>
@@ -1116,12 +1414,18 @@ function App() {
               </section>
             </>
           ) : (
+            // ── Settings view ──────────────────────────────────────────
             <SettingsPanel onExpired={loseSession} />
           )}
 
-          {notice && <p className="notice-bar" role="status" aria-live="polite">{notice}</p>}
+          {/* Notice bar */}
+          {notice && (
+            <p className="notice-bar" role="status" aria-live="polite">
+              {notice}
+            </p>
+          )}
         </div>
-      </main>
+      </div>
 
       {/* Preview dialog */}
       {preview && <Preview entry={preview} onClose={() => setPreview(null)} />}

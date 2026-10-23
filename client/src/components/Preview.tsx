@@ -31,34 +31,13 @@ export function Preview({ entry, onClose }: { entry: Entry; onClose: () => void 
     >
       <header>
         <strong>{entry.name}</strong>
-        <button autoFocus onClick={onClose}>Cerrar vista previa</button>
+        <button autoFocus onClick={onClose}>✕</button>
       </header>
 
       {kind === 'image' ? (
-        <div
-          className="image-fullscreen-backdrop"
-          onClick={onClose}
-          style={{
-            position: 'relative',
-            display: 'block',
-            background: 'rgba(0, 0, 0, 0.55)',
-            borderRadius: 'var(--radius)',
-            padding: '1rem 0',
-            overflow: 'hidden',
-          }}
-        >
+        <div className="image-fullscreen-backdrop" onClick={onClose}>
           {!imgLoaded && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                height: '40vh',
-                color: 'var(--muted)',
-                fontSize: '.85rem',
-              }}
-            >
+            <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '2rem 0', fontSize: '.85rem' }}>
               Cargando imagen…
             </div>
           )}
@@ -68,21 +47,21 @@ export function Preview({ entry, onClose }: { entry: Entry; onClose: () => void 
             onLoad={() => setImgLoaded(true)}
             style={{
               display: imgLoaded ? 'block' : 'none',
-              maxWidth: '95vw',
+              maxWidth: '90vw',
               maxHeight: '80vh',
               width: 'auto',
               height: 'auto',
               objectFit: 'contain',
-              borderRadius: 'var(--radius-sm)',
+              borderRadius: '6px',
               margin: '0 auto',
               cursor: 'zoom-out',
             }}
           />
         </div>
       ) : kind === 'audio' ? (
-        <audio controls src={api.content(entry.path, true)} />
+        <audio controls src={api.content(entry.path, true)} style={{ width: '100%', margin: '1rem 0' }} />
       ) : (
-        <video controls src={api.content(entry.path, true)} />
+        <video controls src={api.content(entry.path, true)} style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '6px' }} />
       )}
     </dialog>
   );
