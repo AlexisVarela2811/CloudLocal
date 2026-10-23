@@ -1810,47 +1810,6 @@ a {
   cursor: not-allowed;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   Button variants (primary / secondary / danger)
-   ═══════════════════════════════════════════════════════════ */
-
-.btn-primary {
-  background: var(--accent);
-  color: #fff;
-  border: 1px solid var(--accent);
-}
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent2);
-  border-color: var(--accent2);
-  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
-}
-
-.btn-secondary {
-  background: #ffffff;
-  color: var(--muted);
-  border: 1px solid var(--line);
-}
-.btn-secondary:hover:not(:disabled) {
-  background: var(--accent-bg);
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.btn-danger {
-  background: #ffffff;
-  color: var(--danger);
-  border: 1px solid var(--danger);
-}
-.btn-danger:hover:not(:disabled) {
-  background: var(--danger);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
-}
-.btn-danger:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .settings-panel .notice {
   background: var(--accent-light);
   border-left: 3px solid var(--accent);
@@ -1927,7 +1886,7 @@ a {
 #dark-mode-toggle[aria-checked="true"] .toggle-track {
   background: var(--accent);
   border-color: var(--accent);
-  box-shadow: 0 0 12px rgba(79, 70, 229, 0.35), inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0 12px rgba(5, 150, 105, 0.35), inset 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 #dark-mode-toggle[aria-checked="true"] .toggle-track::before {
