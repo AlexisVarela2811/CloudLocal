@@ -67,6 +67,8 @@
   /* State colors */
   --state-paused:   #f59e0b;
   --state-done:     #10b981;
+  --success-bg:     rgba(16, 185, 129, 0.03);
+  --warning-bg:     rgba(245, 158, 11, 0.03);
 
   /* Warning panel (slightly more opaque) */
   --warning-bg-alt: rgba(245, 158, 11, 0.06);
@@ -95,8 +97,13 @@
   --muted2:    #64748b;
   --line:      #1e293b;
   --line2:     #162032;
+  --sidebar:           #0c1120;
+  --sidebar-text:      #94a3b8;
   --sidebar-hover: #1a2332;
   --sidebar-active: #222d3e;
+  --accent:            #6366f1;
+  --accent2:           #818cf8;
+  --danger:            #f87171;
   --accent-bg:   rgba(99, 102, 241, 0.12);
   --accent-light:rgba(99, 102, 241, 0.06);
   --accent-hover:rgba(99, 102, 241, 0.18);
@@ -118,6 +125,8 @@
   /* State colors */
   --state-paused:   #fbbf24;
   --state-done:     #34d399;
+  --success-bg:     rgba(52, 211, 153, 0.04);
+  --warning-bg:     rgba(245, 158, 11, 0.08);
 
   /* Warning panel */
   --warning-bg-alt: rgba(245, 158, 11, 0.1);
@@ -161,7 +170,7 @@ button, input, select, textarea {
 :focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius-xxs);
 }
 
 a {
@@ -686,7 +695,7 @@ a {
 .breadcrumb a {
   color: var(--accent);
   padding: 0.1rem 0.3rem;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   font-size: 0.75rem;
   font-weight: 500;
   transition: background var(--duration) var(--ease);
@@ -1237,7 +1246,7 @@ a {
   height: 16px;
   accent-color: var(--accent);
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
 }
 
 .checkbox-space {
@@ -1278,7 +1287,7 @@ a {
   color: var(--accent);
   font-weight: 500;
   padding: 0.1rem 0.3rem;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   font-size: inherit;
   transition: background var(--duration) var(--ease);
   border: none;
@@ -1424,7 +1433,7 @@ a {
   height: 14px;
   accent-color: var(--accent);
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
 }
 
 .grid-icon {
@@ -1607,14 +1616,14 @@ a {
 .upload-progress-bar {
   height: 4px;
   background: var(--line2);
-  border-radius: 2px;
+  border-radius: var(--radius-xxs);
   overflow: hidden;
   margin-top: 0.15rem;
 }
 
 .upload-progress-bar div {
   background: var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius-xxs);
   transition: width 0.3s ease;
 }
 
@@ -1956,7 +1965,7 @@ a {
 #dark-mode-toggle[aria-checked="true"] .toggle-track {
   background: var(--accent);
   border-color: var(--accent);
-  box-shadow: 0 0 12px rgba(5, 150, 105, 0.35), inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--accent-glow), inset 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 #dark-mode-toggle[aria-checked="true"] .toggle-track::before {
@@ -1977,7 +1986,7 @@ a {
   width: 44px;
   height: 24px;
   background: var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
   transition: background var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
   border: 1px solid var(--line2);
@@ -2289,7 +2298,7 @@ a {
 
 .btn-copy {
   padding: 0.3rem 0.5rem;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--accent);
   font-size: 0.8rem;
   transition: background var(--duration) var(--ease);
@@ -2802,7 +2811,7 @@ a {
 }
 
 [data-theme="dark"] .card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-sm-md);
 }
 
 [data-theme="dark"] .card-accent {
@@ -2895,7 +2904,7 @@ a {
 [data-theme="dark"] .selection-bar {
   background: var(--surface);
   border-color: var(--line);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lg);
 }
 
 [data-theme="dark"] .selection-bar button {
@@ -2967,7 +2976,7 @@ a {
 
 [data-theme="dark"] .grid-actions .btn-action.btn-delete:hover {
   background: var(--danger-bg);
-  color: #f87171;
+  color: var(--danger);
 }
 
 [data-theme="dark"] .btn-action {
@@ -2981,7 +2990,7 @@ a {
 
 [data-theme="dark"] .btn-action.btn-delete:hover {
   background: var(--danger-bg);
-  color: #f87171;
+  color: var(--danger);
 }
 
 [data-theme="dark"] .settings-panel {
