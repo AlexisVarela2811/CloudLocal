@@ -1256,7 +1256,8 @@ function App() {
                             <>
                               <button
                                 className="btn-action"
-                                title="Descargar"
+                                aria-label={'Descargar ' + entry.name}
+title="Descargar"
                                 onClick={() => download([entry.path])}
                               >
                                 <FaDownload size={12} />
@@ -1264,7 +1265,8 @@ function App() {
                               {previewKind(entry.name) && (
                                 <button
                                   className="btn-action"
-                                  title="Vista previa"
+                                  aria-label={'Vista previa de ' + entry.name}
+title="Vista previa"
                                   onClick={() =>
                                     previewKind(entry.name) === 'pdf'
                                       ? window.open(
@@ -1299,7 +1301,8 @@ function App() {
                               </button>
                               <button
                                 className="btn-action btn-delete"
-                                title="Eliminar"
+                                aria-label={'Eliminar ' + entry.name}
+title="Eliminar"
                                 onClick={() => {
                                   if (window.confirm(`¿Enviar «${entry.name}» a la papelera? Puedes restaurarlo después.`)) {
                                     action(
