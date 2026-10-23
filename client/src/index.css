@@ -1578,9 +1578,9 @@ a {
 
 /* State borders */
 .state-uploading { border-left: 3px solid var(--accent); }
-.state-paused    { border-left: 3px solid #f59e0b; background: rgba(245, 158, 11, 0.03); }
-.state-error     { border-left: 3px solid var(--danger); background: rgba(220, 38, 38, 0.03); }
-.state-done      { border-left: 3px solid #10b981; background: rgba(16, 185, 129, 0.03); }
+.state-paused    { border-left: 3px solid var(--state-paused); background: var(--warning-bg, rgba(245, 158, 11, 0.03)); }
+.state-error     { border-left: 3px solid var(--danger); background: var(--danger-bg, rgba(220, 38, 38, 0.03)); }
+.state-done      { border-left: 3px solid var(--state-done); background: var(--success-bg, rgba(16, 185, 129, 0.03)); }
 
 .upload-name {
   font-weight: 500;
@@ -2044,8 +2044,8 @@ a {
    ═══════════════════════════════════════════════════════════ */
 
 .env-warning {
-  background: rgba(245, 158, 11, 0.06);
-  border-left: 3px solid #f59e0b;
+  background: var(--warning-bg-alt, rgba(245, 158, 11, 0.06));
+  border-left: 3px solid var(--state-paused);
   padding: 0.65rem 1rem;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   margin-bottom: 1rem;
