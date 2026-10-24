@@ -126,7 +126,6 @@ test('standalone app refuses shutdown when no server lifecycle is attached', asy
     const server = app.listen(0, '127.0.0.1');
     await new Promise(resolve => server.once('listening', resolve));
     t.after(async () => {
-        app.locals.closeDeviceHub();
         server.closeAllConnections();
         await new Promise(resolve => server.close(resolve));
         await fs.rm(root, { recursive: true, force: true });

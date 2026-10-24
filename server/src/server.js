@@ -62,7 +62,6 @@ function start(options = {}) {
         if (stopped) return;
         stopped = true;
         console.log('CloudLocal: shutting down...');
-        app.locals.closeDeviceHub();
         server.close(() => {
             console.log('CloudLocal: stopped');
             if (shutdownCallback) shutdownCallback();
