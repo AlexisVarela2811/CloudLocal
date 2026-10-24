@@ -37,14 +37,26 @@ function stateLabel(s: UploadState): string {
   }
 }
 
-function stateClass(s: UploadState): string {
+function stateBorderColor(s: UploadState): string {
   switch (s) {
-    case 'uploading': return 'state-uploading';
-    case 'paused': return 'state-paused';
-    case 'error': return 'state-error';
-    case 'done': return 'state-done';
-    case 'reconnecting': return 'state-uploading';
-    default: return '';
+    case 'uploading': return 'var(--accent)';
+    case 'paused': return 'var(--state-paused)';
+    case 'error': return 'var(--danger)';
+    case 'done': return 'var(--state-done)';
+    case 'reconnecting': return 'var(--accent)';
+    case 'canceling': return 'var(--danger)';
+    default: return 'transparent';
+  }
+}
+
+function stateBarColor(s: UploadState): string {
+  switch (s) {
+    case 'uploading': return 'var(--accent)';
+    case 'paused': return 'var(--state-paused)';
+    case 'error': return 'var(--danger)';
+    case 'done': return 'var(--state-done)';
+    case 'reconnecting': return 'var(--accent)';
+    default: return 'var(--accent)';
   }
 }
 
@@ -153,61 +165,111 @@ export function UploadQueue({ folder, limit, onChange, onExpired }: UploadQueueP
   const hasRunning = items.some(i => i.state === 'uploading' || i.state === 'reconnecting');
 
   return (
-    <section className="upload-box" aria-label="Subir archivos">
+    <section className="upload-box">
       <div className="upload-heading">
         <div>
           <strong>Subir archivos</strong>
-          <p>Se guardan en esta carpeta, uno por uno. {limit ? `Máximo por archivo: ${bytes(limit)}.` : 'Consulta el límite en el servidor.'}</p>
+          <p className="muted">
+            Se guardan en esta carpeta, uno por uno.{' '}
+            {limit ? `Máximo por archivo: ${bytes(limit)}.` : 'Consulta el límite en el servidor.'}
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
+        <div className="upload-heading-actions">
           {hasRunning && (
-            <button type="button" className="btn-icon" onClick={() => { cancelAllRef.current = true; controllerRef.current?.abort(); }}>
+            <button type="button" className="btn-danger-outline btn-sm" onClick={() => { cancelAllRef.current = true; controllerRef.current?.abort(); }}>
               Cancelar todo
             </button>
           )}
-          <label className={`button-like ${hasRunning ? 'disabled' : ''}`}>
-            Elegir archivos
+          <label className={`upload-btn ${hasRunning ? 'disabled' : ''}`}>
+            <span>Elegir archivos</span>
             <input type="file" multiple onChange={select} disabled={hasRunning} aria-label="Elegir archivos para subir" />
           </label>
         </div>
       </div>
+
       {items.length > 0 && (
         <ul className="upload-results" aria-live="polite">
           {items.map(item => (
-            <li key={item.id} className={`upload-item ${stateClass(item.state)}`}>
-              <span className="upload-name" title={item.name}>{item.name}</span>
-              <span className="upload-status">{stateLabel(item.state)}</span>
-              {item.state === 'uploading' && <span className="upload-progress-text">{item.progress}%</span>}
-              {item.state === 'reconnecting' && <span className="upload-progress-text">{item.error}</span>}
-              {item.state === 'paused' && <span className="upload-progress-text">0%</span>}
+            <li
+              key={item.id}
+              className="upload-item"
+              style={{ borderLeftColor: stateBorderColor(item.state) }}
+            >
+              <div className="upload-item-info">
+                <span className="upload-name" title={item.name}>{item.name}</span>
+                <span className="upload-status">{stateLabel(item.state)}</span>
+              </div>
+
+              {item.state === 'uploading' && (
+                <span className="upload-progress-text">{item.progress}%</span>
+              )}
+              {item.state === 'reconnecting' && (
+                <span className="upload-progress-text">{item.error}</span>
+              )}
+              {item.state === 'paused' && (
+                <span className="upload-progress-text">0%</span>
+              )}
+
               {item.state !== 'waiting' && item.state !== 'canceling' && (
                 <div className="upload-progress-bar">
-                  <div style={{ width: `${item.progress}%`, height: '100%', transition: 'width .3s ease' }} />
+                  <div
+                    className="upload-progress-bar-fill"
+                    style={{
+                      width: `${item.progress}%`,
+                      height: '100%',
+                      backgroundColor: stateBarColor(item.state),
+                      transition: 'width .3s ease',
+                    }}
+                  />
                 </div>
               )}
+
               <div className="upload-actions">
                 {item.state === 'uploading' && (
-                  <button type="button" className="btn-action" onClick={() => pauseItem(item.id)} title="Pausar">
+                  <button
+                    type="button"
+                    className="btn-action"
+                    onClick={() => pauseItem(item.id)}
+                    title="Pausar"
+                  >
                     Pausar
                   </button>
                 )}
                 {item.state === 'paused' && (
-                  <button type="button" className="btn-action" onClick={() => resumeItem(item.id)} title="Reanudar">
+                  <button
+                    type="button"
+                    className="btn-action"
+                    onClick={() => resumeItem(item.id)}
+                    title="Reanudar"
+                  >
                     Reanudar
                   </button>
                 )}
                 {(item.state === 'error' || item.state === 'cancelled') && (
-                  <button type="button" className="btn-action" onClick={() => retryItem(item.id)} title="Reintentar">
+                  <button
+                    type="button"
+                    className="btn-action"
+                    onClick={() => retryItem(item.id)}
+                    title="Reintentar"
+                  >
                     Reintentar
                   </button>
                 )}
                 {item.state !== 'waiting' && item.state !== 'done' && item.state !== 'canceling' && (
-                  <button type="button" className="btn-action btn-delete" onClick={() => cancelItem(item.id)} title="Cancelar">
+                  <button
+                    type="button"
+                    className="btn-action btn-delete"
+                    onClick={() => cancelItem(item.id)}
+                    title="Cancelar"
+                  >
                     Cancelar
                   </button>
                 )}
               </div>
-              {item.error && item.state === 'error' && <span className="upload-error" title={item.error}>{item.error}</span>}
+
+              {item.error && item.state === 'error' && (
+                <span className="upload-error" title={item.error}>{item.error}</span>
+              )}
             </li>
           ))}
         </ul>
