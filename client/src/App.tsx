@@ -107,6 +107,9 @@ function App() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [recentMode, setRecentMode] = useState(false);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [moving, setMoving] = useState<{ path: string; type: 'file' | 'directory' }[] | null>(null);
+  const [moveTarget, setMoveTarget] = useState('');
+  const moveDialogRef = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState('');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [trash, setTrash] = useState<TrashEntry[]>([]);
@@ -147,6 +150,52 @@ function App() {
     refresh();
   }, [refresh]);
   useSSE(handleSseEvent);
+  useEffect(() => {
+    const dialog = moveDialogRef.current;
+    if (!dialog) return;
+    if (moving && !dialog.open) dialog.showModal();
+    if (!moving && dialog.open) dialog.close();
+  }, [moving]);
+
+  function openMove(paths: string[]) {
+    if (paths.length === 0) return;
+    const items = paths.map(path => {
+      const found = entries.find(entry => entry.path === path);
+      return { path, type: (found?.type ?? 'file') as 'file' | 'directory' };
+    });
+    setMoving(items);
+    setMoveTarget(folder);
+    setError('');
+  }
+
+  async function submitMove() {
+    if (!moving) return;
+    const target = moveTarget.trim();
+    const insideItself = moving.some(item => item.path === target || target.startsWith(item.path + '/'));
+    if (target !== '' && insideItself) {
+      setError('No puedes mover una carpeta dentro de sí misma.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      for (const item of moving) {
+        if (item.type === 'directory') await api.moveFolder(item.path, target);
+        else await api.moveFile(item.path, target);
+      }
+      const label = moving.length === 1 ? `«${moving[0].path.split('/').at(-1)}»` : `${moving.length} elementos`;
+      setNotice(`${label} movido${moving.length === 1 ? '' : 's'} a ${target || 'inicio'}.`);
+      setMoving(null);
+      setSelected([]);
+      refresh();
+    } catch (cause: unknown) {
+      if (expired(cause)) loseSession();
+      else setError(failure(cause));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const loseSession = useCallback(() => {
     setSession(previous => previous ? { ...previous, authenticated: false } : previous);
     setNotice('La sesión ha caducado. Entra otra vez para continuar.');
@@ -850,10 +899,7 @@ function App() {
                   <button onClick={() => download(selected)}>
                     <FaDownload aria-hidden="true" /> Descargar
                   </button>
-                  <button onClick={async () => {
-                    if (selected.length === 1) { await movePath(selected[0], ''); }
-                    else { setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.'); }
-                  }}>
+                  <button onClick={() => openMove(selected)}>
                     <FaFolder aria-hidden="true" /> Mover
                   </button>
                   <button className="btn-danger" onClick={() => setSelected([])}>
@@ -1379,9 +1425,7 @@ function App() {
                                 className="btn-action"
                                 aria-label={'Mover ' + entry.name}
                                 title="Mover"
-                                onClick={() => {
-                                  setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.');
-                                }}
+                                onClick={() => openMove(selected.includes(entry.path) ? selected : [entry.path])}
                               >
                                 <FaArrowsAlt size={12} />
                               </button>
@@ -1410,9 +1454,7 @@ function App() {
                                 className="btn-action"
                                 aria-label={'Mover ' + entry.name}
                                 title="Mover"
-                                onClick={() => {
-                                  setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.');
-                                }}
+                                onClick={() => openMove(selected.includes(entry.path) ? selected : [entry.path])}
                               >
                                 <FaArrowsAlt size={12} />
                               </button>
@@ -1611,6 +1653,55 @@ function App() {
         />
       )}
       {preview && <Preview entry={preview} onClose={() => setPreview(null)} />}
+
+      {moving && (
+        <dialog ref={moveDialogRef} className="move-dialog" aria-labelledby="move-title" onClose={() => setMoving(null)}>
+          <header>
+            <h2 id="move-title">Mover a otra carpeta</h2>
+            <button type="button" onClick={() => setMoving(null)} aria-label="Cancelar">✕</button>
+          </header>
+          <p className="move-hint">
+            {moving.length === 1
+              ? `«${moving[0].path.split('/').at(-1)}»`
+              : `${moving.length} elementos`} desde {folder || 'inicio'}.
+          </p>
+          <div className="move-options" role="group" aria-label="Carpetas disponibles">
+            <button
+              type="button"
+              className={moveTarget === '' ? 'active' : ''}
+              onClick={() => setMoveTarget('')}
+            >
+              Inicio
+            </button>
+            {entries
+              .filter(entry => entry.type === 'directory' && !moving.some(item => entry.path === item.path))
+              .map(entry => (
+                <button
+                  key={entry.path}
+                  type="button"
+                  className={moveTarget === entry.path ? 'active' : ''}
+                  onClick={() => setMoveTarget(entry.path)}
+                >
+                  {entry.name}
+                </button>
+              ))}
+          </div>
+          <label htmlFor="move-target">Ruta de destino</label>
+          <input
+            id="move-target"
+            value={moveTarget}
+            onChange={event => setMoveTarget(event.target.value)}
+            placeholder="Vacío para Inicio, por ejemplo Fotos/Islandia 2024"
+          />
+          {error && <p className="move-error" role="alert">{error}</p>}
+          <footer>
+            <button type="button" className="btn" onClick={() => setMoving(null)}>Cancelar</button>
+            <button type="button" className="btn primary" onClick={submitMove} disabled={saving}>
+              {saving ? 'Moviendo…' : 'Mover'}
+            </button>
+          </footer>
+        </dialog>
+      )}
     </div>
   );
 }
