@@ -108,84 +108,99 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
   if (!data) return <div className="settings-panel error"><p>No se pudo cargar la configuración.</p></div>;
 
   return (
-    <section className="settings-panel" aria-labelledby="settings-title">
-      <h2 id="settings-title">Apariencia</h2>
-
-      <div className="settings-row theme-row">
-        <span className="theme-label-text">Modo oscuro</span>
-        <div className="theme-switch">
-          <button
-            id="dark-mode-toggle"
-            type="button"
-            role="switch"
-            aria-checked={darkMode}
-            onClick={toggleDarkMode}
-          >
-            <span className="toggle-track" />
-            <span className="toggle-label-text">
-              {darkMode ? 'Activado' : 'Desactivado'}
-            </span>
-          </button>
+    <div className="settings-view">
+      <section className="settings-section" aria-labelledby="settings-appearance">
+        <div className="settings-section-head">
+          <h2 id="settings-appearance">Apariencia</h2>
+          <p className="settings-desc">Cómo se ve CloudLocal en este navegador.</p>
         </div>
-      </div>
-
-      <h2>Carpeta de almacenamiento</h2>
-
-      {data.envOverride && (
-        <div className="env-warning" role="alert">
-          <p>La variable de entorno CLOUDLOCAL_DATA_DIR controla la carpeta actual. La configuración del navegador no la modificará.</p>
-        </div>
-      )}
-
-      <div className="settings-row">
-        <label htmlFor="storage-folder">Carpeta activa:</label>
-        <input id="storage-folder" value={data.activeFolderPath} readOnly className="input-readonly" />
-      </div>
-
-      {data.needsRestart && (
-        <div className="restart-banner" role="status">
-          <p>Cambio pendiente: la carpeta se aplicará al reiniciar el servidor.</p>
-        </div>
-      )}
-
-      {!data.envOverride && (
-        <>
-          <div className="settings-row">
-            <label htmlFor="new-folder">Cambiar carpeta:</label>
-            <div className="folder-input">
-              <input
-                id="new-folder"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder="Ruta absoluta de la carpeta"
-              />
-              <button className="btn-primary" onClick={apply} disabled={saving}>
-                {saving ? 'Guardando…' : 'Guardar'}
-              </button>
-            </div>
+        <div className="settings-row">
+          <div className="settings-row-text">
+            <span className="settings-label">Modo oscuro</span>
+            <span className="settings-hint">Se guarda en este equipo y sigue al botón de tema de la barra lateral.</span>
           </div>
-          <div className="settings-row">
+          <div className="theme-switch">
+            <button
+              id="dark-mode-toggle"
+              type="button"
+              role="switch"
+              aria-checked={darkMode}
+              onClick={toggleDarkMode}
+            >
+              <span className="toggle-track" />
+              <span className="toggle-label-text">
+                {darkMode ? 'Activado' : 'Desactivado'}
+              </span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="settings-section" aria-labelledby="settings-storage">
+        <div className="settings-section-head">
+          <h2 id="settings-storage">Carpeta de almacenamiento</h2>
+          <p className="settings-desc">Dónde viven tus archivos en el ordenador servidor.</p>
+        </div>
+
+        {data.envOverride && (
+          <div className="env-warning" role="alert">
+            <p>La variable de entorno CLOUDLOCAL_DATA_DIR controla la carpeta actual. La configuración del navegador no la modificará.</p>
+          </div>
+        )}
+
+        <div className="settings-row">
+          <span className="settings-label">Carpeta activa</span>
+          <input id="storage-folder" value={data.activeFolderPath} readOnly className="settings-value" />
+        </div>
+
+        {data.needsRestart && (
+          <div className="restart-banner" role="status">
+            <p>Cambio pendiente: la carpeta se aplicará al reiniciar el servidor.</p>
+          </div>
+        )}
+
+        {!data.envOverride && (
+          <>
+            <div className="settings-field">
+              <label htmlFor="new-folder">Cambiar carpeta</label>
+              <div className="settings-inline">
+                <input
+                  id="new-folder"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  placeholder="Ruta absoluta de la carpeta"
+                />
+                <button className="btn-primary" onClick={apply} disabled={saving}>
+                  {saving ? 'Guardando…' : 'Guardar'}
+                </button>
+              </div>
+            </div>
             <button className="btn-secondary" onClick={clear} disabled={clearing || !data.folderPath}>
               {clearing ? 'Restableciendo…' : 'Restablecer carpeta por defecto'}
             </button>
+          </>
+        )}
+
+        {message && <p className="settings-notice" role="status">{message}</p>}
+        {error && <p className="settings-error" role="alert">{error}</p>}
+      </section>
+
+      <section className="settings-section settings-danger" aria-labelledby="settings-server">
+        <div className="settings-section-head">
+          <h2 id="settings-server">Servidor</h2>
+          <p className="settings-desc">Detener el servidor cierra CloudLocal para todos los equipos hasta que lo vuelvas a abrir.</p>
+        </div>
+        <div className="settings-row">
+          <div className="settings-row-text">
+            <span className="settings-label">Apagar el servidor</span>
+            <span className="settings-hint">Los archivos permanecen en el disco del equipo servidor.</span>
           </div>
-        </>
-      )}
-
-      {message && <p className="notice" role="status">{message}</p>}
-      {error && <p className="error" role="alert">{error}</p>}
-
-      <h2>Operaciones</h2>
-      <div className="settings-row">
-        <button
-          className="btn-danger"
-          onClick={shutdownServer}
-          disabled={shuttingDown}
-        >
-          {shuttingDown ? 'Apagando…' : 'Detener Server'}
-        </button>
-      </div>
-      {shutdownMessage && <p className="notice" role="status">{shutdownMessage}</p>}
-    </section>
+          <button className="btn-danger" onClick={shutdownServer} disabled={shuttingDown}>
+            {shuttingDown ? 'Apagando…' : 'Apagar'}
+          </button>
+        </div>
+        {shutdownMessage && <p className="settings-notice" role="status">{shutdownMessage}</p>}
+      </section>
+    </div>
   );
 }

@@ -728,6 +728,7 @@ function App() {
             </div>
           </div>
 
+          {view === 'files' && (
           <div className="topbar-actions">
             {clipboard && (
               <button className="btn-icon" onClick={() => handlePaste(folder)} title="Pegar en esta carpeta">
@@ -787,6 +788,7 @@ function App() {
             </button>
 
           </div>
+          )}
         </header>
         <div className="workspace-body">
           {view === 'files' ? (

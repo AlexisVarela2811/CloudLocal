@@ -2549,3 +2549,80 @@ a { color: var(--accent); text-decoration: none; }
   gap: .4rem;
   margin-top: .95rem;
 }
+
+.settings-view {
+  display: grid;
+  gap: .9rem;
+  max-width: 880px;
+}
+.settings-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem 1.15rem 1.1rem;
+}
+.settings-section-head { margin-bottom: .85rem; }
+.settings-section-head h2 {
+  margin: 0 0 .2rem;
+  font-size: .92rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.settings-desc { margin: 0; font-size: .76rem; color: var(--muted2); }
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: .55rem 0;
+}
+.settings-row + .settings-row { border-top: 1px solid var(--line2); }
+.settings-row-text { display: flex; flex-direction: column; gap: .12rem; min-width: 0; }
+.settings-label { font-size: .8rem; font-weight: 600; }
+.settings-hint { font-size: .71rem; color: var(--muted2); }
+.settings-value {
+  flex: 1 1 320px;
+  min-width: 0;
+  padding: .45rem .65rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--muted);
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-size: .74rem;
+}
+.settings-field { margin: .75rem 0 .6rem; }
+.settings-field label { display: block; font-size: .76rem; font-weight: 600; margin-bottom: .3rem; }
+.settings-inline { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+.settings-inline input {
+  flex: 1 1 240px;
+  padding: .5rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: .8rem;
+  font-family: inherit;
+}
+.settings-inline input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+.settings-notice {
+  margin: .7rem 0 0;
+  padding: .5rem .7rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent-light);
+  border: 1px solid rgba(13, 148, 136, .12);
+  color: var(--accent);
+  font-size: .75rem;
+}
+.settings-error {
+  margin: .7rem 0 0;
+  padding: .5rem .7rem;
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  border: 1px solid rgba(220, 38, 38, .12);
+  color: var(--danger);
+  font-size: .75rem;
+}
+.settings-danger .settings-label { color: var(--danger); }
