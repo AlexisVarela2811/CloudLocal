@@ -26,7 +26,10 @@ test('new folder keyboard shortcut', async t => {
     else if (path === '/api/files') body = { entries: [{ name: 'sample.txt', path: 'sample.txt', type: 'file', size: 1, modifiedAt: '2026-01-01T00:00:00Z' }] };
     else if (path === '/api/trash') body = { entries: [] };
     else if (path === '/api/status') body = { storage: { free: 100, total: 200 }, urls: [], maxUploadBytes: 1024 };
-    else throw new Error(`Unexpected API request: ${path}`);
+    else if (path === '/api/events') {
+      await route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' });
+      return;
+    } else throw new Error(`Unexpected API request: ${path}`);
     await route.fulfill({ json: body });
   });
   async function reset() {
