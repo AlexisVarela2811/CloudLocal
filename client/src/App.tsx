@@ -840,7 +840,8 @@ function App() {
                       />
                     </div>
                     <div className="col-name">NOMBRE</div>
-                    <div className="col-details">DETALLES</div>
+                    <div className="col-modified">MODIFICADO</div>
+                    <div className="col-size">TAMAÑO</div>
                     <div className="col-actions">ACCIONES</div>
                   </div>
 
@@ -850,7 +851,8 @@ function App() {
                       <div className="col-name">
                         <span className="placeholder">Cargando archivos…</span>
                       </div>
-                      <div className="col-details" />
+                      <div className="col-modified" />
+                      <div className="col-size" />
                       <div className="col-actions" />
                     </div>
                   )}
@@ -864,7 +866,8 @@ function App() {
                           <button onClick={refresh}>Reintentar</button>
                         </div>
                       </div>
-                      <div className="col-details" />
+                      <div className="col-modified" />
+                      <div className="col-size" />
                       <div className="col-actions" />
                     </div>
                   )}
@@ -976,13 +979,8 @@ function App() {
                           </span>
                         )}
                       </div>
-                      <div className="col-details" title={entry.type === 'file'
-                          ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}`
-                          : `Carpeta · ${date(entry.modifiedAt)}`}>
-                        {entry.type === 'file'
-                          ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}`
-                          : `Carpeta · ${date(entry.modifiedAt)}`}
-                      </div>
+                                            <div className="col-modified">{date(entry.modifiedAt)}</div>
+                      <div className="col-size">{entry.type === 'file' ? bytes(entry.size) : '—'}</div>
                       <div className="col-actions">
                         {entry.type === 'file' ? (
                           <span className="action-group">
@@ -1154,6 +1152,9 @@ function App() {
                           {entry.type === 'directory'
                             ? <FaFolder aria-hidden="true" />
                             : <FileVisual path={entry.path} contentUrl={api.content(entry.path, true)} view={fileView} />}
+                          {entry.type === 'directory' && (
+                            <span className="grid-count" aria-hidden="true">{entry.children ?? 0}</span>
+                          )}
                         </div>
                         <div className="grid-check">
                           <input
@@ -1195,8 +1196,10 @@ function App() {
                               {entry.name}
                             </button>
                           )}
-                          {entry.type === 'directory' && <small>{bytes(entry.size)}</small>}
                         </span>
+                        {entry.type === 'directory' && (
+                          <small className="grid-meta">{entry.children ?? 0} elementos</small>
+                        )}
                         <div className="grid-actions">
                           {entry.type === 'file' && (
                             <>
@@ -1304,7 +1307,8 @@ function App() {
                 <div className="table-head">
                   <div className="col-check" />
                   <div className="col-name">NOMBRE</div>
-                  <div className="col-details">DETALLES</div>
+                  <div className="col-modified">MODIFICADO</div>
+                  <div className="col-size">TAMAÑO</div>
                   <div className="col-actions">ACCIONES</div>
                 </div>
 
@@ -1352,7 +1356,8 @@ function App() {
                         <small>Antes: {item.path}</small>
                       </span>
                     </div>
-                    <div className="col-details">Eliminado: {date(item.deletedAt)}</div>
+                    <div className="col-modified">{date(item.deletedAt)}</div>
+                    <div className="col-size" />
                     <div className="col-actions">
                       <button
                         className="btn-action"

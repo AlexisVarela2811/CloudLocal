@@ -87,11 +87,14 @@ GET /api/files?folder=/path/to/dir&q=search
       "name": "fotos2025",
       "type": "directory",
       "size": 0,
+      "children": 42,
       "modifiedAt": "2025-01-15T10:30:00Z"
     }
   ]
 }
 ```
+
+Las carpetas incluyen `children`, el número de elementos que contienen. Los archivos no llevan ese campo.
 
 ### Crear carpeta
 
