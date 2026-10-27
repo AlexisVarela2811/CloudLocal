@@ -154,6 +154,8 @@ POST /api/files/moveFolder
 }
 ```
 
+Para mover a una carpeta existente sin interpretar el destino como un nuevo nombre, añade `"mode": "into"` al cuerpo de cualquiera de las dos solicitudes. `to: ""` indica Inicio. Si la carpeta de destino no existe, la operación falla sin renombrar el origen. Sin `mode`, `/api/files/move` conserva su comportamiento anterior de movimiento o cambio de nombre.
+
 ### Eliminar a papelera
 
 ```

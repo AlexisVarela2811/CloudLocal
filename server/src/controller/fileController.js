@@ -3,6 +3,14 @@ const { buildZipArchive } = require('../storage');
 const fsp = require('node:fs/promises');
 
 const handle = fn => (req, res, next) => Promise.resolve().then(() => fn(req, res)).catch(next);
+const MOVE_MODES = new Set(['into']);
+function moveMode(body) {
+    if (body.mode === undefined) return undefined;
+    if (typeof body.mode !== 'string' || !MOVE_MODES.has(body.mode)) {
+        throw Object.assign(new Error('Invalid move mode'), { status: 400 });
+    }
+    return body.mode;
+}
 function controllers(storage, sse) {
     async function send(req, res, relative, inline = false) {
         const absolute = await storage.resolveFile(relative);
@@ -53,8 +61,22 @@ function controllers(storage, sse) {
         move: handle(async (req, res) => {
             const { from, to } = req.body || {};
             if (!from || typeof from !== 'string') throw Object.assign(new Error('Missing from path'), { status: 400 });
-            if (!to || typeof to !== 'string') throw Object.assign(new Error('Missing to folder'), { status: 400 });
+            if (typeof to !== 'string') throw Object.assign(new Error('Missing to folder'), { status: 400 });
+            const mode = moveMode(req.body || {});
             let entry;
+            if (mode === 'into') {
+                await storage.list(to);
+                try {
+                    await storage.list(from);
+                    entry = await storage.moveFolder(from, to);
+                } catch (cause) {
+                    if (cause.status === 409) throw cause;
+                    entry = await storage.move(from, to);
+                }
+                sse.emit('move', { from, to, path: entry.path, name: entry.name });
+                res.json({ success: true, entry });
+                return;
+            }
             try {
                 await storage.list(to);
                 try {
@@ -76,7 +98,9 @@ function controllers(storage, sse) {
         moveFolder: handle(async (req, res) => {
             const { from, to } = req.body || {};
             if (!from || typeof from !== 'string') throw Object.assign(new Error('Missing from path'), { status: 400 });
-            if (!to || typeof to !== 'string') throw Object.assign(new Error('Missing to folder'), { status: 400 });
+            if (typeof to !== 'string') throw Object.assign(new Error('Missing to folder'), { status: 400 });
+            const mode = moveMode(req.body || {});
+            if (mode === 'into') await storage.list(to);
             const entry = await storage.moveFolder(from, to);
             sse.emit('move', { from, to, path: entry.path, name: entry.name });
             res.json({ success: true, entry });

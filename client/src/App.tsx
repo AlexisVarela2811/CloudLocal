@@ -109,7 +109,11 @@ function App() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [moving, setMoving] = useState<{ path: string; type: 'file' | 'directory' }[] | null>(null);
   const [moveTarget, setMoveTarget] = useState('');
+  const [moveEntries, setMoveEntries] = useState<Entry[]>([]);
+  const [moveLoading, setMoveLoading] = useState(false);
+  const [moveBrowseError, setMoveBrowseError] = useState('');
   const moveDialogRef = useRef<HTMLDialogElement>(null);
+  const moveListRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [trash, setTrash] = useState<TrashEntry[]>([]);
@@ -165,11 +169,33 @@ function App() {
     });
     setMoving(items);
     setMoveTarget(folder);
+    setMoveEntries([]);
+    setMoveBrowseError('');
     setError('');
+  }
+
+  // The destination is the folder currently on screen in the dialog.
+  const moveCrumbs = moveTarget.split('/').filter(Boolean);
+  const moveParent = moveCrumbs.slice(0, -1).join('/');
+  const moveFolders = moveEntries.filter(entry => entry.type === 'directory');
+  // A folder cannot be sent into itself or into any of its own subfolders.
+  function isMoveBlocked(path: string): boolean {
+    return (moving ?? []).some(item =>
+      item.type === 'directory' && (path === item.path || path.startsWith(item.path + '/'))
+    );
   }
 
   async function submitMove() {
     if (!moving) return;
+    // The destination must be a folder we actually loaded.
+    if (moveLoading) {
+      setError('Espera a que termine de cargarse la carpeta de destino.');
+      return;
+    }
+    if (moveBrowseError) {
+      setError('No se pudo leer la carpeta de destino. Elige otra carpeta.');
+      return;
+    }
     const target = moveTarget.trim();
     const insideItself = moving.some(item => item.path === target || target.startsWith(item.path + '/'));
     if (target !== '' && insideItself) {
@@ -180,11 +206,11 @@ function App() {
     setError('');
     try {
       for (const item of moving) {
-        if (item.type === 'directory') await api.moveFolder(item.path, target);
-        else await api.moveFile(item.path, target);
+        if (item.type === 'directory') await api.moveFolderInto(item.path, target);
+        else await api.moveFileInto(item.path, target);
       }
       const label = moving.length === 1 ? `«${moving[0].path.split('/').at(-1)}»` : `${moving.length} elementos`;
-      setNotice(`${label} movido${moving.length === 1 ? '' : 's'} a ${target || 'inicio'}.`);
+      setNotice(`${label} movido${moving.length === 1 ? '' : 's'} a ${target || 'Inicio'}.`);
       setMoving(null);
       setSelected([]);
       refresh();
@@ -335,6 +361,28 @@ function App() {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [session?.authenticated, folder, query, view, revision, loseSession]);
+  // Browse the real folder tree while the move dialog is open.
+  useEffect(() => {
+    if (!moving) return;
+    let active = true;
+    setMoveLoading(true);
+    setMoveBrowseError('');
+    api.files(moveTarget, '')
+      .then(list => { if (active) setMoveEntries(list); })
+      .catch(cause => {
+        if (!active) return;
+        if (expired(cause)) loseSession();
+        else setMoveBrowseError(failure(cause));
+      })
+      .finally(() => {
+        if (!active) return;
+        setMoveLoading(false);
+        // Keep keyboard users inside the dialog after the folder list changes.
+        moveListRef.current?.focus({ preventScroll: true });
+      });
+    return () => { active = false; };
+  }, [moving, moveTarget, loseSession]);
+
   useEffect(() => {
     if (!session?.authenticated) return;
     let active = true;
@@ -1665,42 +1713,98 @@ function App() {
           <p className="move-hint">
             {moving.length === 1
               ? `«${moving[0].path.split('/').at(-1)}»`
-              : `${moving.length} elementos`} desde {folder || 'inicio'}.
+              : `${moving.length} elementos`} desde {folder || 'Inicio'}. Elige la carpeta de destino.
           </p>
-          <div className="move-options" role="group" aria-label="Carpetas disponibles">
+          <div className="move-browser">
             <button
               type="button"
-              className={moveTarget === '' ? 'active' : ''}
-              onClick={() => setMoveTarget('')}
+              className="move-up"
+              onClick={() => setMoveTarget(moveParent)}
+              disabled={moveTarget === ''}
+              aria-label="Subir un nivel"
+              title="Subir un nivel"
             >
-              Inicio
+              <FaArrowLeft aria-hidden="true" />
             </button>
-            {entries
-              .filter(entry => entry.type === 'directory' && !moving.some(item => entry.path === item.path))
-              .map(entry => (
+            <nav className="move-destination" aria-label="Carpeta de destino">
+              <button
+                type="button"
+                className={moveTarget === '' ? 'active' : ''}
+                aria-current={moveTarget === '' ? 'location' : undefined}
+                onClick={() => setMoveTarget('')}
+              >
+                Inicio
+              </button>
+              {moveCrumbs.map((name, index) => {
+                const path = moveCrumbs.slice(0, index + 1).join('/');
+                const current = index === moveCrumbs.length - 1;
+                return (
+                  <span key={path} className="move-crumb">
+                    <span className="move-sep" aria-hidden="true">/</span>
+                    <button
+                      type="button"
+                      className={current ? 'active' : ''}
+                      aria-current={current ? 'location' : undefined}
+                      onClick={() => setMoveTarget(path)}
+                    >
+                      {name}
+                    </button>
+                  </span>
+                );
+              })}
+            </nav>
+          </div>
+          <div
+            ref={moveListRef}
+            className="move-list"
+            role="group"
+            aria-label="Subcarpetas de la carpeta de destino"
+            aria-busy={moveLoading}
+            tabIndex={-1}
+          >
+            {moveLoading && (
+              <p className="move-state">
+                <FaSpinner className="fa-spin" aria-hidden="true" /> Cargando carpetas…
+              </p>
+            )}
+            {!moveLoading && moveBrowseError && (
+              <p className="move-state error" role="alert">{moveBrowseError}</p>
+            )}
+            {!moveLoading && !moveBrowseError && moveFolders.length === 0 && (
+              <p className="move-state">Esta carpeta no tiene subcarpetas. Puedes mover aquí mismo.</p>
+            )}
+            {!moveLoading && !moveBrowseError && moveFolders.map(entry => {
+              const blocked = isMoveBlocked(entry.path);
+              return (
                 <button
                   key={entry.path}
                   type="button"
-                  className={moveTarget === entry.path ? 'active' : ''}
+                  className="move-folder"
+                  disabled={blocked}
+                  aria-label={blocked ? `No puedes mover dentro de ${entry.name}` : `Abrir carpeta ${entry.name}`}
+                  title={blocked ? 'No puedes mover una carpeta dentro de sí misma.' : `Abrir ${entry.name}`}
                   onClick={() => setMoveTarget(entry.path)}
                 >
-                  {entry.name}
+                  <FaFolder aria-hidden="true" />
+                  <span className="move-name">{entry.name}</span>
+                  {typeof entry.children === 'number' && entry.children > 0 && (
+                    <span className="move-count" title={`${entry.children} elementos`}>{entry.children}</span>
+                  )}
                 </button>
-              ))}
+              );
+            })}
           </div>
-          <label htmlFor="move-target">Ruta de destino</label>
-          <input
-            id="move-target"
-            value={moveTarget}
-            onChange={event => setMoveTarget(event.target.value)}
-            placeholder="Vacío para Inicio, por ejemplo Fotos/Islandia 2024"
-          />
           {error && <p className="move-error" role="alert">{error}</p>}
           <footer>
-            <button type="button" className="btn" onClick={() => setMoving(null)}>Cancelar</button>
-            <button type="button" className="btn primary" onClick={submitMove} disabled={saving}>
-              {saving ? 'Moviendo…' : 'Mover'}
-            </button>
+            <span className="move-summary" aria-live="polite">
+              Se moverá a <strong>{moveTarget || 'Inicio'}</strong>
+            </span>
+            <div className="move-actions">
+              <button type="button" className="btn" onClick={() => setMoving(null)}>Cancelar</button>
+              <button type="button" className="btn primary" onClick={submitMove} disabled={saving || moveLoading || Boolean(moveBrowseError)}>
+                {saving ? 'Moviendo…' : 'Mover aquí'}
+              </button>
+            </div>
           </footer>
         </dialog>
       )}
