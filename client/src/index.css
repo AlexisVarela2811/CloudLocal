@@ -1874,7 +1874,7 @@ a { color: var(--accent); text-decoration: none; }
   position: sticky;
   top: 0;
   height: 100vh;
-  z-index: 30;
+  z-index: 70;
 }
 .rail-brand {
   width: 38px;
