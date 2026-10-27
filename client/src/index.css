@@ -2462,3 +2462,24 @@ a { color: var(--accent); text-decoration: none; }
 @media (max-width: 480px) {
   .recent-grid { grid-template-columns: 1fr; }
 }
+
+.grid-item { --plate: 122px; }
+.grid-item .grid-icon {
+  height: var(--plate);
+  max-height: var(--plate);
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.grid-item .grid-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: var(--plate);
+  object-fit: cover;
+  border-radius: 0;
+}
+
+@media (max-width: 768px) {
+  .grid-item { --plate: 96px; }
+  .grid-item .grid-icon img { border-radius: 0; }
+}
