@@ -20,3 +20,6 @@ odd/
 
 # Agent workspace (ODD) - no se sube a git
 odd/
+
+# Verification captures
+test-results/
