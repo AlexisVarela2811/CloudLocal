@@ -22,15 +22,24 @@ function isExtensionBlockedList(filenames: string[]): string[] {
 }
 
 const SERVER_SHUTDOWN_KEY = 'cloudlocal-server-shutdown';
-function getShutdownState(): { active: boolean; shuttingDown: boolean } {
+function readShutdownState(): { active: boolean; shuttingDown: boolean } | null {
   try {
     const raw = localStorage.getItem(SERVER_SHUTDOWN_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { active: true, shuttingDown: false };
+    return raw ? JSON.parse(raw) : null;
+  } catch (cause) {
+    console.warn('No se pudo leer el estado del servidor', cause);
+    return null;
+  }
+}
+function getShutdownState(): { active: boolean; shuttingDown: boolean } {
+  return readShutdownState() ?? { active: true, shuttingDown: false };
 }
 function persistShutdownState(value: { active: boolean; shuttingDown: boolean }) {
-  try { localStorage.setItem(SERVER_SHUTDOWN_KEY, JSON.stringify(value)); } catch {}
+  try {
+    localStorage.setItem(SERVER_SHUTDOWN_KEY, JSON.stringify(value));
+  } catch (cause) {
+    console.warn('No se pudo guardar el estado del servidor', cause);
+  }
 }
 import { Access } from './components/Access';
 import { Preview } from './components/Preview';
@@ -90,7 +99,11 @@ function App() {
   const refresh = useCallback(() => setRevision(value => value + 1), []);
   const toggleTheme = useCallback(() => {
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    try { localStorage.setItem('cloudlocal-theme', next); } catch {}
+    try {
+      localStorage.setItem('cloudlocal-theme', next);
+    } catch (cause) {
+      console.warn('No se pudo guardar el tema', cause);
+    }
     window.dispatchEvent(new CustomEvent('cloudlocal-theme-change', { detail: { theme: next } }));
   }, []);
   // SSE: auto-refresh on file events
@@ -106,22 +119,27 @@ function App() {
   const [uploadBusy, setUploadBusy] = useState(false);
   const cancelUploadRef = useRef(false);
   const uploadControllerRef = useRef<AbortController | null>(null);
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
   const uploadNextId = useRef(0);
   const pendingUploadsRef = useRef<{ file: File; id: number; folder: string }[]>([]);
   const isUploadingRef = useRef(false);
   const MAX_RECONNECT = 3;
 
-  function updateUploadItem(_id: number, _patch: Partial<UploadItem>) {
-    // Upload item state tracking placeholder — kept for API compatibility
+  function updateUploadItem(id: number, patch: Partial<UploadItem>) {
+    setUploads(previous => previous.map(item => item.id === id ? { ...item, ...patch } : item));
   }
 
-  function enqueueFiles(files: File[], _folderPath: string) {
+  function enqueueFiles(files: File[], folderPath: string) {
     const blockedNames = isExtensionBlockedList(files.map(f => f.name));
     if (blockedNames.length > 0) {
       setError(`No se permiten los siguientes tipos de archivo: ${blockedNames.join(', ')}`);
       return;
     }
-    const batch = files.map(file => ({ file, id: ++uploadNextId.current, folder }));
+    const batch = files.map(file => ({ file, id: ++uploadNextId.current, folder: folderPath }));
+    setUploads(previous => [
+      ...batch.map(item => ({ id: item.id, name: item.file.name, state: 'En cola', progress: 0 })),
+      ...previous,
+    ].slice(0, 6));
     pendingUploadsRef.current.push(...batch);
     startNextUpload();
   }
@@ -369,9 +387,9 @@ function App() {
     if (!renaming) return;
     const newName = renameInput.trim();
     if (!newName) return;
-    const invalidChars = /[\/:*?"<>|\\]/;
+    const invalidChars = /[/:*?"<>|\\]/;
     if (invalidChars.test(newName)) {
-      setError('El nombre no puede contener: / \ : * ? " < > |');
+      setError('El nombre no puede contener: / \\ : * ? " < > |');
       return;
     }
     const fromPath = renaming.path;
@@ -795,6 +813,31 @@ function App() {
                   />
                 </label>
               </div>
+              {uploads.length > 0 && (
+                <div className="upload-list" aria-live="polite" aria-label="Subidas en curso">
+                  {uploads.map(item => (
+                    <div
+                      key={item.id}
+                      className={`upload-item ${
+                        /subido|completado/i.test(item.state) ? 'state-done'
+                          : /cancelado/i.test(item.state) ? 'state-paused'
+                            : /error|no se pudo|supera|sesión/i.test(item.state) ? 'state-error'
+                              : 'state-uploading'
+                      }`}
+                    >
+                      <div className="upload-item-head">
+                        <span className="upload-name" title={item.name}>{item.name}</span>
+                        <span className="upload-status">{item.state}</span>
+                        {item.progress > 0 && <span className="upload-progress-text">{item.progress}%</span>}
+                      </div>
+                      <div className="upload-progress-bar">
+                        <div style={{ width: `${Math.min(item.progress, 100)}%` }} />
+                      </div>
+                      {item.error && <span className="upload-error">{item.error}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
               <DragAndDrop onFilesDropped={enqueueFiles} folderPath={folder || 'inicio'} />
               {fileView === 'list' ? (
                 <section
@@ -1144,9 +1187,8 @@ function App() {
                           }
                           onClick={(e) => {
                             e.stopPropagation();
-                            entry.type === 'directory'
-                              ? go(entry.path)
-                              : startRename(entry.path, entry.name);
+                            if (entry.type === 'directory') go(entry.path);
+                            else startRename(entry.path, entry.name);
                           }}
                         >
                           {entry.type === 'directory'

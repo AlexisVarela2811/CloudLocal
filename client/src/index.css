@@ -2208,6 +2208,19 @@ a { color: var(--accent); text-decoration: none; }
 .upload-bar-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .upload-bar-btn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+.upload-list {
+  display: grid;
+  gap: .35rem;
+  margin-bottom: .85rem;
+}
+.upload-item-head {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  margin-bottom: .25rem;
+}
+.upload-item-head .upload-name { flex: 1; min-width: 0; }
+.upload-item-head .upload-status { margin-left: auto; }
 /* Placa de tipo del inspector */
 .inspector-plate {
   width: 88px;
