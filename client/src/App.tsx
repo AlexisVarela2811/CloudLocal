@@ -94,8 +94,7 @@ function App() {
     window.dispatchEvent(new CustomEvent('cloudlocal-theme-change', { detail: { theme: next } }));
   }, []);
   // SSE: auto-refresh on file events
-  const handleSseEvent = useCallback((_type: string, _data: unknown) => {
-    // Any filesystem change → refresh the list
+  const handleSseEvent = useCallback(() => {
     refresh();
   }, [refresh]);
   useSSE(handleSseEvent);

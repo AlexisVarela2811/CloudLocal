@@ -4,11 +4,18 @@ import { api, failure, type Session } from '../api/api';
 
 const THEME_KEY = 'cloudlocal-theme';
 
-function currentTheme(): 'dark' | 'light' {
+function storedTheme(): string | null {
   try {
-    const saved = localStorage.getItem(THEME_KEY);
-    if (saved === 'dark' || saved === 'light') return saved;
-  } catch {}
+    return localStorage.getItem(THEME_KEY);
+  } catch (cause) {
+    console.warn('No se pudo leer el tema guardado', cause);
+    return null;
+  }
+}
+
+function currentTheme(): 'dark' | 'light' {
+  const saved = storedTheme();
+  if (saved === 'dark' || saved === 'light') return saved;
   return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 }
 
@@ -29,7 +36,9 @@ export function Access({ session, onAccess }: { session: Session; onAccess: () =
     setTheme(next);
     try {
       localStorage.setItem(THEME_KEY, next);
-    } catch {}
+    } catch (cause) {
+      console.warn('No se pudo guardar el tema', cause);
+    }
     window.dispatchEvent(new CustomEvent('cloudlocal-theme-change', { detail: { theme: next } }));
   }
 
