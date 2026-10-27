@@ -561,7 +561,6 @@ a { color: var(--accent); text-decoration: none; }
   box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 .btn-back:hover { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
-.topbar-left .btn-back { align-self: flex-start; }
 .btn-back svg { width: 12px; height: 12px; }
 
 .workspace-body {
@@ -718,13 +717,6 @@ a { color: var(--accent); text-decoration: none; }
 
 .toolbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
 
-.search-row {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  flex: 1;
-  margin-bottom: .75rem;
-}
 .search-wrapper {
   position: relative;
   flex: 1;
@@ -2389,3 +2381,28 @@ a { color: var(--accent); text-decoration: none; }
 
 /* El detalle del inspector puede desplazarse cuando crece la actividad */
 .inspector-body { overflow-y: auto; }
+
+/* Barra del explorador en una sola fila: Volver → búsqueda → Actualizar → chips → vista */
+.files-toolbar { align-items: center; flex-wrap: wrap; }
+.files-toolbar .btn-back { margin-bottom: 0; }
+.files-toolbar .search-wrapper { flex: 1 1 200px; min-width: 0; }
+.files-toolbar .btn-refresh { flex-shrink: 0; }
+.files-toolbar .type-chips { margin-bottom: 0; flex-wrap: nowrap; }
+.files-toolbar .toolbar-gap { flex: 1 1 0; min-width: 0; }
+.files-toolbar .view-toggle { flex-shrink: 0; }
+
+@media (max-width: 768px) {
+  /* La barra se apila en varias líneas sin desbordar y con blancos de toque de 40px */
+  .files-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+  }
+  .files-toolbar .toolbar-gap { display: none; }
+  .files-toolbar .btn-back { min-height: 40px; padding: .4rem .6rem; }
+  .files-toolbar .search-wrapper { flex: 1 1 140px; max-width: none; }
+  .files-toolbar .type-chips { flex: 1 1 100%; flex-wrap: wrap; }
+  .files-toolbar .view-toggle { margin-left: auto; }
+  .files-toolbar .view-btn { min-width: 40px; min-height: 40px; }
+}

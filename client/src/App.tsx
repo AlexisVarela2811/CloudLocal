@@ -653,12 +653,6 @@ function App() {
       <div className="main-area">
         <header className="topbar">
           <div className="topbar-left">
-            {folder !== '' && view === 'files' && (
-              <button className="btn-back" onClick={() => go(folder.includes('/') ? folder.slice(0, folder.lastIndexOf('/')) : '')}>
-                <FaArrowLeft aria-hidden="true" /> Volver
-              </button>
-            )}
-
             <nav className="breadcrumb" aria-label="Ruta">
               {crumbs.map((crumb, index) => (
                 <span key={crumb.path}>
@@ -693,40 +687,6 @@ function App() {
               </button>
             )}
 
-            {view === 'files' && (
-              <div className="view-toggle" role="radiogroup" aria-label="Vista de archivos">
-                <button
-                  className={`view-btn ${fileView === 'list' ? 'active' : ''}`}
-                  onClick={() => setFileView('list')}
-                  role="radio"
-                  aria-checked={fileView === 'list'}
-                  aria-label="Vista de lista"
-                  title="Vista de lista"
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <rect x="2" y="2" width="12" height="2" rx="0.5" fill="currentColor" />
-                    <rect x="2" y="7" width="12" height="2" rx="0.5" fill="currentColor" />
-                    <rect x="2" y="12" width="12" height="2" rx="0.5" fill="currentColor" />
-                  </svg>
-                </button>
-                <button
-                  className={`view-btn ${fileView === 'grid' ? 'active' : ''}`}
-                  onClick={() => setFileView('grid')}
-                  role="radio"
-                  aria-checked={fileView === 'grid'}
-                  aria-label="Vista de cuadrícula"
-                  title="Vista de cuadrícula"
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                    <rect x="9" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                    <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                    <rect x="9" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                  </svg>
-                </button>
-              </div>
-            )}
-
             {!recentMode && (
             <button
               className="btn-icon"
@@ -742,7 +702,7 @@ function App() {
 
             <label className={`btn-upload button-like${uploadBusy ? ' busy' : ''}`} title="Elegir archivos para subir">
               <FaUpload aria-hidden="true" />
-              <span className="btn-label">Elegir archivos</span>
+              <span className="btn-label">Subir</span>
               <input
                 type="file"
                 multiple
@@ -757,6 +717,7 @@ function App() {
 
             <button
               className="btn-danger topbar-shutdown"
+              aria-label={shutdownState.shuttingDown ? 'Apagando el servidor' : 'Apagar servidor'}
               disabled={shutdownState.shuttingDown || !shutdownState.active}
               onClick={async () => {
                 setShutdownState(prev => ({ ...prev, shuttingDown: true }));
@@ -773,7 +734,7 @@ function App() {
               }}
             >
               <FaPowerOff aria-hidden="true" />
-              <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Detener Server'}</span>
+              <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Apagar'}</span>
             </button>
 
           </div>
@@ -781,31 +742,34 @@ function App() {
         <div className="workspace-body">
           {view === 'files' ? (
             <>
-              <div className="toolbar">
-                <div className="search-row">
-                  <div className="search-wrapper">
-                    <input
-                      className="search-input"
-                      type="search"
-                      value={query}
-                      onChange={e => setQuery(e.target.value)}
-                      placeholder="Buscar en esta carpeta…"
-                      aria-label="Buscar archivos"
-                    />
-                    {query && (
-                      <button className="btn-clear" onClick={() => setQuery('')} aria-label="Limpiar búsqueda">✕</button>
-                    )}
-                  </div>
-                  <button
-                    className="btn-icon btn-refresh"
-                    onClick={refresh}
-                    disabled={loading}
-                    title="Actualizar"
-                  >
-                    <FaSync aria-hidden="true" />
-                    <span className="btn-label">Actualizar</span>
+              <div className="toolbar files-toolbar">
+                {folder !== '' && (
+                  <button className="btn-back" onClick={() => go(folder.includes('/') ? folder.slice(0, folder.lastIndexOf('/')) : '')}>
+                    <FaArrowLeft aria-hidden="true" /> Volver
                   </button>
+                )}
+                <div className="search-wrapper">
+                  <input
+                    className="search-input"
+                    type="search"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Buscar en esta carpeta…"
+                    aria-label="Buscar archivos"
+                  />
+                  {query && (
+                    <button className="btn-clear" onClick={() => setQuery('')} aria-label="Limpiar búsqueda">✕</button>
+                  )}
                 </div>
+                <button
+                  className="btn-icon btn-refresh"
+                  onClick={refresh}
+                  disabled={loading}
+                  title="Actualizar"
+                >
+                  <FaSync aria-hidden="true" />
+                  <span className="btn-label">Actualizar</span>
+                </button>
                 <div className="type-chips" role="group" aria-label="Filtrar por tipo de archivo">
                   {TYPE_FILTERS.map(option => (
                     <button
@@ -819,6 +783,38 @@ function App() {
                       <span className="chip-count">{typeCounts[option.id]}</span>
                     </button>
                   ))}
+                </div>
+                <span className="toolbar-gap" aria-hidden="true" />
+                <div className="view-toggle" role="radiogroup" aria-label="Vista de archivos">
+                  <button
+                    className={`view-btn ${fileView === 'list' ? 'active' : ''}`}
+                    onClick={() => setFileView('list')}
+                    role="radio"
+                    aria-checked={fileView === 'list'}
+                    aria-label="Vista de lista"
+                    title="Vista de lista"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <rect x="2" y="2" width="12" height="2" rx="0.5" fill="currentColor" />
+                      <rect x="2" y="7" width="12" height="2" rx="0.5" fill="currentColor" />
+                      <rect x="2" y="12" width="12" height="2" rx="0.5" fill="currentColor" />
+                    </svg>
+                  </button>
+                  <button
+                    className={`view-btn ${fileView === 'grid' ? 'active' : ''}`}
+                    onClick={() => setFileView('grid')}
+                    role="radio"
+                    aria-checked={fileView === 'grid'}
+                    aria-label="Vista de cuadrícula"
+                    title="Vista de cuadrícula"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                      <rect x="9" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                      <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                      <rect x="9" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                    </svg>
+                  </button>
                 </div>
               </div>
               {creating && !recentMode && (

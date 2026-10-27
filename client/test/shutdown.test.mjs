@@ -49,7 +49,7 @@ test('shutdown button lifecycle', async t => {
         await route.fulfill({ status, json: body });
       });
       await page.goto(origin);
-      const button = page.getByRole('button', { name: /^(Detener Server|Apagando…)$/ });
+      const button = page.getByRole('button', { name: /^(Apagar servidor|Apagando el servidor)$/ });
       await expect(button).toBeVisible();
       return { page, button, calls: () => shutdownCalls };
     }
