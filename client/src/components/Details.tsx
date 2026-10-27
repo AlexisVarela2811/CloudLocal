@@ -4,13 +4,32 @@ import { classifyExtension } from './fileVisuals.mjs';
 import { bytes } from '../workspace.mjs';
 import { FileVisual } from './FileVisual';
 
+export interface ActivityEvent {
+  type: string;
+  path: string;
+  at: number;
+}
+
 export interface DetailsProps {
   entry: Entry;
+  activity: ActivityEvent[];
   onOpen: () => void;
   onDownload: () => void;
   onRename: () => void;
   onDelete: () => void;
 }
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  upload: 'Archivo subido',
+  folder: 'Carpeta creada',
+  trash: 'Enviado a la papelera',
+  restore: 'Restaurado',
+  move: 'Movido',
+  copy: 'Copiado',
+  paste: 'Pegado',
+  'permanent-delete': 'Eliminado definitivamente',
+  'empty-trash': 'Papelera vaciada',
+};
 
 function formatDate(value: string): string {
   const time = new Date(value);
@@ -25,11 +44,38 @@ function kindLabel(entry: Entry): string {
   return ext ? `Archivo ${ext}` : 'Archivo';
 }
 
-export function Details({ entry, onOpen, onDownload, onRename, onDelete }: DetailsProps) {
+function folderOf(path: string): string {
+  const index = path.lastIndexOf('/');
+  return index < 0 ? '' : path.slice(0, index);
+}
+
+function activityLabel(type: string): string {
+  return ACTIVITY_LABELS[type] ?? 'Cambio';
+}
+
+function activityClock(at: number): string {
+  const time = new Date(at);
+  if (Number.isNaN(time.getTime())) return '—';
+  return new Intl.DateTimeFormat('es', { timeStyle: 'medium' }).format(time);
+}
+
+// Keep events about the entry itself, its contents, or its parent folder.
+function activityFor(activity: ActivityEvent[], entryPath: string): ActivityEvent[] {
+  const parent = folderOf(entryPath);
+  return activity.filter(event => {
+    if (!event.path) return false;
+    if (event.path === entryPath) return true;
+    if (event.path.startsWith(`${entryPath}/`)) return true;
+    return folderOf(event.path) === parent;
+  });
+}
+
+export function Details({ entry, activity, onOpen, onDownload, onRename, onDelete }: DetailsProps) {
   const isFolder = entry.type === 'directory';
   const kind = isFolder ? 'folder' : classifyExtension(entry.name);
   const extension = entry.name.includes('.') ? entry.name.slice(entry.name.lastIndexOf('.') + 1).toUpperCase() : '';
   const previewable = kind === 'image' || kind === 'video' || kind === 'audio';
+  const recentActivity = activityFor(activity, entry.path);
 
   return (
     <aside className="inspector" aria-label="Detalle del elemento seleccionado">
@@ -70,6 +116,27 @@ export function Details({ entry, onOpen, onDownload, onRename, onDelete }: Detai
           <dt>Ubicación</dt>
           <dd>{entry.path.includes('/') ? '/' + entry.path.slice(0, entry.path.lastIndexOf('/')) : 'Inicio'}</dd>
         </dl>
+
+        <div className="inspector-activity">
+          <h3 className="inspector-activity-title">Actividad</h3>
+          {recentActivity.length === 0 ? (
+            <p className="inspector-activity-empty">Sin actividad reciente</p>
+          ) : (
+            <ul className="inspector-activity-list">
+              {recentActivity.map((event, index) => (
+                <li key={`${event.at}-${index}`} className="inspector-activity-item">
+                  <span className="inspector-activity-time">{activityClock(event.at)}</span>
+                  <span className="inspector-activity-text">
+                    {activityLabel(event.type)}
+                    {event.path.split('/').at(-1) && (
+                      <span className="inspector-activity-name"> · {event.path.split('/').at(-1)}</span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       <div className="inspector-actions">

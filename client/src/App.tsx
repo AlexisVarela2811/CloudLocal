@@ -5,7 +5,7 @@ import {
   FaSignOutAlt, FaCopy, FaQuestionCircle,
   FaSpinner, FaExclamationTriangle, FaFolderOpen,
   FaFilePdf, FaEye, FaArrowsAlt,
-  FaPowerOff, FaMoon, FaSun
+  FaPowerOff, FaMoon, FaSun, FaHistory
 } from 'react-icons/fa';
 import { api, expired, failure, type Entry, type Session, type Status, type TrashEntry } from './api/api';
 import { useSSE } from './hooks/useSSE';
@@ -45,7 +45,7 @@ import { Access } from './components/Access';
 import { Preview } from './components/Preview';
 import { DragAndDrop } from './components/DragAndDrop';
 import { SettingsPanel } from './components/Settings';
-import { Details } from './components/Details';
+import { Details, type ActivityEvent } from './components/Details';
 import { FileVisual } from './components/FileVisual';
 import { classifyExtension } from './components/fileVisuals.mjs';
 import { breadcrumbs, bytes, exceedsLimit, previewKind, sortEntries } from './workspace.mjs';
@@ -67,6 +67,32 @@ interface UploadItem {
   error?: string;
 }
 
+type TypeFilter = 'all' | 'image' | 'video' | 'document';
+
+const TYPE_FILTERS: { id: TypeFilter; label: string }[] = [
+  { id: 'all', label: 'Todo' },
+  { id: 'image', label: 'Imágenes' },
+  { id: 'video', label: 'Vídeo' },
+  { id: 'document', label: 'Documentos' },
+];
+
+const DOCUMENT_KINDS = new Set(['pdf', 'word', 'excel', 'powerpoint', 'text']);
+
+function matchesTypeFilter(kind: string, filter: TypeFilter): boolean {
+  if (filter === 'all') return true;
+  return filter === 'document' ? DOCUMENT_KINDS.has(kind) : kind === filter;
+}
+
+// Newest first; entries with an unreadable date sink to the end.
+function sortByModifiedAt(entries: Entry[]): Entry[] {
+  const time = (value: string) => {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+  return [...entries].sort((a, b) => time(b.modifiedAt) - time(a.modifiedAt) ||
+    a.name.localeCompare(b.name, 'es', { sensitivity: 'base', numeric: true }));
+}
+
 function date(value: string) {
   const time = new Date(value);
   return Number.isNaN(time.getTime()) ? '—' : new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(time);
@@ -78,6 +104,9 @@ function App() {
   const [folder, setFolder] = useState('');
   const [view, setView] = useState<View>('files');
   const [fileView, setFileView] = useState<'list' | 'grid'>('list');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [recentMode, setRecentMode] = useState(false);
+  const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [query, setQuery] = useState('');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [trash, setTrash] = useState<TrashEntry[]>([]);
@@ -106,8 +135,15 @@ function App() {
     }
     window.dispatchEvent(new CustomEvent('cloudlocal-theme-change', { detail: { theme: next } }));
   }, []);
-  // SSE: auto-refresh on file events
-  const handleSseEvent = useCallback(() => {
+  // SSE: keep a short activity log and auto-refresh on file events.
+  const handleSseEvent = useCallback((type: string, data: unknown) => {
+    let path = '';
+    if (data && typeof data === 'object') {
+      const payload = data as { path?: unknown; to?: unknown };
+      if (typeof payload.path === 'string') path = payload.path;
+      else if (typeof payload.to === 'string') path = payload.to;
+    }
+    setActivity(previous => [{ type, path, at: Date.now() }, ...previous].slice(0, 20));
     refresh();
   }, [refresh]);
   useSSE(handleSseEvent);
@@ -210,7 +246,19 @@ function App() {
     startNextUpload();
   }
 
-  const sorted = sortEntries(entries);
+  const typeCounts: Record<TypeFilter, number> = { all: entries.length, image: 0, video: 0, document: 0 };
+  for (const entry of entries) {
+    if (entry.type !== 'file') continue;
+    const kind = classifyExtension(entry.name);
+    if (kind === 'image') typeCounts.image += 1;
+    else if (kind === 'video') typeCounts.video += 1;
+    else if (DOCUMENT_KINDS.has(kind)) typeCounts.document += 1;
+  }
+  const filteredEntries = entries.filter(entry =>
+    typeFilter === 'all' || (entry.type === 'file' && matchesTypeFilter(classifyExtension(entry.name), typeFilter))
+  );
+  const sorted = recentMode ? sortByModifiedAt(filteredEntries) : sortEntries(filteredEntries);
+  const recentlyAdded = fileView === 'grid' && sorted.length >= 2 ? sortByModifiedAt(sorted).slice(0, 4) : [];
 
   useEffect(() => {
     let active = true;
@@ -307,6 +355,7 @@ function App() {
         !event.metaKey &&
         event.key.toLowerCase() === 'n' &&
         view === 'files' &&
+        !recentMode &&
         !isInputFocused
       ) {
         event.preventDefault();
@@ -318,7 +367,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selected, sorted, clipboard, preview, renaming, folder, action]);
+  }, [selected, sorted, clipboard, preview, renaming, folder, action, recentMode]);
 
   useEffect(() => {
     if (!renaming) return;
@@ -521,20 +570,29 @@ function App() {
         <button
           className="rail-brand"
           aria-label="CloudLocal, ir a Archivos"
-          onClick={() => setView('files')}
+          onClick={() => { setView('files'); setRecentMode(false); }}
         >
           <img src="/cloudlocal.svg" alt="" />
         </button>
 
         <nav className="rail-nav" aria-label="Secciones">
           <button
-            className={`rbtn${view === 'files' ? ' active' : ''}`}
-            aria-current={view === 'files' ? 'page' : undefined}
+            className={`rbtn${view === 'files' && !recentMode ? ' active' : ''}`}
+            aria-current={view === 'files' && !recentMode ? 'page' : undefined}
             aria-label="Archivos"
-            onClick={() => setView('files')}
+            onClick={() => { setView('files'); setRecentMode(false); }}
           >
             <FaFolder aria-hidden="true" />
             <span className="railtip">Archivos</span>
+          </button>
+          <button
+            className={`rbtn${view === 'files' && recentMode ? ' active' : ''}`}
+            aria-current={view === 'files' && recentMode ? 'page' : undefined}
+            aria-label="Recientes"
+            onClick={() => { setView('files'); setRecentMode(true); setCreating(false); setSelected([]); setPreview(null); }}
+          >
+            <FaHistory aria-hidden="true" />
+            <span className="railtip">Recientes</span>
           </button>
           <button
             className={`rbtn${view === 'trash' ? ' active' : ''}`}
@@ -618,9 +676,12 @@ function App() {
 
             <div>
               <h1 className="page-title">
-                {view === 'trash' ? 'Papelera' : view === 'settings' ? 'Configuración' : 'Mis archivos'}
+                {view === 'trash' ? 'Papelera' : view === 'settings' ? 'Configuración' : recentMode ? 'Recientes' : 'Mis archivos'}
               </h1>
               {view === 'trash' && <p className="page-subtitle">Restaura o elimina permanentemente los archivos borrados.</p>}
+              {view === 'files' && recentMode && (
+                <p className="page-subtitle">Ordenados por fecha de modificación en esta carpeta.</p>
+              )}
             </div>
           </div>
 
@@ -666,6 +727,7 @@ function App() {
               </div>
             )}
 
+            {!recentMode && (
             <button
               className="btn-icon"
               onClick={() => setCreating(value => !value)}
@@ -676,6 +738,7 @@ function App() {
               <span className="btn-label">Nueva carpeta</span>
               <span className="shortcut-hint">Ctrl+Alt+N</span>
             </button>
+            )}
 
             <label className={`btn-upload button-like${uploadBusy ? ' busy' : ''}`} title="Elegir archivos para subir">
               <FaUpload aria-hidden="true" />
@@ -743,8 +806,22 @@ function App() {
                     <span className="btn-label">Actualizar</span>
                   </button>
                 </div>
+                <div className="type-chips" role="group" aria-label="Filtrar por tipo de archivo">
+                  {TYPE_FILTERS.map(option => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className="chip"
+                      aria-pressed={typeFilter === option.id}
+                      onClick={() => setTypeFilter(option.id)}
+                    >
+                      {option.label}
+                      <span className="chip-count">{typeCounts[option.id]}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-              {creating && (
+              {creating && !recentMode && (
                 <form className="card folder-form" onSubmit={create}>
                   <h3>Nueva carpeta</h3>
                   <div className="form-row">
@@ -788,6 +865,7 @@ function App() {
                   </button>
                 </div>
               )}
+              {!recentMode && (
               <div className="upload-bar" aria-label="Subir archivos">
                 <span className="upload-bar-icon" aria-hidden="true"><FaUpload /></span>
                 <div className="upload-bar-text">
@@ -813,6 +891,7 @@ function App() {
                   />
                 </label>
               </div>
+              )}
               {uploads.length > 0 && (
                 <div className="upload-list" aria-live="polite" aria-label="Subidas en curso">
                   {uploads.map(item => (
@@ -1339,10 +1418,36 @@ function App() {
                   </div>
                 </section>
               )}
+              {recentlyAdded.length > 0 && (
+                <section className="card recent-strip" aria-label="Añadido recientemente">
+                  <h2>Añadido recientemente</h2>
+                  <div className="recent-grid">
+                    {recentlyAdded.map(entry => (
+                      <button
+                        key={entry.path}
+                        type="button"
+                        className="grid-item recent-tile"
+                        title={entry.path}
+                        onClick={() => setSelected([entry.path])}
+                      >
+                        <span
+                          className="grid-icon"
+                          data-icon-type={entry.type === 'directory' ? 'folder' : classifyExtension(entry.name)}
+                        >
+                          {entry.type === 'directory'
+                            ? <FaFolder aria-hidden="true" />
+                            : <FileVisual path={entry.path} contentUrl={api.content(entry.path, true)} view="grid" />}
+                        </span>
+                        <span className="grid-name">{entry.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
             </>
           ) : view === 'trash' ? (
             <>
-              <button className="btn-back" onClick={() => setView('files')}>
+              <button className="btn-back" onClick={() => { setView('files'); setRecentMode(false); }}>
                 <FaArrowLeft aria-hidden="true" /> Volver a archivos
               </button>
               <section className="card file-table" aria-label="Archivos en papelera">
@@ -1431,6 +1536,7 @@ function App() {
       {inspectorEntry && view === 'files' && (
         <Details
           entry={inspectorEntry}
+          activity={activity}
           onOpen={() => {
             if (inspectorEntry.type === 'directory') go(inspectorEntry.path);
             else setPreview(inspectorEntry);
