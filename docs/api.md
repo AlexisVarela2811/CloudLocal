@@ -233,46 +233,6 @@ GET /api/status
 
 ---
 
-## Dispositivos (Companion)
-
-### Listar vinculados
-
-```
-GET /api/devices/
-```
-
-### Generar código de emparejamiento
-
-```
-POST /api/devices/pair-code
-{
-  "name": "Mi Laptop"  // nombre del dispositivo
-}
-```
-
-### Enviar oferta a dispositivo
-
-```
-POST /api/devices/:id/offers
-{
-  "path": "/shared/folder"
-}
-```
-
-### Listar entradas compartidas
-
-```
-GET /api/devices/:id/entries?share=/shared/folder&path=
-```
-
-### Desvincular dispositivo
-
-```
-DELETE /api/devices/:id
-```
-
----
-
 ## Configuración
 
 ### Obtener configuración

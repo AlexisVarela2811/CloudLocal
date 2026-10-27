@@ -24,7 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Search** files in current folder
 - **Grid and list view** toggle
 - **Dark mode** with cross-tab sync via localStorage
-- **Cross-device sharing** via companion service and pairing codes (LAN only)
 - **Graceful shutdown** endpoint (`POST /api/shutdown`)
 
 #### User Interface
@@ -61,7 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **No ZIP button in UI**: ZIP download available via `/api/files/zip` endpoint only
 - **`Ctrl+S` does not navigate back**: the key handler calls `preventDefault()` but performs no action
 - **Move/rename operations at root**: the rename UI builds a target path but the server's move API expects a destination folder; controller rejects moves to empty-string target for `move`, `moveFolder`, and `copy`
-- **Legacy companion source**: not bundled with the exe and not required for browser access
 
 ---
 

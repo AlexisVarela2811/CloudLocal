@@ -28,6 +28,7 @@ CloudLocal es un servidor de archivos local privado que se ejecuta como un únic
 - **Renombrado inline**: F2 para renombrar archivos y carpetas directamente
 - **Nueva carpeta**: botón en toolbar o Ctrl+Alt+N para crear carpetas
 - **Vista previa** de imágenes, vídeo y audio en modal con cierre por Escape o click exterior
+- **Iconos visuales** por extensión: miniaturas de imágenes y frames de vídeo en lista y cuadrícula, iconos de tipo para PDF, Office, código y más
 - **Papelera** con restauración (vía botón en UI)
 - **Descarga individual** de archivos y descarga ZIP (vía API)
 
