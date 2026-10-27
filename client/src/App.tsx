@@ -695,23 +695,6 @@ function App() {
               <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Detener Server'}</span>
             </button>
 
-            <button className="btn-ghost" onClick={async () => {
-              if (saving) return;
-              setSaving(true);
-              try {
-                await api.logout();
-                setSession({ ...session, authenticated: false });
-                setSelected([]);
-                setPreview(null);
-                setNotice('Sesión cerrada.');
-              } catch (cause: unknown) {
-                if (expired(cause)) loseSession();
-                else setError(failure(cause));
-              } finally { setSaving(false); }
-            }}>
-              <FaSignOutAlt aria-hidden="true" />
-              <span className="btn-label">Cerrar sesión</span>
-            </button>
           </div>
         </header>
         <div className="workspace-body">
@@ -787,36 +770,31 @@ function App() {
                   </button>
                 </div>
               )}
-              <section className="card card-upload" aria-label="Subir archivos">
-                <div className="card-content">
-                  <h3>Subir archivos</h3>
-                  <p>
-                    {status
-                      ? `Sube archivos aquí. Tamaño máximo por archivo: ${bytes(status.maxUploadBytes)}.`
-                      : 'Sube tus archivos aquí.'}
-                  </p>
-                  <div className="upload-warning">
-                    <FaExclamationTriangle size={13} />
-                    <span>Algunos tipos de archivo no están permitidos</span>
-                  </div>
-                  <div className="upload-actions-row">
-                    <label className={`btn-accent button-like${uploadBusy ? ' busy' : ''}`}>
-                      <FaUpload aria-hidden="true" />
-                      <span>Elegir archivos</span>
-                      <input
-                        type="file"
-                        multiple
-                        onChange={e => {
-                          if (e.target.files?.length) selectFilePickerFiles(Array.from(e.target.files));
-                          e.target.value = '';
-                        }}
-                        disabled={uploadBusy}
-                        aria-label="Elegir archivos para subir"
-                      />
-                    </label>
-                  </div>
+              <div className="upload-bar" aria-label="Subir archivos">
+                <span className="upload-bar-icon" aria-hidden="true"><FaUpload /></span>
+                <div className="upload-bar-text">
+                  <strong>Subir archivos</strong>
+                  <span>{status ? `Máximo ${bytes(status.maxUploadBytes)} por archivo` : 'Arrastra o elige archivos'}</span>
                 </div>
-              </section>
+                <span className="upload-bar-limit">
+                  <FaExclamationTriangle aria-hidden="true" />
+                  .exe, .bat y similares bloqueados
+                </span>
+                <label className={`upload-bar-btn${uploadBusy ? ' busy' : ''}`}>
+                  <FaUpload aria-hidden="true" />
+                  <span>Elegir archivos</span>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={e => {
+                      if (e.target.files?.length) selectFilePickerFiles(Array.from(e.target.files));
+                      e.target.value = '';
+                    }}
+                    disabled={uploadBusy}
+                    aria-label="Elegir archivos para subir"
+                  />
+                </label>
+              </div>
               <DragAndDrop onFilesDropped={enqueueFiles} folderPath={folder || 'inicio'} />
               {fileView === 'list' ? (
                 <section
