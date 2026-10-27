@@ -113,11 +113,10 @@ test('symlinks cannot be listed, resolved, imported through, or trashed', async 
   assert.deepEqual(await storage.listTrash(), []);
 });
 
-test('trash and restore round-trip persist with collision protection; directories are rejected', async t => {
+test('trash and restore round-trip persist with collision protection', async t => {
   const { root, storage } = await fixture(t);
   await storage.mkdir('', 'folder');
   await fs.writeFile(path.join(root, 'folder', 'file.txt'), 'original');
-  await rejected(storage.trash('folder'), 400);
   const deleted = await storage.trash('folder/file.txt');
   assert.equal(deleted.name, 'file.txt');
   assert.equal(deleted.path, 'folder/file.txt');
@@ -173,4 +172,41 @@ test('reports how many entries each folder holds', async t => {
   assert.equal(photos.children, 3);
   assert.equal(empty.children, 0);
   assert.equal(entries.find(e => e.name === 'empty').type, 'directory');
+});
+
+test('trashes, restores and deletes folders with their contents', async t => {
+  const { root, storage } = await fixture(t);
+  await storage.mkdir('', 'work');
+  await fs.writeFile(path.join(root, 'work', 'inside.txt'), 'contenido');
+
+  const record = await storage.trash('work');
+  assert.equal(record.name, 'work');
+  assert.equal(record.type, 'directory');
+  assert.deepEqual((await storage.list()).map(e => e.name), []);
+  assert.equal((await storage.listTrash()).length, 1);
+
+  const restored = await storage.restore(record.id);
+  assert.equal(restored.type, 'directory');
+  assert.equal(await fs.readFile(path.join(root, 'work', 'inside.txt'), 'utf8'), 'contenido');
+
+  const again = await storage.trash('work');
+  await storage.permanentDelete(again.id);
+  assert.deepEqual(await storage.listTrash(), []);
+  await assert.rejects(fs.stat(path.join(root, 'work')), { code: 'ENOENT' });
+});
+
+test('empty trash removes both files and folders', async t => {
+  const { root, storage } = await fixture(t);
+  await fs.writeFile(path.join(root, 'old.txt'), 'x');
+  await storage.mkdir('', 'carpeta');
+  await fs.writeFile(path.join(root, 'carpeta', 'a.txt'), 'a');
+
+  await storage.trash('old.txt');
+  await storage.trash('carpeta');
+  const result = await storage.emptyTrash();
+
+  assert.equal(result.deleted, 2);
+  assert.deepEqual(await storage.listTrash(), []);
+  await assert.rejects(fs.stat(path.join(root, 'old.txt')), { code: 'ENOENT' });
+  await assert.rejects(fs.stat(path.join(root, 'carpeta')), { code: 'ENOENT' });
 });

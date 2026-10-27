@@ -1144,7 +1144,26 @@ function App() {
                               <FaTrash aria-hidden="true" />
                             </button>
                           </span>
-                        ) : null}
+                        ) : (
+                          <span className="action-group">
+                            <button
+                              className="btn-action btn-delete"
+                              disabled={saving}
+                              onClick={() => {
+                                if (window.confirm(`¿Enviar la carpeta «${entry.name}» y todo su contenido a la papelera?`)) {
+                                  action(
+                                    () => api.trashFile(entry.path),
+                                    `«${entry.name}» está en la papelera.`
+                                  ).then(() => setSelected(old => old.filter(path => path !== entry.path)));
+                                }
+                              }}
+                              title={`Enviar ${entry.name} a papelera`}
+                              aria-label={'Enviar ' + entry.name + ' a papelera'}
+                            >
+                              <FaTrash aria-hidden="true" />
+                            </button>
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1386,16 +1405,34 @@ function App() {
                             </>
                           )}
                           {entry.type === 'directory' && (
-                            <button
-                              className="btn-action"
-                              aria-label={'Mover ' + entry.name}
+                            <>
+                              <button
+                                className="btn-action"
+                                aria-label={'Mover ' + entry.name}
                                 title="Mover"
-                              onClick={() => {
-                                setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.');
-                              }}
-                            >
-                              <FaArrowsAlt size={12} />
-                            </button>
+                                onClick={() => {
+                                  setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.');
+                                }}
+                              >
+                                <FaArrowsAlt size={12} />
+                              </button>
+                              <button
+                                className="btn-action btn-delete"
+                                aria-label={'Enviar ' + entry.name + ' a papelera'}
+                                title={`Enviar ${entry.name} a papelera`}
+                                disabled={saving}
+                                onClick={() => {
+                                  if (window.confirm(`¿Enviar la carpeta «${entry.name}» y todo su contenido a la papelera?`)) {
+                                    action(
+                                      () => api.trashFile(entry.path),
+                                      `«${entry.name}» está en la papelera.`
+                                    ).then(() => setSelected(old => old.filter(path => path !== entry.path)));
+                                  }
+                                }}
+                              >
+                                <FaTrash size={12} />
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
