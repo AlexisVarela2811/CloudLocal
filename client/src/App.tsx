@@ -565,7 +565,7 @@ function App() {
     : null;
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${inspectorEntry && view === 'files' ? ' has-inspector' : ''}`}>
       <aside className="rail" aria-label="Navegación principal">
         <button
           className="rail-brand"

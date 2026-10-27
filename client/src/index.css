@@ -1866,7 +1866,8 @@ a { color: var(--accent); text-decoration: none; }
   }
 }
 
-.app-shell { grid-template-columns: 64px minmax(0, 1fr) 344px; }
+.app-shell { grid-template-columns: 64px minmax(0, 1fr); }
+.app-shell.has-inspector { grid-template-columns: 64px minmax(0, 1fr) 344px; }
 
 .rail {
   grid-column: 1;
