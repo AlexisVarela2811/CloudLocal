@@ -80,15 +80,22 @@ export function Access({ session, onAccess }: { session: Session; onAccess: () =
             <small>servidor privado</small>
           </span>
         </div>
-        <button
-          type="button"
-          className="access-theme"
-          onClick={toggleTheme}
-          aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-          aria-pressed={theme === 'dark'}
-        >
-          {theme === 'dark' ? <FaSun aria-hidden="true" /> : <FaMoon aria-hidden="true" />}
-        </button>
+        <div className="access-actions">
+          <span className="access-status" title="Servidor local accesible">
+            <span className="status-dot" aria-hidden="true" />
+            <span className="access-status-text" aria-hidden="true">Servidor local accesible</span>
+            <span className="sr-only">Servidor local accesible</span>
+          </span>
+          <button
+            type="button"
+            className="access-theme"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            aria-pressed={theme === 'dark'}
+          >
+            {theme === 'dark' ? <FaSun aria-hidden="true" /> : <FaMoon aria-hidden="true" />}
+          </button>
+        </div>
       </header>
 
       <div className="access-stage">
