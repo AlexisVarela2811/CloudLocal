@@ -5,9 +5,10 @@ import {
   FaSignOutAlt, FaCopy, FaQuestionCircle,
   FaSpinner, FaExclamationTriangle, FaFolderOpen,
   FaFilePdf, FaEye, FaArrowsAlt,
-  FaPowerOff, FaBars, FaTimes
+  FaPowerOff, FaMoon, FaSun
 } from 'react-icons/fa';
 import { api, expired, failure, type Entry, type Session, type Status, type TrashEntry } from './api/api';
+import { useSSE } from './hooks/useSSE';
 
 const BLOCKED_EXTENSIONS = new Set(['.exe', '.bat', '.cmd', '.scr', '.vbs', '.js', '.ps1', '.reg']);
 
@@ -35,6 +36,7 @@ import { Access } from './components/Access';
 import { Preview } from './components/Preview';
 import { DragAndDrop } from './components/DragAndDrop';
 import { SettingsPanel } from './components/Settings';
+import { Details } from './components/Details';
 import { FileVisual } from './components/FileVisual';
 import { classifyExtension } from './components/fileVisuals.mjs';
 import { breadcrumbs, bytes, exceedsLimit, previewKind, sortEntries } from './workspace.mjs';
@@ -82,11 +84,20 @@ function App() {
   const [creating, setCreating] = useState(false);
   const [folderName, setFolderName] = useState('');
   const [saving, setSaving] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth > 768);
   const [revision, setRevision] = useState(0);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [shutdownState, setShutdownState] = useState(getShutdownState());
   const refresh = useCallback(() => setRevision(value => value + 1), []);
+  const toggleTheme = useCallback(() => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('cloudlocal-theme', next); } catch {}
+    window.dispatchEvent(new CustomEvent('cloudlocal-theme-change', { detail: { theme: next } }));
+  }, []);
+  // SSE: auto-refresh on file events
+  const handleSseEvent = useCallback(() => {
+    refresh();
+  }, [refresh]);
+  useSSE(handleSseEvent);
   const loseSession = useCallback(() => {
     setSession(previous => previous ? { ...previous, authenticated: false } : previous);
     setNotice('La sesión ha caducado. Entra otra vez para continuar.');
@@ -453,8 +464,6 @@ function App() {
       else setError(failure(cause));
     }
   }
-
-  // ── Render: auth gate ─────────────────────────────────────────────
   if (!session)
     return <main className="auth-gate" role="status">
       {entryError ? <>
@@ -472,8 +481,6 @@ function App() {
         </button>
       </> : <p>Conectando con CloudLocal…</p>}
     </main>;
-
-  // ── Render: unauthenticated ───────────────────────────────────────
   if (!session.authenticated)
     return <>
       <Access
@@ -485,100 +492,91 @@ function App() {
       />
       {notice && <p className="session-notice" role="status">{notice}</p>}
     </>;
-
-  // ── Render: authenticated app shell ──────────────────────────────
   const crumbs = breadcrumbs(folder);
+  const inspectorEntry = selected.length === 1
+    ? entries.find(entry => entry.path === selected[0]) ?? null
+    : null;
 
   return (
     <div className="app-shell">
-
-      {/* ── Sidebar ──────────────────────────────────────────────────── */}
-      <aside className={`sidebar${sidebarOpen ? ' sidebar-open' : ''}`} aria-label="Navegación principal">
-        <button className="sidebar-close-btn" aria-label="Cerrar menú" onClick={() => setSidebarOpen(false)}>
-          <FaTimes aria-hidden="true" />
+      <aside className="rail" aria-label="Navegación principal">
+        <button
+          className="rail-brand"
+          aria-label="CloudLocal, ir a Archivos"
+          onClick={() => setView('files')}
+        >
+          <img src="/cloudlocal.svg" alt="" />
         </button>
 
-        <div className="sidebar-logo">
-          <img src="/cloudlocal.svg" alt="CloudLocal" className="logo-icon" />
-          <span className="logo-text">CloudLocal</span>
-        </div>
-
-        <p className="sidebar-caption">ESPACIO LOCAL</p>
-
-        <nav className="sidebar-nav" aria-label="Secciones">
+        <nav className="rail-nav" aria-label="Secciones">
           <button
-            className={`nav-item${view === 'files' ? ' active' : ''}`}
-            onClick={() => { setView('files'); setSidebarOpen(false); }}
+            className={`rbtn${view === 'files' ? ' active' : ''}`}
+            aria-current={view === 'files' ? 'page' : undefined}
+            aria-label="Archivos"
+            onClick={() => setView('files')}
           >
             <FaFolder aria-hidden="true" />
-            <span>Archivos</span>
+            <span className="railtip">Archivos</span>
           </button>
           <button
-            className={`nav-item${view === 'trash' ? ' active' : ''}`}
-            onClick={() => { setView('trash'); setSelected([]); setPreview(null); setSidebarOpen(false); }}
+            className={`rbtn${view === 'trash' ? ' active' : ''}`}
+            aria-current={view === 'trash' ? 'page' : undefined}
+            aria-label="Papelera"
+            onClick={() => { setView('trash'); setSelected([]); setPreview(null); }}
           >
             <FaTrash aria-hidden="true" />
-            <span>Papelera</span>
+            <span className="railtip">Papelera</span>
           </button>
           <button
-            className={`nav-item${view === 'settings' ? ' active' : ''}`}
-            onClick={() => { setView('settings'); setSelected([]); setPreview(null); setSidebarOpen(false); }}
+            className={`rbtn${view === 'settings' ? ' active' : ''}`}
+            aria-current={view === 'settings' ? 'page' : undefined}
+            aria-label="Configuración"
+            onClick={() => { setView('settings'); setSelected([]); setPreview(null); }}
           >
             <FaQuestionCircle aria-hidden="true" />
-            <span>Configuración</span>
+            <span className="railtip">Configuración</span>
           </button>
         </nav>
 
-        <div className="sidebar-status">
+        <div className="rail-spacer" />
+
+        <span className="rail-status" title="El servidor debe permanecer encendido y despierto">
           <span className="status-dot" aria-hidden="true" />
-          <span>El servidor debe permanecer encendido y despierto.</span>
-        </div>
+          <span className="sr-only">Servidor local activo</span>
+        </span>
 
-        <div className="sidebar-footer">
-          <button
-            className="btn-logout"
-            disabled={saving}
-            onClick={async () => {
-              if (saving) return;
-              setSaving(true);
-              try {
-                await api.logout();
-                setSession({ ...session, authenticated: false });
-                setSelected([]);
-                setPreview(null);
-                setNotice('Sesión cerrada.');
-              } catch (cause: unknown) {
-                if (expired(cause)) loseSession();
-                else setError(failure(cause));
-              } finally { setSaving(false); }
-            }}
-          >
-            <FaSignOutAlt aria-hidden="true" />
-            <span>Cerrar sesión</span>
-          </button>
-        </div>
+        <button className="rbtn" aria-label="Cambiar de tema" aria-pressed={false} onClick={toggleTheme}>
+          <FaMoon className="rail-theme-icon rail-theme-moon" aria-hidden="true" />
+          <FaSun className="rail-theme-icon rail-theme-sun" aria-hidden="true" />
+          <span className="railtip">Tema</span>
+        </button>
+
+        <button
+          className="rbtn"
+          aria-label="Cerrar sesión"
+          disabled={saving}
+          onClick={async () => {
+            if (saving) return;
+            setSaving(true);
+            try {
+              await api.logout();
+              setSession({ ...session, authenticated: false });
+              setSelected([]);
+              setPreview(null);
+              setNotice('Sesión cerrada.');
+            } catch (cause: unknown) {
+              if (expired(cause)) loseSession();
+              else setError(failure(cause));
+            } finally { setSaving(false); }
+          }}
+        >
+          <FaSignOutAlt aria-hidden="true" />
+          <span className="railtip">Cerrar sesión</span>
+        </button>
       </aside>
-
-      {sidebarOpen && (
-        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* ── Main area ────────────────────────────────────────────────── */}
       <div className="main-area">
-
-        {/* ── Topbar ─────────────────────────────────────────────────── */}
         <header className="topbar">
           <div className="topbar-left">
-            <button
-              className="mobile-menu-btn"
-              aria-label="Abrir menú"
-              aria-expanded={sidebarOpen}
-              data-testid="mobile-menu"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <FaBars aria-hidden="true" />
-            </button>
-
             {folder !== '' && view === 'files' && (
               <button className="btn-back" onClick={() => go(folder.includes('/') ? folder.slice(0, folder.lastIndexOf('/')) : '')}>
                 <FaArrowLeft aria-hidden="true" /> Volver
@@ -716,14 +714,9 @@ function App() {
             </button>
           </div>
         </header>
-
-        {/* ── Workspace body ─────────────────────────────────────────── */}
         <div className="workspace-body">
-
-          {/* ── Files view ─────────────────────────────────────────────── */}
           {view === 'files' ? (
             <>
-              {/* Toolbar: search + refresh */}
               <div className="toolbar">
                 <div className="search-row">
                   <div className="search-wrapper">
@@ -750,8 +743,6 @@ function App() {
                   </button>
                 </div>
               </div>
-
-              {/* New folder form */}
               {creating && (
                 <form className="card folder-form" onSubmit={create}>
                   <h3>Nueva carpeta</h3>
@@ -774,8 +765,6 @@ function App() {
                   </div>
                 </form>
               )}
-
-              {/* Selection bar */}
               {selected.length > 0 && (
                 <div className="selection-bar" role="status">
                   <span>{selected.length} seleccionado{selected.length !== 1 ? 's' : ''}</span>
@@ -798,8 +787,6 @@ function App() {
                   </button>
                 </div>
               )}
-
-              {/* Upload card */}
               <section className="card card-upload" aria-label="Subir archivos">
                 <div className="card-content">
                   <h3>Subir archivos</h3>
@@ -830,11 +817,7 @@ function App() {
                   </div>
                 </div>
               </section>
-
-              {/* Drag & drop overlay */}
               <DragAndDrop onFilesDropped={enqueueFiles} folderPath={folder || 'inicio'} />
-
-              {/* ── File list view ───────────────────────────────────────── */}
               {fileView === 'list' ? (
                 <section
                   className="card file-table"
@@ -925,6 +908,11 @@ function App() {
                       key={entry.path}
                       className={`table-row entry${dragOver === entry.path ? ' drag-target' : ''}`}
                       draggable={entry.type === 'file' || entry.type === 'directory'}
+                      onClick={event => {
+                        const target = event.target as HTMLElement;
+                        if (target.closest('button, a, input, textarea')) return;
+                        setSelected(old => old.length === 1 && old[0] === entry.path ? [] : [entry.path]);
+                      }}
                       onDragStart={e => {
                         e.stopPropagation();
                         const dt = e.dataTransfer;
@@ -932,7 +920,6 @@ function App() {
                         dt.effectAllowed = 'move';
                       }}
                     >
-                      {/* Checkbox */}
                       <div className="col-check">
                         <input
                           type="checkbox"
@@ -949,8 +936,6 @@ function App() {
                           }
                         />
                       </div>
-
-                      {/* Name */}
                       <div
                         className="col-name"
                         onDragEnter={e => {
@@ -1013,8 +998,6 @@ function App() {
                           </span>
                         )}
                       </div>
-
-                      {/* Details */}
                       <div className="col-details" title={entry.type === 'file'
                           ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}`
                           : `Carpeta · ${date(entry.modifiedAt)}`}>
@@ -1022,8 +1005,6 @@ function App() {
                           ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}`
                           : `Carpeta · ${date(entry.modifiedAt)}`}
                       </div>
-
-                      {/* Actions */}
                       <div className="col-actions">
                         {entry.type === 'file' ? (
                           <span className="action-group">
@@ -1178,7 +1159,6 @@ function App() {
                           }
                         }}
                       >
-                        {/* Icon */}
                         <div
                           className="grid-icon"
                           data-icon-type={
@@ -1197,8 +1177,6 @@ function App() {
                             ? <FaFolder aria-hidden="true" />
                             : <FileVisual path={entry.path} contentUrl={api.content(entry.path, true)} view={fileView} />}
                         </div>
-
-                        {/* Checkbox */}
                         <div className="grid-check">
                           <input
                             type="checkbox"
@@ -1214,8 +1192,6 @@ function App() {
                             onClick={e => e.stopPropagation()}
                           />
                         </div>
-
-                        {/* Name */}
                         <span className="grid-name" title={entry.path}>
                           {renaming?.path === entry.path ? (
                             <input
@@ -1243,8 +1219,6 @@ function App() {
                           )}
                           {entry.type === 'directory' && <small>{bytes(entry.size)}</small>}
                         </span>
-
-                        {/* Actions */}
                         <div className="grid-actions">
                           {entry.type === 'file' && (
                             <>
@@ -1344,7 +1318,6 @@ function App() {
               )}
             </>
           ) : view === 'trash' ? (
-            // ── Trash view ─────────────────────────────────────────────
             <>
               <button className="btn-back" onClick={() => setView('files')}>
                 <FaArrowLeft aria-hidden="true" /> Volver a archivos
@@ -1420,11 +1393,8 @@ function App() {
               </section>
             </>
           ) : (
-            // ── Settings view ──────────────────────────────────────────
             <SettingsPanel onExpired={loseSession} />
           )}
-
-          {/* Notice bar */}
           {notice && (
             <p className="notice-bar" role="status" aria-live="polite">
               {notice}
@@ -1433,7 +1403,22 @@ function App() {
         </div>
       </div>
 
-      {/* Preview dialog */}
+      {inspectorEntry && view === 'files' && (
+        <Details
+          entry={inspectorEntry}
+          onOpen={() => {
+            if (inspectorEntry.type === 'directory') go(inspectorEntry.path);
+            else setPreview(inspectorEntry);
+          }}
+          onDownload={() => download([inspectorEntry.path])}
+          onRename={() => startRename(inspectorEntry.path, inspectorEntry.name)}
+          onDelete={() => {
+            if (!window.confirm(`¿Enviar «${inspectorEntry.name}» a la papelera? Puedes restaurarlo después.`)) return;
+            action(() => api.trashFile(inspectorEntry.path), `«${inspectorEntry.name}» está en la papelera.`)
+              .then(() => setSelected([]));
+          }}
+        />
+      )}
       {preview && <Preview entry={preview} onClose={() => setPreview(null)} />}
     </div>
   );

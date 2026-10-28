@@ -20,38 +20,12 @@ function initTheme() {
 
 initTheme();
 
-// Inject dark-mode CSS variable overrides
+// Color tokens live in index.css so both themes share one source of truth.
 const darkStyle = document.createElement('style');
 darkStyle.setAttribute('data-theme-css', 'true');
 darkStyle.textContent = `
-[data-theme="dark"] {
-  --bg:             #0d1117;
-  --surface:        #161b22;
-  --text:           #e6edf3;
-  --muted:          #8b949e;
-  --muted2:         #6e7681;
-  --line:           #21262d;
-  --line2:          #161b22;
-  --sidebar:        #010409;
-  --sidebar2:       #161b22;
-  --sidebar-text:   #8b949e;
-  --sidebar-active: #21262d;
-  --sidebar-hover:  #161b22;
-  --accent:         #3fb950;
-  --accent2:        #56d364;
-  --accent-bg:      rgba(63, 185, 80, 0.08);
-  --accent-hover:   rgba(63, 185, 80, 0.14);
-  --accent-light:   rgba(63, 185, 80, 0.05);
-  --danger:         #f85149;
-  --danger-bg:      rgba(248, 81, 73, 0.06);
-  --danger-hover:   rgba(248, 81, 73, 0.12);
-}
-[data-theme="dark"] .sidebar { background: var(--sidebar); }
-[data-theme="dark"] .sidebar-toggle { color: var(--sidebar-text); }
-[data-theme="dark"] .sidebar-overlay { background: rgba(0,0,0,0.6); }
 [data-theme="dark"] .preview-panel::backdrop { background: rgba(0,0,0,0.85); }
 [data-theme="dark"] .drag-overlay { background: rgba(0,0,0,0.85); }
-[data-theme="dark"] .access-shell { background: var(--sidebar); }
 `;
 document.head.appendChild(darkStyle);
 
