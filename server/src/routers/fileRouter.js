@@ -5,9 +5,8 @@ const { randomUUID } = require('node:crypto');
 const path = require('node:path');
 const { controllers } = require('../controller/fileController');
 
-function fileRouter(storage, maxUploadBytes) {
-    const router = express.Router();
-    const actions = controllers(storage);
+function fileRouter(storage, maxUploadBytes, sse) {    const router = express.Router();
+    const actions = controllers(storage, sse);
     const json = express.json({ limit: '16kb', type: 'application/json' });
     function jsonBody(req, res, next) {
         if (!req.is('application/json')) return res.status(415).json({ message: 'JSON required' });

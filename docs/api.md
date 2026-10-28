@@ -87,11 +87,14 @@ GET /api/files?folder=/path/to/dir&q=search
       "name": "fotos2025",
       "type": "directory",
       "size": 0,
+      "children": 42,
       "modifiedAt": "2025-01-15T10:30:00Z"
     }
   ]
 }
 ```
+
+Las carpetas incluyen `children`, el número de elementos que contienen. Los archivos no llevan ese campo.
 
 ### Crear carpeta
 
@@ -150,6 +153,8 @@ POST /api/files/moveFolder
   "to": "/path/to/dest"
 }
 ```
+
+Para mover a una carpeta existente sin interpretar el destino como un nuevo nombre, añade `"mode": "into"` al cuerpo de cualquiera de las dos solicitudes. `to: ""` indica Inicio. Si la carpeta de destino no existe, la operación falla sin renombrar el origen. Sin `mode`, `/api/files/move` conserva su comportamiento anterior de movimiento o cambio de nombre.
 
 ### Eliminar a papelera
 
@@ -233,43 +238,16 @@ GET /api/status
 
 ---
 
-## Dispositivos (Companion)
-
-### Listar vinculados
+## Eventos en vivo (SSE)
 
 ```
-GET /api/devices/
+GET /api/events
 ```
 
-### Generar código de emparejamiento
-
-```
-POST /api/devices/pair-code
-{
-  "name": "Mi Laptop"  // nombre del dispositivo
-}
-```
-
-### Enviar oferta a dispositivo
-
-```
-POST /api/devices/:id/offers
-{
-  "path": "/shared/folder"
-}
-```
-
-### Listar entradas compartidas
-
-```
-GET /api/devices/:id/entries?share=/shared/folder&path=
-```
-
-### Desvincular dispositivo
-
-```
-DELETE /api/devices/:id
-```
+Stream `text/event-stream` con los cambios del sistema de archivos. Usa la
+misma cookie de sesión que el resto de `/api`. El cliente abre una conexión al
+entrar y refresca el listado al recibir un evento (`created`, `updated`,
+`deleted`). Al detener el servidor la conexión se cierra.
 
 ---
 

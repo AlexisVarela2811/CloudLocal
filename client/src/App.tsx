@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { blobatar } from 'blobatar/blob';
 import {
   FaFolder, FaFile, FaDownload, FaTrash, FaUndo,
   FaArrowLeft, FaPlus, FaUpload, FaSync,
   FaSignOutAlt, FaCopy, FaQuestionCircle,
   FaSpinner, FaExclamationTriangle, FaFolderOpen,
   FaFilePdf, FaEye, FaArrowsAlt,
-  FaImage, FaVideo, FaMusic, FaPowerOff, FaBars, FaTimes
+  FaPowerOff, FaMoon, FaSun, FaHistory
 } from 'react-icons/fa';
 import { api, expired, failure, type Entry, type Session, type Status, type TrashEntry } from './api/api';
+import { useSSE } from './hooks/useSSE';
 
 const BLOCKED_EXTENSIONS = new Set(['.exe', '.bat', '.cmd', '.scr', '.vbs', '.js', '.ps1', '.reg']);
 
@@ -20,21 +22,49 @@ function isExtensionBlockedList(filenames: string[]): string[] {
   return filenames.filter(isExtensionBlocked);
 }
 
+const AVATAR_SEED_KEY = 'cloudlocal-avatar-seed';
+function createAvatar(): string {
+  let seed: string;
+  try {
+    seed = localStorage.getItem(AVATAR_SEED_KEY) || '';
+    if (!seed) {
+      seed = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
+      localStorage.setItem(AVATAR_SEED_KEY, seed);
+    }
+  } catch {
+    seed = Math.random().toString(36).slice(2);
+  }
+  return blobatar(seed, { background: 'circle', hue: 174 });
+}
+
 const SERVER_SHUTDOWN_KEY = 'cloudlocal-server-shutdown';
-function getShutdownState(): { active: boolean; shuttingDown: boolean } {
+function readShutdownState(): { active: boolean; shuttingDown: boolean } | null {
   try {
     const raw = localStorage.getItem(SERVER_SHUTDOWN_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { active: true, shuttingDown: false };
+    return raw ? JSON.parse(raw) : null;
+  } catch (cause) {
+    console.warn('No se pudo leer el estado del servidor', cause);
+    return null;
+  }
+}
+function getShutdownState(): { active: boolean; shuttingDown: boolean } {
+  return readShutdownState() ?? { active: true, shuttingDown: false };
 }
 function persistShutdownState(value: { active: boolean; shuttingDown: boolean }) {
-  try { localStorage.setItem(SERVER_SHUTDOWN_KEY, JSON.stringify(value)); } catch {}
+  try {
+    localStorage.setItem(SERVER_SHUTDOWN_KEY, JSON.stringify(value));
+  } catch (cause) {
+    console.warn('No se pudo guardar el estado del servidor', cause);
+  }
 }
 import { Access } from './components/Access';
 import { Preview } from './components/Preview';
 import { DragAndDrop } from './components/DragAndDrop';
 import { SettingsPanel } from './components/Settings';
+import { Details, type ActivityEvent } from './components/Details';
+import { MultiDetails } from './components/MultiDetails';
+import { FileVisual } from './components/FileVisual';
+import { classifyExtension } from './components/fileVisuals.mjs';
 import { breadcrumbs, bytes, exceedsLimit, previewKind, sortEntries } from './workspace.mjs';
 
 type View = 'files' | 'trash' | 'settings';
@@ -54,17 +84,54 @@ interface UploadItem {
   error?: string;
 }
 
+type TypeFilter = 'all' | 'image' | 'video' | 'document';
+
+const TYPE_FILTERS: { id: TypeFilter; label: string }[] = [
+  { id: 'all', label: 'Todo' },
+  { id: 'image', label: 'Imágenes' },
+  { id: 'video', label: 'Vídeo' },
+  { id: 'document', label: 'Documentos' },
+];
+
+const DOCUMENT_KINDS = new Set(['pdf', 'word', 'excel', 'powerpoint', 'text']);
+
+function matchesTypeFilter(kind: string, filter: TypeFilter): boolean {
+  if (filter === 'all') return true;
+  return filter === 'document' ? DOCUMENT_KINDS.has(kind) : kind === filter;
+}
+
+// Newest first; entries with an unreadable date sink to the end.
+function sortByModifiedAt(entries: Entry[]): Entry[] {
+  const time = (value: string) => {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+  return [...entries].sort((a, b) => time(b.modifiedAt) - time(a.modifiedAt) ||
+    a.name.localeCompare(b.name, 'es', { sensitivity: 'base', numeric: true }));
+}
+
 function date(value: string) {
   const time = new Date(value);
   return Number.isNaN(time.getTime()) ? '—' : new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(time);
 }
 
 function App() {
+  const [avatar] = useState(createAvatar);
   const [session, setSession] = useState<Session | null>(null);
   const [entryError, setEntryError] = useState('');
   const [folder, setFolder] = useState('');
   const [view, setView] = useState<View>('files');
   const [fileView, setFileView] = useState<'list' | 'grid'>('list');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [recentMode, setRecentMode] = useState(false);
+  const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [moving, setMoving] = useState<{ path: string; type: 'file' | 'directory' }[] | null>(null);
+  const [moveTarget, setMoveTarget] = useState('');
+  const [moveEntries, setMoveEntries] = useState<Entry[]>([]);
+  const [moveLoading, setMoveLoading] = useState(false);
+  const [moveBrowseError, setMoveBrowseError] = useState('');
+  const moveDialogRef = useRef<HTMLDialogElement>(null);
+  const moveListRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [trash, setTrash] = useState<TrashEntry[]>([]);
@@ -80,11 +147,99 @@ function App() {
   const [creating, setCreating] = useState(false);
   const [folderName, setFolderName] = useState('');
   const [saving, setSaving] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth > 768);
   const [revision, setRevision] = useState(0);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [shutdownState, setShutdownState] = useState(getShutdownState());
   const refresh = useCallback(() => setRevision(value => value + 1), []);
+  const toggleTheme = useCallback(() => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    try {
+      localStorage.setItem('cloudlocal-theme', next);
+    } catch (cause) {
+      console.warn('No se pudo guardar el tema', cause);
+    }
+    window.dispatchEvent(new CustomEvent('cloudlocal-theme-change', { detail: { theme: next } }));
+  }, []);
+  // SSE: keep a short activity log and auto-refresh on file events.
+  const handleSseEvent = useCallback((type: string, data: unknown) => {
+    let path = '';
+    if (data && typeof data === 'object') {
+      const payload = data as { path?: unknown; to?: unknown };
+      if (typeof payload.path === 'string') path = payload.path;
+      else if (typeof payload.to === 'string') path = payload.to;
+    }
+    setActivity(previous => [{ type, path, at: Date.now() }, ...previous].slice(0, 20));
+    refresh();
+  }, [refresh]);
+  useSSE(handleSseEvent);
+  useEffect(() => {
+    const dialog = moveDialogRef.current;
+    if (!dialog) return;
+    if (moving && !dialog.open) dialog.showModal();
+    if (!moving && dialog.open) dialog.close();
+  }, [moving]);
+
+  function openMove(paths: string[]) {
+    if (paths.length === 0) return;
+    const items = paths.map(path => {
+      const found = entries.find(entry => entry.path === path);
+      return { path, type: (found?.type ?? 'file') as 'file' | 'directory' };
+    });
+    setMoving(items);
+    setMoveTarget(folder);
+    setMoveEntries([]);
+    setMoveBrowseError('');
+    setError('');
+  }
+
+  // The destination is the folder currently on screen in the dialog.
+  const moveCrumbs = moveTarget.split('/').filter(Boolean);
+  const moveParent = moveCrumbs.slice(0, -1).join('/');
+  const moveFolders = moveEntries.filter(entry => entry.type === 'directory');
+  // A folder cannot be sent into itself or into any of its own subfolders.
+  function isMoveBlocked(path: string): boolean {
+    return (moving ?? []).some(item =>
+      item.type === 'directory' && (path === item.path || path.startsWith(item.path + '/'))
+    );
+  }
+
+  async function submitMove() {
+    if (!moving) return;
+    // The destination must be a folder we actually loaded.
+    if (moveLoading) {
+      setError('Espera a que termine de cargarse la carpeta de destino.');
+      return;
+    }
+    if (moveBrowseError) {
+      setError('No se pudo leer la carpeta de destino. Elige otra carpeta.');
+      return;
+    }
+    const target = moveTarget.trim();
+    const insideItself = moving.some(item => item.path === target || target.startsWith(item.path + '/'));
+    if (target !== '' && insideItself) {
+      setError('No puedes mover una carpeta dentro de sí misma.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      for (const item of moving) {
+        if (item.type === 'directory') await api.moveFolderInto(item.path, target);
+        else await api.moveFileInto(item.path, target);
+      }
+      const label = moving.length === 1 ? `«${moving[0].path.split('/').at(-1)}»` : `${moving.length} elementos`;
+      setNotice(`${label} movido${moving.length === 1 ? '' : 's'} a ${target || 'Inicio'}.`);
+      setMoving(null);
+      setSelected([]);
+      refresh();
+    } catch (cause: unknown) {
+      if (expired(cause)) loseSession();
+      else setError(failure(cause));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const loseSession = useCallback(() => {
     setSession(previous => previous ? { ...previous, authenticated: false } : previous);
     setNotice('La sesión ha caducado. Entra otra vez para continuar.');
@@ -93,22 +248,27 @@ function App() {
   const [uploadBusy, setUploadBusy] = useState(false);
   const cancelUploadRef = useRef(false);
   const uploadControllerRef = useRef<AbortController | null>(null);
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
   const uploadNextId = useRef(0);
   const pendingUploadsRef = useRef<{ file: File; id: number; folder: string }[]>([]);
   const isUploadingRef = useRef(false);
   const MAX_RECONNECT = 3;
 
-  function updateUploadItem(_id: number, _patch: Partial<UploadItem>) {
-    // Upload item state tracking placeholder — kept for API compatibility
+  function updateUploadItem(id: number, patch: Partial<UploadItem>) {
+    setUploads(previous => previous.map(item => item.id === id ? { ...item, ...patch } : item));
   }
 
-  function enqueueFiles(files: File[], _folderPath: string) {
+  function enqueueFiles(files: File[], folderPath: string) {
     const blockedNames = isExtensionBlockedList(files.map(f => f.name));
     if (blockedNames.length > 0) {
       setError(`No se permiten los siguientes tipos de archivo: ${blockedNames.join(', ')}`);
       return;
     }
-    const batch = files.map(file => ({ file, id: ++uploadNextId.current, folder }));
+    const batch = files.map(file => ({ file, id: ++uploadNextId.current, folder: folderPath }));
+    setUploads(previous => [
+      ...batch.map(item => ({ id: item.id, name: item.file.name, state: 'En cola', progress: 0 })),
+      ...previous,
+    ].slice(0, 6));
     pendingUploadsRef.current.push(...batch);
     startNextUpload();
   }
@@ -179,7 +339,19 @@ function App() {
     startNextUpload();
   }
 
-  const sorted = sortEntries(entries);
+  const typeCounts: Record<TypeFilter, number> = { all: entries.length, image: 0, video: 0, document: 0 };
+  for (const entry of entries) {
+    if (entry.type !== 'file') continue;
+    const kind = classifyExtension(entry.name);
+    if (kind === 'image') typeCounts.image += 1;
+    else if (kind === 'video') typeCounts.video += 1;
+    else if (DOCUMENT_KINDS.has(kind)) typeCounts.document += 1;
+  }
+  const filteredEntries = entries.filter(entry =>
+    typeFilter === 'all' || (entry.type === 'file' && matchesTypeFilter(classifyExtension(entry.name), typeFilter))
+  );
+  const sorted = recentMode ? sortByModifiedAt(filteredEntries) : sortEntries(filteredEntries);
+  const recentlyAdded = fileView === 'grid' && sorted.length >= 2 ? sortByModifiedAt(sorted).slice(0, 4) : [];
 
   useEffect(() => {
     let active = true;
@@ -207,6 +379,28 @@ function App() {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [session?.authenticated, folder, query, view, revision, loseSession]);
+  // Browse the real folder tree while the move dialog is open.
+  useEffect(() => {
+    if (!moving) return;
+    let active = true;
+    setMoveLoading(true);
+    setMoveBrowseError('');
+    api.files(moveTarget, '')
+      .then(list => { if (active) setMoveEntries(list); })
+      .catch(cause => {
+        if (!active) return;
+        if (expired(cause)) loseSession();
+        else setMoveBrowseError(failure(cause));
+      })
+      .finally(() => {
+        if (!active) return;
+        setMoveLoading(false);
+        // Keep keyboard users inside the dialog after the folder list changes.
+        moveListRef.current?.focus({ preventScroll: true });
+      });
+    return () => { active = false; };
+  }, [moving, moveTarget, loseSession]);
+
   useEffect(() => {
     if (!session?.authenticated) return;
     let active = true;
@@ -276,6 +470,7 @@ function App() {
         !event.metaKey &&
         event.key.toLowerCase() === 'n' &&
         view === 'files' &&
+        !recentMode &&
         !isInputFocused
       ) {
         event.preventDefault();
@@ -287,7 +482,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selected, sorted, clipboard, preview, renaming, folder, action]);
+  }, [selected, sorted, clipboard, preview, renaming, folder, action, recentMode]);
 
   useEffect(() => {
     if (!renaming) return;
@@ -356,9 +551,9 @@ function App() {
     if (!renaming) return;
     const newName = renameInput.trim();
     if (!newName) return;
-    const invalidChars = /[\/:*?"<>|\\]/;
+    const invalidChars = /[/:*?"<>|\\]/;
     if (invalidChars.test(newName)) {
-      setError('El nombre no puede contener: / \ : * ? " < > |');
+      setError('El nombre no puede contener: / \\ : * ? " < > |');
       return;
     }
     const fromPath = renaming.path;
@@ -451,8 +646,6 @@ function App() {
       else setError(failure(cause));
     }
   }
-
-  // ── Render: auth gate ─────────────────────────────────────────────
   if (!session)
     return <main className="auth-gate" role="status">
       {entryError ? <>
@@ -470,8 +663,6 @@ function App() {
         </button>
       </> : <p>Conectando con CloudLocal…</p>}
     </main>;
-
-  // ── Render: unauthenticated ───────────────────────────────────────
   if (!session.authenticated)
     return <>
       <Access
@@ -483,106 +674,107 @@ function App() {
       />
       {notice && <p className="session-notice" role="status">{notice}</p>}
     </>;
-
-  // ── Render: authenticated app shell ──────────────────────────────
   const crumbs = breadcrumbs(folder);
+  // The inspector follows the selection: one entry keeps the original Details
+  // panel, two or more keep a summary of the whole selection, none hides it.
+  const selectedEntries = selected
+    .map(path => entries.find(entry => entry.path === path))
+    .filter((entry): entry is Entry => Boolean(entry));
+  const inspectorEntry = selected.length === 1 ? selectedEntries[0] ?? null : null;
+  const multiSelection = selected.length > 1 && selectedEntries.length === selected.length && view === 'files'
+    ? selectedEntries
+    : null;
 
   return (
-    <div className="app-shell">
-
-      {/* ── Sidebar ──────────────────────────────────────────────────── */}
-      <aside className={`sidebar${sidebarOpen ? ' sidebar-open' : ''}`} aria-label="Navegación principal">
-        <button className="sidebar-close-btn" aria-label="Cerrar menú" onClick={() => setSidebarOpen(false)}>
-          <FaTimes aria-hidden="true" />
+    <div className={`app-shell${(inspectorEntry && view === 'files') || multiSelection ? ' has-inspector' : ''}`}>
+      <aside className="rail" aria-label="Navegación principal">
+        <button
+          className="rail-brand"
+          aria-label="CloudLocal, ir a Archivos"
+          onClick={() => { setView('files'); setRecentMode(false); }}
+        >
+          <img src="/cloudlocal.svg" alt="" />
         </button>
 
-        <div className="sidebar-logo">
-          <img src="/cloudlocal.svg" alt="CloudLocal" className="logo-icon" />
-          <span className="logo-text">CloudLocal</span>
-        </div>
-
-        <p className="sidebar-caption">ESPACIO LOCAL</p>
-
-        <nav className="sidebar-nav" aria-label="Secciones">
+        <nav className="rail-nav" aria-label="Secciones">
           <button
-            className={`nav-item${view === 'files' ? ' active' : ''}`}
-            onClick={() => { setView('files'); setSidebarOpen(false); }}
+            className={`rbtn${view === 'files' && !recentMode ? ' active' : ''}`}
+            aria-current={view === 'files' && !recentMode ? 'page' : undefined}
+            aria-label="Archivos"
+            onClick={() => { setView('files'); setRecentMode(false); }}
           >
             <FaFolder aria-hidden="true" />
-            <span>Archivos</span>
+            <span className="railtip">Archivos</span>
           </button>
           <button
-            className={`nav-item${view === 'trash' ? ' active' : ''}`}
-            onClick={() => { setView('trash'); setSelected([]); setPreview(null); setSidebarOpen(false); }}
+            className={`rbtn${view === 'files' && recentMode ? ' active' : ''}`}
+            aria-current={view === 'files' && recentMode ? 'page' : undefined}
+            aria-label="Recientes"
+            onClick={() => { setView('files'); setRecentMode(true); setCreating(false); setSelected([]); setPreview(null); }}
+          >
+            <FaHistory aria-hidden="true" />
+            <span className="railtip">Recientes</span>
+          </button>
+          <button
+            className={`rbtn${view === 'trash' ? ' active' : ''}`}
+            aria-current={view === 'trash' ? 'page' : undefined}
+            aria-label="Papelera"
+            onClick={() => { setView('trash'); setSelected([]); setPreview(null); }}
           >
             <FaTrash aria-hidden="true" />
-            <span>Papelera</span>
+            <span className="railtip">Papelera</span>
           </button>
           <button
-            className={`nav-item${view === 'settings' ? ' active' : ''}`}
-            onClick={() => { setView('settings'); setSelected([]); setPreview(null); setSidebarOpen(false); }}
+            className={`rbtn${view === 'settings' ? ' active' : ''}`}
+            aria-current={view === 'settings' ? 'page' : undefined}
+            aria-label="Configuración"
+            onClick={() => { setView('settings'); setSelected([]); setPreview(null); }}
           >
             <FaQuestionCircle aria-hidden="true" />
-            <span>Configuración</span>
+            <span className="railtip">Configuración</span>
           </button>
         </nav>
 
-        <div className="sidebar-status">
+        <div className="rail-spacer" />
+
+        <span className="rail-status" title="El servidor debe permanecer encendido y despierto">
           <span className="status-dot" aria-hidden="true" />
-          <span>El servidor debe permanecer encendido y despierto.</span>
-        </div>
+          <span className="sr-only">Servidor local activo</span>
+        </span>
 
-        <div className="sidebar-footer">
-          <button
-            className="btn-logout"
-            disabled={saving}
-            onClick={async () => {
-              if (saving) return;
-              setSaving(true);
-              try {
-                await api.logout();
-                setSession({ ...session, authenticated: false });
-                setSelected([]);
-                setPreview(null);
-                setNotice('Sesión cerrada.');
-              } catch (cause: unknown) {
-                if (expired(cause)) loseSession();
-                else setError(failure(cause));
-              } finally { setSaving(false); }
-            }}
-          >
-            <FaSignOutAlt aria-hidden="true" />
-            <span>Cerrar sesión</span>
-          </button>
-        </div>
+        <button className="rbtn" aria-label="Cambiar de tema" aria-pressed={false} onClick={toggleTheme}>
+          <FaMoon className="rail-theme-icon rail-theme-moon" aria-hidden="true" />
+          <FaSun className="rail-theme-icon rail-theme-sun" aria-hidden="true" />
+          <span className="railtip">Tema</span>
+        </button>
+
+        <button
+          className="rbtn"
+          aria-label="Cerrar sesión"
+          disabled={saving}
+          onClick={async () => {
+            if (saving) return;
+            setSaving(true);
+            try {
+              await api.logout();
+              setSession({ ...session, authenticated: false });
+              setSelected([]);
+              setPreview(null);
+              setNotice('Sesión cerrada.');
+            } catch (cause: unknown) {
+              if (expired(cause)) loseSession();
+              else setError(failure(cause));
+            } finally { setSaving(false); }
+          }}
+        >
+          <FaSignOutAlt aria-hidden="true" />
+          <span className="railtip">Cerrar sesión</span>
+        </button>
+        <span className="rail-avatar" aria-hidden="true" dangerouslySetInnerHTML={{ __html: avatar }} />
       </aside>
-
-      {sidebarOpen && (
-        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* ── Main area ────────────────────────────────────────────────── */}
       <div className="main-area">
-
-        {/* ── Topbar ─────────────────────────────────────────────────── */}
         <header className="topbar">
           <div className="topbar-left">
-            <button
-              className="mobile-menu-btn"
-              aria-label="Abrir menú"
-              aria-expanded={sidebarOpen}
-              data-testid="mobile-menu"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <FaBars aria-hidden="true" />
-            </button>
-
-            {folder !== '' && view === 'files' && (
-              <button className="btn-back" onClick={() => go(folder.includes('/') ? folder.slice(0, folder.lastIndexOf('/')) : '')}>
-                <FaArrowLeft aria-hidden="true" /> Volver
-              </button>
-            )}
-
             <nav className="breadcrumb" aria-label="Ruta">
               {crumbs.map((crumb, index) => (
                 <span key={crumb.path}>
@@ -600,12 +792,16 @@ function App() {
 
             <div>
               <h1 className="page-title">
-                {view === 'trash' ? 'Papelera' : view === 'settings' ? 'Configuración' : 'Mis archivos'}
+                {view === 'trash' ? 'Papelera' : view === 'settings' ? 'Configuración' : recentMode ? 'Recientes' : 'Mis archivos'}
               </h1>
               {view === 'trash' && <p className="page-subtitle">Restaura o elimina permanentemente los archivos borrados.</p>}
+              {view === 'files' && recentMode && (
+                <p className="page-subtitle">Ordenados por fecha de modificación en esta carpeta.</p>
+              )}
             </div>
           </div>
 
+          {view === 'files' && (
           <div className="topbar-actions">
             {clipboard && (
               <button className="btn-icon" onClick={() => handlePaste(folder)} title="Pegar en esta carpeta">
@@ -614,40 +810,7 @@ function App() {
               </button>
             )}
 
-            {view === 'files' && (
-              <div className="view-toggle" role="radiogroup" aria-label="Vista de archivos">
-                <button
-                  className={`view-btn ${fileView === 'list' ? 'active' : ''}`}
-                  onClick={() => setFileView('list')}
-                  role="radio"
-                  aria-checked={fileView === 'list'}
-                  aria-label="Vista de lista"
-                  title="Vista de lista"
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <rect x="2" y="2" width="12" height="2" rx="0.5" fill="currentColor" />
-                    <rect x="2" y="7" width="12" height="2" rx="0.5" fill="currentColor" />
-                    <rect x="2" y="12" width="12" height="2" rx="0.5" fill="currentColor" />
-                  </svg>
-                </button>
-                <button
-                  className={`view-btn ${fileView === 'grid' ? 'active' : ''}`}
-                  onClick={() => setFileView('grid')}
-                  role="radio"
-                  aria-checked={fileView === 'grid'}
-                  aria-label="Vista de cuadrícula"
-                  title="Vista de cuadrícula"
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                    <rect x="9" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                    <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                    <rect x="9" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                  </svg>
-                </button>
-              </div>
-            )}
-
+            {!recentMode && (
             <button
               className="btn-icon"
               onClick={() => setCreating(value => !value)}
@@ -658,10 +821,11 @@ function App() {
               <span className="btn-label">Nueva carpeta</span>
               <span className="shortcut-hint">Ctrl+Alt+N</span>
             </button>
+            )}
 
             <label className={`btn-upload button-like${uploadBusy ? ' busy' : ''}`} title="Elegir archivos para subir">
               <FaUpload aria-hidden="true" />
-              <span className="btn-label">Elegir archivos</span>
+              <span className="btn-label">Subir</span>
               <input
                 type="file"
                 multiple
@@ -676,6 +840,7 @@ function App() {
 
             <button
               className="btn-danger topbar-shutdown"
+              aria-label={shutdownState.shuttingDown ? 'Apagando el servidor' : 'Apagar servidor'}
               disabled={shutdownState.shuttingDown || !shutdownState.active}
               onClick={async () => {
                 setShutdownState(prev => ({ ...prev, shuttingDown: true }));
@@ -692,65 +857,91 @@ function App() {
               }}
             >
               <FaPowerOff aria-hidden="true" />
-              <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Detener Server'}</span>
+              <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Apagar'}</span>
             </button>
 
-            <button className="btn-ghost" onClick={async () => {
-              if (saving) return;
-              setSaving(true);
-              try {
-                await api.logout();
-                setSession({ ...session, authenticated: false });
-                setSelected([]);
-                setPreview(null);
-                setNotice('Sesión cerrada.');
-              } catch (cause: unknown) {
-                if (expired(cause)) loseSession();
-                else setError(failure(cause));
-              } finally { setSaving(false); }
-            }}>
-              <FaSignOutAlt aria-hidden="true" />
-              <span className="btn-label">Cerrar sesión</span>
-            </button>
           </div>
+          )}
         </header>
-
-        {/* ── Workspace body ─────────────────────────────────────────── */}
         <div className="workspace-body">
-
-          {/* ── Files view ─────────────────────────────────────────────── */}
           {view === 'files' ? (
             <>
-              {/* Toolbar: search + refresh */}
-              <div className="toolbar">
-                <div className="search-row">
-                  <div className="search-wrapper">
-                    <input
-                      className="search-input"
-                      type="search"
-                      value={query}
-                      onChange={e => setQuery(e.target.value)}
-                      placeholder="Buscar en esta carpeta…"
-                      aria-label="Buscar archivos"
-                    />
-                    {query && (
-                      <button className="btn-clear" onClick={() => setQuery('')} aria-label="Limpiar búsqueda">✕</button>
-                    )}
-                  </div>
+              <div className="toolbar files-toolbar">
+                {folder !== '' && (
+                  <button className="btn-back" onClick={() => go(folder.includes('/') ? folder.slice(0, folder.lastIndexOf('/')) : '')}>
+                    <FaArrowLeft aria-hidden="true" /> Volver
+                  </button>
+                )}
+                <div className="search-wrapper">
+                  <input
+                    className="search-input"
+                    type="search"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Buscar en esta carpeta…"
+                    aria-label="Buscar archivos"
+                  />
+                  {query && (
+                    <button className="btn-clear" onClick={() => setQuery('')} aria-label="Limpiar búsqueda">✕</button>
+                  )}
+                </div>
+                <button
+                  className="btn-icon btn-refresh"
+                  onClick={refresh}
+                  disabled={loading}
+                  title="Actualizar"
+                >
+                  <FaSync aria-hidden="true" />
+                  <span className="btn-label">Actualizar</span>
+                </button>
+                <div className="type-chips" role="group" aria-label="Filtrar por tipo de archivo">
+                  {TYPE_FILTERS.map(option => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className="chip"
+                      aria-pressed={typeFilter === option.id}
+                      onClick={() => setTypeFilter(option.id)}
+                    >
+                      {option.label}
+                      <span className="chip-count">{typeCounts[option.id]}</span>
+                    </button>
+                  ))}
+                </div>
+                <span className="toolbar-gap" aria-hidden="true" />
+                <div className="view-toggle" role="radiogroup" aria-label="Vista de archivos">
                   <button
-                    className="btn-icon btn-refresh"
-                    onClick={refresh}
-                    disabled={loading}
-                    title="Actualizar"
+                    className={`view-btn ${fileView === 'list' ? 'active' : ''}`}
+                    onClick={() => setFileView('list')}
+                    role="radio"
+                    aria-checked={fileView === 'list'}
+                    aria-label="Vista de lista"
+                    title="Vista de lista"
                   >
-                    <FaSync aria-hidden="true" />
-                    <span className="btn-label">Actualizar</span>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <rect x="2" y="2" width="12" height="2" rx="0.5" fill="currentColor" />
+                      <rect x="2" y="7" width="12" height="2" rx="0.5" fill="currentColor" />
+                      <rect x="2" y="12" width="12" height="2" rx="0.5" fill="currentColor" />
+                    </svg>
+                  </button>
+                  <button
+                    className={`view-btn ${fileView === 'grid' ? 'active' : ''}`}
+                    onClick={() => setFileView('grid')}
+                    role="radio"
+                    aria-checked={fileView === 'grid'}
+                    aria-label="Vista de cuadrícula"
+                    title="Vista de cuadrícula"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                      <rect x="9" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                      <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                      <rect x="9" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                    </svg>
                   </button>
                 </div>
               </div>
-
-              {/* New folder form */}
-              {creating && (
+              {creating && !recentMode && (
                 <form className="card folder-form" onSubmit={create}>
                   <h3>Nueva carpeta</h3>
                   <div className="form-row">
@@ -772,8 +963,6 @@ function App() {
                   </div>
                 </form>
               )}
-
-              {/* Selection bar */}
               {selected.length > 0 && (
                 <div className="selection-bar" role="status">
                   <span>{selected.length} seleccionado{selected.length !== 1 ? 's' : ''}</span>
@@ -785,10 +974,7 @@ function App() {
                   <button onClick={() => download(selected)}>
                     <FaDownload aria-hidden="true" /> Descargar
                   </button>
-                  <button onClick={async () => {
-                    if (selected.length === 1) { await movePath(selected[0], ''); }
-                    else { setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.'); }
-                  }}>
+                  <button onClick={() => openMove(selected)}>
                     <FaFolder aria-hidden="true" /> Mover
                   </button>
                   <button className="btn-danger" onClick={() => setSelected([])}>
@@ -796,43 +982,59 @@ function App() {
                   </button>
                 </div>
               )}
-
-              {/* Upload card */}
-              <section className="card card-upload" aria-label="Subir archivos">
-                <div className="card-content">
-                  <h3>Subir archivos</h3>
-                  <p>
-                    {status
-                      ? `Sube archivos aquí. Tamaño máximo por archivo: ${bytes(status.maxUploadBytes)}.`
-                      : 'Sube tus archivos aquí.'}
-                  </p>
-                  <div className="upload-warning">
-                    <FaExclamationTriangle size={13} />
-                    <span>Algunos tipos de archivo no están permitidos</span>
-                  </div>
-                  <div className="upload-actions-row">
-                    <label className={`btn-accent button-like${uploadBusy ? ' busy' : ''}`}>
-                      <FaUpload aria-hidden="true" />
-                      <span>Elegir archivos</span>
-                      <input
-                        type="file"
-                        multiple
-                        onChange={e => {
-                          if (e.target.files?.length) selectFilePickerFiles(Array.from(e.target.files));
-                          e.target.value = '';
-                        }}
-                        disabled={uploadBusy}
-                        aria-label="Elegir archivos para subir"
-                      />
-                    </label>
-                  </div>
+              {!recentMode && (
+              <div className="upload-bar" aria-label="Subir archivos">
+                <span className="upload-bar-icon" aria-hidden="true"><FaUpload /></span>
+                <div className="upload-bar-text">
+                  <strong>Subir archivos</strong>
+                  <span>{status ? `Máximo ${bytes(status.maxUploadBytes)} por archivo` : 'Arrastra o elige archivos'}</span>
                 </div>
-              </section>
-
-              {/* Drag & drop overlay */}
+                <span className="upload-bar-limit">
+                  <FaExclamationTriangle aria-hidden="true" />
+                  .exe, .bat y similares bloqueados
+                </span>
+                <label className={`upload-bar-btn${uploadBusy ? ' busy' : ''}`}>
+                  <FaUpload aria-hidden="true" />
+                  <span>Elegir archivos</span>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={e => {
+                      if (e.target.files?.length) selectFilePickerFiles(Array.from(e.target.files));
+                      e.target.value = '';
+                    }}
+                    disabled={uploadBusy}
+                    aria-label="Elegir archivos para subir"
+                  />
+                </label>
+              </div>
+              )}
+              {uploads.length > 0 && (
+                <div className="upload-list" aria-live="polite" aria-label="Subidas en curso">
+                  {uploads.map(item => (
+                    <div
+                      key={item.id}
+                      className={`upload-item ${
+                        /subido|completado/i.test(item.state) ? 'state-done'
+                          : /cancelado/i.test(item.state) ? 'state-paused'
+                            : /error|no se pudo|supera|sesión/i.test(item.state) ? 'state-error'
+                              : 'state-uploading'
+                      }`}
+                    >
+                      <div className="upload-item-head">
+                        <span className="upload-name" title={item.name}>{item.name}</span>
+                        <span className="upload-status">{item.state}</span>
+                        {item.progress > 0 && <span className="upload-progress-text">{item.progress}%</span>}
+                      </div>
+                      <div className="upload-progress-bar">
+                        <div style={{ width: `${Math.min(item.progress, 100)}%` }} />
+                      </div>
+                      {item.error && <span className="upload-error">{item.error}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
               <DragAndDrop onFilesDropped={enqueueFiles} folderPath={folder || 'inicio'} />
-
-              {/* ── File list view ───────────────────────────────────────── */}
               {fileView === 'list' ? (
                 <section
                   className="card file-table"
@@ -877,7 +1079,8 @@ function App() {
                       />
                     </div>
                     <div className="col-name">NOMBRE</div>
-                    <div className="col-details">DETALLES</div>
+                    <div className="col-modified">MODIFICADO</div>
+                    <div className="col-size">TAMAÑO</div>
                     <div className="col-actions">ACCIONES</div>
                   </div>
 
@@ -887,7 +1090,8 @@ function App() {
                       <div className="col-name">
                         <span className="placeholder">Cargando archivos…</span>
                       </div>
-                      <div className="col-details" />
+                      <div className="col-modified" />
+                      <div className="col-size" />
                       <div className="col-actions" />
                     </div>
                   )}
@@ -901,7 +1105,8 @@ function App() {
                           <button onClick={refresh}>Reintentar</button>
                         </div>
                       </div>
-                      <div className="col-details" />
+                      <div className="col-modified" />
+                      <div className="col-size" />
                       <div className="col-actions" />
                     </div>
                   )}
@@ -923,6 +1128,11 @@ function App() {
                       key={entry.path}
                       className={`table-row entry${dragOver === entry.path ? ' drag-target' : ''}`}
                       draggable={entry.type === 'file' || entry.type === 'directory'}
+                      onClick={event => {
+                        const target = event.target as HTMLElement;
+                        if (target.closest('button, a, input, textarea')) return;
+                        setSelected(old => old.length === 1 && old[0] === entry.path ? [] : [entry.path]);
+                      }}
                       onDragStart={e => {
                         e.stopPropagation();
                         const dt = e.dataTransfer;
@@ -930,7 +1140,6 @@ function App() {
                         dt.effectAllowed = 'move';
                       }}
                     >
-                      {/* Checkbox */}
                       <div className="col-check">
                         <input
                           type="checkbox"
@@ -947,8 +1156,6 @@ function App() {
                           }
                         />
                       </div>
-
-                      {/* Name */}
                       <div
                         className="col-name"
                         onDragEnter={e => {
@@ -975,9 +1182,10 @@ function App() {
                           if (movedPath) { movePath(movedPath, entry.path); }
                         }}
                       >
-                        <span className="file-icon">
-                          {entry.type === 'directory' ? <FaFolder aria-hidden="true" /> : <FaFile aria-hidden="true" />}
-                        </span>
+                        {entry.type === 'directory'
+                          ? <FaFolder aria-hidden="true" />
+                          : <FileVisual path={entry.path} contentUrl={api.content(entry.path, true)} view={fileView} className="file-icon" />}
+
                         {renaming?.path === entry.path ? (
                           <input
                             className="rename-input"
@@ -1010,17 +1218,8 @@ function App() {
                           </span>
                         )}
                       </div>
-
-                      {/* Details */}
-                      <div className="col-details" title={entry.type === 'file'
-                          ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}`
-                          : `Carpeta · ${date(entry.modifiedAt)}`}>
-                        {entry.type === 'file'
-                          ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}`
-                          : `Carpeta · ${date(entry.modifiedAt)}`}
-                      </div>
-
-                      {/* Actions */}
+                                            <div className="col-modified">{date(entry.modifiedAt)}</div>
+                      <div className="col-size">{entry.type === 'file' ? bytes(entry.size) : '—'}</div>
                       <div className="col-actions">
                         {entry.type === 'file' ? (
                           <span className="action-group">
@@ -1066,7 +1265,26 @@ function App() {
                               <FaTrash aria-hidden="true" />
                             </button>
                           </span>
-                        ) : null}
+                        ) : (
+                          <span className="action-group">
+                            <button
+                              className="btn-action btn-delete"
+                              disabled={saving}
+                              onClick={() => {
+                                if (window.confirm(`¿Enviar la carpeta «${entry.name}» y todo su contenido a la papelera?`)) {
+                                  action(
+                                    () => api.trashFile(entry.path),
+                                    `«${entry.name}» está en la papelera.`
+                                  ).then(() => setSelected(old => old.filter(path => path !== entry.path)));
+                                }
+                              }}
+                              title={`Enviar ${entry.name} a papelera`}
+                              aria-label={'Enviar ' + entry.name + ' a papelera'}
+                            >
+                              <FaTrash aria-hidden="true" />
+                            </button>
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1175,37 +1393,26 @@ function App() {
                           }
                         }}
                       >
-                        {/* Icon */}
                         <div
                           className="grid-icon"
                           data-icon-type={
                             entry.type === 'directory'
                               ? 'folder'
-                              : previewKind(entry.name)
+                              : classifyExtension(entry.name)
                           }
                           onClick={(e) => {
                             e.stopPropagation();
-                            entry.type === 'directory'
-                              ? go(entry.path)
-                              : startRename(entry.path, entry.name);
+                            if (entry.type === 'directory') go(entry.path);
+                            else startRename(entry.path, entry.name);
                           }}
                         >
-                          {entry.type === 'directory' ? (
-                            <FaFolder size={32} color="var(--accent)" />
-                          ) : previewKind(entry.name) === 'pdf' ? (
-                            <FaFilePdf size={32} color="var(--danger)" />
-                          ) : previewKind(entry.name) === 'image' ? (
-                            <FaImage size={32} color="var(--state-done)" />
-                          ) : previewKind(entry.name) === 'video' ? (
-                            <FaVideo size={32} color="var(--accent2)" />
-                          ) : previewKind(entry.name) === 'audio' ? (
-                            <FaMusic size={32} color="var(--muted2)" />
-                          ) : (
-                            <FaFile size={32} color="var(--muted)" />
+                          {entry.type === 'directory'
+                            ? <FaFolder aria-hidden="true" />
+                            : <FileVisual path={entry.path} contentUrl={api.content(entry.path, true)} view={fileView} />}
+                          {entry.type === 'directory' && (
+                            <span className="grid-count" aria-hidden="true">{entry.children ?? 0}</span>
                           )}
                         </div>
-
-                        {/* Checkbox */}
                         <div className="grid-check">
                           <input
                             type="checkbox"
@@ -1221,8 +1428,6 @@ function App() {
                             onClick={e => e.stopPropagation()}
                           />
                         </div>
-
-                        {/* Name */}
                         <span className="grid-name" title={entry.path}>
                           {renaming?.path === entry.path ? (
                             <input
@@ -1248,10 +1453,10 @@ function App() {
                               {entry.name}
                             </button>
                           )}
-                          {entry.type === 'directory' && <small>{bytes(entry.size)}</small>}
                         </span>
-
-                        {/* Actions */}
+                        {entry.type === 'directory' && (
+                          <small className="grid-meta">{entry.children ?? 0} elementos</small>
+                        )}
                         <div className="grid-actions">
                           {entry.type === 'file' && (
                             <>
@@ -1295,9 +1500,7 @@ function App() {
                                 className="btn-action"
                                 aria-label={'Mover ' + entry.name}
                                 title="Mover"
-                                onClick={() => {
-                                  setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.');
-                                }}
+                                onClick={() => openMove(selected.includes(entry.path) ? selected : [entry.path])}
                               >
                                 <FaArrowsAlt size={12} />
                               </button>
@@ -1321,16 +1524,32 @@ function App() {
                             </>
                           )}
                           {entry.type === 'directory' && (
-                            <button
-                              className="btn-action"
-                              aria-label={'Mover ' + entry.name}
+                            <>
+                              <button
+                                className="btn-action"
+                                aria-label={'Mover ' + entry.name}
                                 title="Mover"
-                              onClick={() => {
-                                setNotice('Selecciona un solo archivo para mover. Arrastra archivos o carpetas sobre otra carpeta para moverlos dentro de ella.');
-                              }}
-                            >
-                              <FaArrowsAlt size={12} />
-                            </button>
+                                onClick={() => openMove(selected.includes(entry.path) ? selected : [entry.path])}
+                              >
+                                <FaArrowsAlt size={12} />
+                              </button>
+                              <button
+                                className="btn-action btn-delete"
+                                aria-label={'Enviar ' + entry.name + ' a papelera'}
+                                title={`Enviar ${entry.name} a papelera`}
+                                disabled={saving}
+                                onClick={() => {
+                                  if (window.confirm(`¿Enviar la carpeta «${entry.name}» y todo su contenido a la papelera?`)) {
+                                    action(
+                                      () => api.trashFile(entry.path),
+                                      `«${entry.name}» está en la papelera.`
+                                    ).then(() => setSelected(old => old.filter(path => path !== entry.path)));
+                                  }
+                                }}
+                              >
+                                <FaTrash size={12} />
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -1349,18 +1568,61 @@ function App() {
                   </div>
                 </section>
               )}
+              {recentlyAdded.length > 0 && (
+                <section className="recent-strip" aria-label="Añadido recientemente">
+                  <h2>Añadido recientemente</h2>
+                  <div className="recent-grid">
+                    {recentlyAdded.map(entry => (
+                      <button
+                        key={entry.path}
+                        type="button"
+                        className="grid-item recent-tile"
+                        title={entry.path}
+                        onClick={() => setSelected([entry.path])}
+                      >
+                        <span
+                          className="grid-icon"
+                          data-icon-type={entry.type === 'directory' ? 'folder' : classifyExtension(entry.name)}
+                        >
+                          {entry.type === 'directory'
+                            ? <FaFolder aria-hidden="true" />
+                            : <FileVisual path={entry.path} contentUrl={api.content(entry.path, true)} view="grid" />}
+                        </span>
+                        <span className="recent-details">
+                          <span className="grid-name">{entry.name}</span>
+                          <span className="recent-meta">{entry.type === 'directory' ? 'Carpeta' : bytes(entry.size)} · {date(entry.modifiedAt)}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
             </>
           ) : view === 'trash' ? (
-            // ── Trash view ─────────────────────────────────────────────
             <>
-              <button className="btn-back" onClick={() => setView('files')}>
-                <FaArrowLeft aria-hidden="true" /> Volver a archivos
-              </button>
+              <div className="toolbar files-toolbar">
+                <button className="btn-back" onClick={() => { setView('files'); setRecentMode(false); }}>
+                  <FaArrowLeft aria-hidden="true" /> Volver a archivos
+                </button>
+                <span className="toolbar-gap" />
+                <button
+                  className="btn-danger"
+                  disabled={saving || trash.length === 0}
+                  onClick={() => {
+                    if (window.confirm(`¿Vaciar la papelera? Se eliminarán ${trash.length} elemento(s) de forma definitiva.`)) {
+                      action(() => api.emptyTrash(), 'Papelera vaciada.');
+                    }
+                  }}
+                >
+                  <FaTrash aria-hidden="true" /> Vaciar papelera
+                </button>
+              </div>
               <section className="card file-table" aria-label="Archivos en papelera">
                 <div className="table-head">
                   <div className="col-check" />
                   <div className="col-name">NOMBRE</div>
-                  <div className="col-details">DETALLES</div>
+                  <div className="col-modified">MODIFICADO</div>
+                  <div className="col-size">TAMAÑO</div>
                   <div className="col-actions">ACCIONES</div>
                 </div>
 
@@ -1408,7 +1670,8 @@ function App() {
                         <small>Antes: {item.path}</small>
                       </span>
                     </div>
-                    <div className="col-details">Eliminado: {date(item.deletedAt)}</div>
+                    <div className="col-modified">{date(item.deletedAt)}</div>
+                    <div className="col-size" />
                     <div className="col-actions">
                       <button
                         className="btn-action"
@@ -1421,17 +1684,27 @@ function App() {
                       >
                         <FaUndo aria-hidden="true" />
                       </button>
+                      <button
+                        className="btn-action btn-delete"
+                        disabled={saving}
+                        onClick={() => {
+                          if (window.confirm(`¿Eliminar «${item.name}» definitivamente? No se puede deshacer.`)) {
+                            action(() => api.permanentDelete(item.id), `«${item.name}» eliminado definitivamente.`);
+                          }
+                        }}
+                        title="Eliminar definitivamente"
+                        aria-label={'Eliminar definitivamente ' + item.name}
+                      >
+                        <FaTrash aria-hidden="true" />
+                      </button>
                     </div>
                   </div>
                 ))}
               </section>
             </>
           ) : (
-            // ── Settings view ──────────────────────────────────────────
             <SettingsPanel onExpired={loseSession} />
           )}
-
-          {/* Notice bar */}
           {notice && (
             <p className="notice-bar" role="status" aria-live="polite">
               {notice}
@@ -1440,8 +1713,141 @@ function App() {
         </div>
       </div>
 
-      {/* Preview dialog */}
+      {inspectorEntry && view === 'files' && (
+        <Details
+          entry={inspectorEntry}
+          activity={activity}
+          onOpen={() => {
+            if (inspectorEntry.type === 'directory') go(inspectorEntry.path);
+            else setPreview(inspectorEntry);
+          }}
+          onDownload={() => download([inspectorEntry.path])}
+          onRename={() => startRename(inspectorEntry.path, inspectorEntry.name)}
+          onDelete={() => {
+            if (!window.confirm(`¿Enviar «${inspectorEntry.name}» a la papelera? Puedes restaurarlo después.`)) return;
+            action(() => api.trashFile(inspectorEntry.path), `«${inspectorEntry.name}» está en la papelera.`)
+              .then(() => setSelected([]));
+          }}
+        />
+      )}
+      {multiSelection && (
+        <MultiDetails
+          entries={multiSelection}
+          onDownload={() => {
+            // Folders have no downloadable content: only files are requested.
+            const files = multiSelection.filter(entry => entry.type === 'file');
+            if (files.length > 0) download(files.map(entry => entry.path));
+          }}
+          onMove={() => openMove(selected)}
+          onClear={() => setSelected([])}
+        />
+      )}
       {preview && <Preview entry={preview} onClose={() => setPreview(null)} />}
+
+      {moving && (
+        <dialog ref={moveDialogRef} className="move-dialog" aria-labelledby="move-title" onClose={() => setMoving(null)}>
+          <header>
+            <h2 id="move-title">Mover a otra carpeta</h2>
+            <button type="button" onClick={() => setMoving(null)} aria-label="Cancelar">✕</button>
+          </header>
+          <p className="move-hint">
+            {moving.length === 1
+              ? `«${moving[0].path.split('/').at(-1)}»`
+              : `${moving.length} elementos`} desde {folder || 'Inicio'}. Elige la carpeta de destino.
+          </p>
+          <div className="move-browser">
+            <button
+              type="button"
+              className="move-up"
+              onClick={() => setMoveTarget(moveParent)}
+              disabled={moveTarget === ''}
+              aria-label="Subir un nivel"
+              title="Subir un nivel"
+            >
+              <FaArrowLeft aria-hidden="true" />
+            </button>
+            <nav className="move-destination" aria-label="Carpeta de destino">
+              <button
+                type="button"
+                className={moveTarget === '' ? 'active' : ''}
+                aria-current={moveTarget === '' ? 'location' : undefined}
+                onClick={() => setMoveTarget('')}
+              >
+                Inicio
+              </button>
+              {moveCrumbs.map((name, index) => {
+                const path = moveCrumbs.slice(0, index + 1).join('/');
+                const current = index === moveCrumbs.length - 1;
+                return (
+                  <span key={path} className="move-crumb">
+                    <span className="move-sep" aria-hidden="true">/</span>
+                    <button
+                      type="button"
+                      className={current ? 'active' : ''}
+                      aria-current={current ? 'location' : undefined}
+                      onClick={() => setMoveTarget(path)}
+                    >
+                      {name}
+                    </button>
+                  </span>
+                );
+              })}
+            </nav>
+          </div>
+          <div
+            ref={moveListRef}
+            className="move-list"
+            role="group"
+            aria-label="Subcarpetas de la carpeta de destino"
+            aria-busy={moveLoading}
+            tabIndex={-1}
+          >
+            {moveLoading && (
+              <p className="move-state">
+                <FaSpinner className="fa-spin" aria-hidden="true" /> Cargando carpetas…
+              </p>
+            )}
+            {!moveLoading && moveBrowseError && (
+              <p className="move-state error" role="alert">{moveBrowseError}</p>
+            )}
+            {!moveLoading && !moveBrowseError && moveFolders.length === 0 && (
+              <p className="move-state">Esta carpeta no tiene subcarpetas. Puedes mover aquí mismo.</p>
+            )}
+            {!moveLoading && !moveBrowseError && moveFolders.map(entry => {
+              const blocked = isMoveBlocked(entry.path);
+              return (
+                <button
+                  key={entry.path}
+                  type="button"
+                  className="move-folder"
+                  disabled={blocked}
+                  aria-label={blocked ? `No puedes mover dentro de ${entry.name}` : `Abrir carpeta ${entry.name}`}
+                  title={blocked ? 'No puedes mover una carpeta dentro de sí misma.' : `Abrir ${entry.name}`}
+                  onClick={() => setMoveTarget(entry.path)}
+                >
+                  <FaFolder aria-hidden="true" />
+                  <span className="move-name">{entry.name}</span>
+                  {typeof entry.children === 'number' && entry.children > 0 && (
+                    <span className="move-count" title={`${entry.children} elementos`}>{entry.children}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {error && <p className="move-error" role="alert">{error}</p>}
+          <footer>
+            <span className="move-summary" aria-live="polite">
+              Se moverá a <strong>{moveTarget || 'Inicio'}</strong>
+            </span>
+            <div className="move-actions">
+              <button type="button" className="btn" onClick={() => setMoving(null)}>Cancelar</button>
+              <button type="button" className="btn primary" onClick={submitMove} disabled={saving || moveLoading || Boolean(moveBrowseError)}>
+                {saving ? 'Moviendo…' : 'Mover aquí'}
+              </button>
+            </div>
+          </footer>
+        </dialog>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const http = axios.create({ baseURL: '/api' });
-export interface Entry { name: string; path: string; type: 'file' | 'directory'; size: number; modifiedAt: string }
+export interface Entry { name: string; path: string; type: 'file' | 'directory'; size: number; modifiedAt: string; children?: number }
 export interface TrashEntry { id: string; name: string; path: string; deletedAt: string }
 export interface Session { configured: boolean; authenticated: boolean; localSetup: boolean }
 export interface Status { storage: { total: number; free: number }; maxUploadBytes: number; urls: string[]; warning: string }
@@ -30,11 +30,13 @@ export const api = {
   },
   trashFile: async (path: string) => (await http.delete('/files', { params: { path } })).data,
   moveFile: async (from: string, to: string) => (await http.post<{ success: boolean; entry: Entry }>('/files/move', { from, to })).data,
+  moveFileInto: async (from: string, to: string) => (await http.post<{ success: boolean; entry: Entry }>('/files/move', { from, to, mode: 'into' })).data,
   copy: async (from: string, to: string) => (await http.post<{ success: boolean; entry: Entry }>('/files/copy', { from, to })).data,
   paste: async (from: string, to: string, type: 'copy' | 'move') => (await http.post<{ success: boolean; count: number }>('/files/paste', { from, to, type })).data,
   permanentDelete: async (id: string) => (await http.post<{ success: boolean }>('/files/permanent', { id })).data,
   emptyTrash: async () => (await http.post<{ success: boolean }>('/trash/empty', {})).data,
   moveFolder: async (from: string, to: string) => (await http.post<{ success: boolean; entry: Entry }>('/files/moveFolder', { from, to })).data,
+  moveFolderInto: async (from: string, to: string) => (await http.post<{ success: boolean; entry: Entry }>('/files/moveFolder', { from, to, mode: 'into' })).data,
   restore: async (id: string) => (await http.post(`/trash/${encodeURIComponent(id)}/restore`, {})).data,
   trash: async () => (await http.get<{ entries: TrashEntry[] }>('/trash')).data.entries,
   status: async () => (await http.get<Status>('/status')).data,

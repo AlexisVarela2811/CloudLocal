@@ -47,10 +47,28 @@ test('POST /api/files/move: rejects missing to folder', async t => {
     assert.equal((await request('/api/files/move', json('POST', { from: 'file.txt' }))).status, 400);
 });
 
+test('moving a file and a folder to Inicio preserves their contents', async t => {
+    const { request, json } = await fixture(t);
+    await request('/api/setup', json('POST', { password: 'correct horse battery' }));
+    assert.equal((await request('/api/folders', json('POST', { folder: '', name: 'source' }))).status, 201);
+    assert.equal((await request('/api/folders', json('POST', { folder: 'source', name: 'nested' }))).status, 201);
+    const form = new FormData();
+    form.append('file', new Blob(['hello']), 'note.txt');
+    assert.equal((await request('/api/files/upload?folder=source', { method: 'POST', body: form })).status, 201);
+    const file = await request('/api/files/move', json('POST', { from: 'source/note.txt', to: '' }));
+    assert.equal(file.status, 200);
+    assert.equal((await file.json()).entry.path, 'note.txt');
+    const folder = await request('/api/files/moveFolder', json('POST', { from: 'source/nested', to: '' }));
+    assert.equal(folder.status, 200);
+    assert.equal((await folder.json()).entry.path, 'nested');
+    assert.equal(await (await request('/api/files/content?path=note.txt')).text(), 'hello');
+    assert.deepEqual((await (await request('/api/files?folder=source')).json()).entries, []);
+});
+
 test('POST /api/files/move: rejects non-existent source (404)', async t => {
     const { request, json, root } = await fixture(t);
     await request('/api/setup', json('POST', { password: 'correct horse battery' }));
-    // Create a folder to use as destination (to: '' is rejected by controller as falsy)
+    // Create a folder to use as destination.
     assert.equal((await request('/api/folders', json('POST', { folder: '', name: 'dest' }))).status, 201);
     assert.equal((await request('/api/files/move', json('POST', { from: 'nonexistent.txt', to: 'dest' }))).status, 404);
 });
@@ -248,4 +266,107 @@ test('POST /api/files/move: renames folder within same parent', async t => {
     // Contents preserved
     const entries = await (await request('/api/files?folder=new-folder')).json();
     assert.ok(entries.entries.some(e => e.name === 'f.txt'));
+});
+// The move dialog sends mode: 'into': the destination is always a folder and the
+// server must never fall back to renaming the source when that folder is gone.
+
+function upload(name, text) {
+    const body = new FormData();
+    body.append('file', new Blob([text]), name);
+    return { method: 'POST', body };
+}
+
+function userEntries(names) {
+    return names.filter(name => name !== '.cloudlocal');
+}
+
+test('POST /api/files/move: explicit destination mode rejects a missing folder and keeps the source bytes', async t => {
+    const { request, json, root } = await fixture(t);
+    await request('/api/setup', json('POST', { password: 'correct horse battery' }));
+    assert.equal((await request('/api/files/upload', upload('notas.txt', 'contenido ok'))).status, 201);
+
+    const res = await request('/api/files/move', json('POST', { from: 'notas.txt', to: 'Destino', mode: 'into' }));
+    assert.equal(res.status, 404, 'la carpeta inexistente no se convierte en el nuevo nombre del archivo');
+    assert.deepEqual(userEntries(await fs.readdir(path.join(root, 'files'))), ['notas.txt']);
+    assert.equal(await fs.readFile(path.join(root, 'files', 'notas.txt'), 'utf8'), 'contenido ok');
+});
+
+test('POST /api/files/move: explicit destination mode rejects a missing nested folder and keeps the source bytes', async t => {
+    const { request, json, root } = await fixture(t);
+    await request('/api/setup', json('POST', { password: 'correct horse battery' }));
+    assert.equal((await request('/api/folders', json('POST', { folder: '', name: 'Archivo' }))).status, 201);
+    assert.equal((await request('/api/files/upload', upload('notas.txt', 'sin tocar'))).status, 201);
+
+    const res = await request('/api/files/move', json('POST', { from: 'notas.txt', to: 'Archivo/Falta', mode: 'into' }));
+    assert.equal(res.status, 404);
+    assert.deepEqual(userEntries(await fs.readdir(path.join(root, 'files'))).sort(), ['Archivo', 'notas.txt']);
+    assert.deepEqual(await fs.readdir(path.join(root, 'files', 'Archivo')), []);
+    assert.equal(await fs.readFile(path.join(root, 'files', 'notas.txt'), 'utf8'), 'sin tocar');
+});
+
+test('POST /api/files/move: explicit destination mode moves a file to Inicio', async t => {
+    const { request, json, root } = await fixture(t);
+    await request('/api/setup', json('POST', { password: 'correct horse battery' }));
+    assert.equal((await request('/api/folders', json('POST', { folder: '', name: 'source' }))).status, 201);
+    assert.equal((await request('/api/files/upload?folder=source', upload('notas.txt', 'hola'))).status, 201);
+
+    const res = await request('/api/files/move', json('POST', { from: 'source/notas.txt', to: '', mode: 'into' }));
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.entry.path, 'notas.txt');
+    assert.equal(await fs.readFile(path.join(root, 'files', 'notas.txt'), 'utf8'), 'hola');
+    assert.deepEqual(await fs.readdir(path.join(root, 'files', 'source')), []);
+});
+
+test('POST /api/files/move: explicit destination mode moves a file into a nested folder', async t => {
+    const { request, json, root } = await fixture(t);
+    await request('/api/setup', json('POST', { password: 'correct horse battery' }));
+    assert.equal((await request('/api/folders', json('POST', { folder: '', name: 'Archivo' }))).status, 201);
+    assert.equal((await request('/api/folders', json('POST', { folder: 'Archivo', name: '2024' }))).status, 201);
+    assert.equal((await request('/api/files/upload', upload('notas.txt', 'nested bytes'))).status, 201);
+
+    const res = await request('/api/files/move', json('POST', { from: 'notas.txt', to: 'Archivo/2024', mode: 'into' }));
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).entry.path, 'Archivo/2024/notas.txt');
+    assert.equal(await fs.readFile(path.join(root, 'files', 'Archivo', '2024', 'notas.txt'), 'utf8'), 'nested bytes');
+    assert.equal(userEntries(await fs.readdir(path.join(root, 'files'))).includes('notas.txt'), false);
+});
+
+test('POST /api/files/move: clients without a mode keep the legacy rename behaviour', async t => {
+    const { request, json, root } = await fixture(t);
+    await request('/api/setup', json('POST', { password: 'correct horse battery' }));
+    assert.equal((await request('/api/files/upload', upload('viejo.txt', 'legacy'))).status, 201);
+
+    const res = await request('/api/files/move', json('POST', { from: 'viejo.txt', to: 'renombrado.txt' }));
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).entry.path, 'renombrado.txt');
+    assert.equal(await fs.readFile(path.join(root, 'files', 'renombrado.txt'), 'utf8'), 'legacy');
+    assert.equal(userEntries(await fs.readdir(path.join(root, 'files'))).includes('viejo.txt'), false);
+});
+
+test('POST /api/files/move: rejects an unknown mode and keeps the source bytes', async t => {
+    const { request, json, root } = await fixture(t);
+    await request('/api/setup', json('POST', { password: 'correct horse battery' }));
+    assert.equal((await request('/api/files/upload', upload('notas.txt', 'intacto'))).status, 201);
+
+    assert.equal((await request('/api/files/move', json('POST', { from: 'notas.txt', to: 'Destino', mode: 'intoFolder' }))).status, 400);
+    assert.equal(await fs.readFile(path.join(root, 'files', 'notas.txt'), 'utf8'), 'intacto');
+});
+
+test('POST /api/files/move: explicit destination mode still requires a destination field', async t => {
+    const { request, json } = await fixture(t);
+    await request('/api/setup', json('POST', { password: 'correct horse battery' }));
+    assert.equal((await request('/api/files/move', json('POST', { from: 'file.txt', mode: 'into' }))).status, 400);
+});
+
+test('POST /api/files/moveFolder: explicit destination mode rejects a missing folder and keeps the folder contents', async t => {
+    const { request, json, root } = await fixture(t);
+    await request('/api/setup', json('POST', { password: 'correct horse battery' }));
+    assert.equal((await request('/api/folders', json('POST', { folder: '', name: 'origen' }))).status, 201);
+    assert.equal((await request('/api/files/upload?folder=origen', upload('dato.txt', 'conservar'))).status, 201);
+
+    const res = await request('/api/files/moveFolder', json('POST', { from: 'origen', to: 'Destino', mode: 'into' }));
+    assert.equal(res.status, 404);
+    assert.deepEqual(userEntries(await fs.readdir(path.join(root, 'files'))), ['origen']);
+    assert.equal(await fs.readFile(path.join(root, 'files', 'origen', 'dato.txt'), 'utf8'), 'conservar');
 });

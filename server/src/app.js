@@ -8,6 +8,7 @@ const { fileRouter } = require('./routers/fileRouter');
 const { controllers, handle } = require('./controller/fileController');
 const { isLoopback, isPrivatePeer, validHost, originMatches } = require('./network');
 const { createSettingsRouter } = require('./routers/settingsRouter');
+const { SseHub } = require('./sseHub');
 
 const HOURS_12 = 12 * 60 * 60;
 function canonical(location) {
@@ -37,6 +38,8 @@ function createApp({ dataDir = path.join(__dirname, 'upload'), stateDir = path.j
     app.disable('x-powered-by');
     app.locals.maxUploadBytes = maxUploadBytes;
     app.locals.urls = [];
+    const sse = new SseHub();
+    app.locals.sse = sse;
     app.use((req, res, next) => {
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('X-Frame-Options', 'DENY');
@@ -87,13 +90,24 @@ function createApp({ dataDir = path.join(__dirname, 'upload'), stateDir = path.j
 
     app.use('/api', (req, res, next) => auth.valid(token(req)) ? next() : res.status(401).json({ message: 'Authentication required' }));
     app.use('/api/settings', createSettingsRouter(settings, dataDir));
-    const actions = controllers(storage);
+    const actions = controllers(storage, sse);
     app.post('/api/folders', jsonBody, actions.folders);
-    app.use('/api/files', fileRouter(storage, maxUploadBytes));
+    app.use('/api/files', fileRouter(storage, maxUploadBytes, sse));
     app.get('/api/trash', actions.listTrash);
     app.post('/api/trash/empty', jsonBody, actions.emptyTrash);
     app.post('/api/trash/:id/restore', jsonBody, actions.restore);
     app.get('/api/status', actions.status);
+    app.get('/api/events', (req, res) => {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders?.();
+        const cleanup = sse.subscribe(event => {
+            res.write(`event: ${event.event}\ndata: ${event.data}\n\n`);
+        });
+        req.on('close', cleanup);
+        req.on('error', cleanup);
+    });
     app.post('/api/shutdown', jsonBody, handle(async (req, res) => {
         if (!auth.valid(token(req))) return res.status(401).json({ message: 'Authentication required' });
         if (typeof app.locals.shutdown !== 'function') return res.status(503).json({ message: 'Shutdown unavailable' });
