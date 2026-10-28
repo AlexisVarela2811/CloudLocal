@@ -5,7 +5,7 @@ import {
   FaSignOutAlt, FaCopy, FaQuestionCircle,
   FaSpinner, FaExclamationTriangle, FaFolderOpen,
   FaFilePdf, FaEye, FaArrowsAlt,
-  FaImage, FaVideo, FaMusic, FaPowerOff, FaBars, FaTimes
+  FaPowerOff, FaBars, FaTimes
 } from 'react-icons/fa';
 import { api, expired, failure, type Entry, type Session, type Status, type TrashEntry } from './api/api';
 
@@ -35,6 +35,8 @@ import { Access } from './components/Access';
 import { Preview } from './components/Preview';
 import { DragAndDrop } from './components/DragAndDrop';
 import { SettingsPanel } from './components/Settings';
+import { FileVisual } from './components/FileVisual';
+import { classifyExtension } from './components/fileVisuals.mjs';
 import { breadcrumbs, bytes, exceedsLimit, previewKind, sortEntries } from './workspace.mjs';
 
 type View = 'files' | 'trash' | 'settings';
@@ -975,9 +977,10 @@ function App() {
                           if (movedPath) { movePath(movedPath, entry.path); }
                         }}
                       >
-                        <span className="file-icon">
-                          {entry.type === 'directory' ? <FaFolder aria-hidden="true" /> : <FaFile aria-hidden="true" />}
-                        </span>
+                        {entry.type === 'directory'
+                          ? <FaFolder aria-hidden="true" />
+                          : <FileVisual path={entry.path} contentUrl={api.content(entry.path, true)} view={fileView} className="file-icon" />}
+
                         {renaming?.path === entry.path ? (
                           <input
                             className="rename-input"
@@ -1181,7 +1184,7 @@ function App() {
                           data-icon-type={
                             entry.type === 'directory'
                               ? 'folder'
-                              : previewKind(entry.name)
+                              : classifyExtension(entry.name)
                           }
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1190,19 +1193,9 @@ function App() {
                               : startRename(entry.path, entry.name);
                           }}
                         >
-                          {entry.type === 'directory' ? (
-                            <FaFolder size={32} color="var(--accent)" />
-                          ) : previewKind(entry.name) === 'pdf' ? (
-                            <FaFilePdf size={32} color="var(--danger)" />
-                          ) : previewKind(entry.name) === 'image' ? (
-                            <FaImage size={32} color="var(--state-done)" />
-                          ) : previewKind(entry.name) === 'video' ? (
-                            <FaVideo size={32} color="var(--accent2)" />
-                          ) : previewKind(entry.name) === 'audio' ? (
-                            <FaMusic size={32} color="var(--muted2)" />
-                          ) : (
-                            <FaFile size={32} color="var(--muted)" />
-                          )}
+                          {entry.type === 'directory'
+                            ? <FaFolder aria-hidden="true" />
+                            : <FileVisual path={entry.path} contentUrl={api.content(entry.path, true)} view={fileView} />}
                         </div>
 
                         {/* Checkbox */}

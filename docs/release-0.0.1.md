@@ -6,7 +6,7 @@ Candidato `0.0.1-rc.1` para Windows x64. La aplicación se conserva tal como fue
 
 1. Extrae todos los archivos del ZIP y ejecuta `CloudLocal.exe`. No necesitas instalar Node.js ni Bun.
 2. Configura la contraseña desde `http://localhost:80` en el equipo servidor. El launcher intenta el puerto 5000 si el preferido no está disponible; usa la dirección y el puerto reales del inicio.
-3. En otros equipos de la LAN, abre la IP del servidor con ese puerto e inicia sesión. No necesitas companion, emparejamiento ni un dominio `.local`.
+3. En otros equipos de la LAN, abre la IP del servidor con ese puerto e inicia sesión.
 4. Espera a que finalicen las transferencias antes de pulsar **Detener Server**. Solo se cierra esa instancia. Para reiniciar, ejecuta el archivo otra vez y recarga la página.
 
 El equipo servidor debe permanecer encendido. HTTP no cifra el tráfico: úsalo únicamente en una red de confianza y no expongas el puerto a Internet. Conserva copias de seguridad de tus archivos.
@@ -100,7 +100,7 @@ La licencia Node incluida proviene de `https://raw.githubusercontent.com/nodejs/
 - La papelera permite restaurar desde la interfaz. Eliminar permanentemente, vaciarla y descargar ZIP tienen rutas API, no botones completos en la interfaz actual.
 - El renombrado de la UI construye una ruta de destino, mientras la API de movimiento espera una carpeta. Mover/copiar a Inicio encuentra la restricción de destino vacío. Estas limitaciones se documentan sin cambiar la app aceptada.
 - `Ctrl+Alt+N` abre el formulario de carpeta; `Ctrl+N` queda para el navegador. `Ctrl+S` no navega a la carpeta padre.
-- No se incluye icono de bandeja, mDNS, companion empaquetado ni actualizaciones automáticas. La ayuda de inicio abre el navegador y puede mostrar una notificación.
+- No se incluye icono de bandeja, mDNS ni actualizaciones automáticas. La ayuda de inicio abre el navegador y puede mostrar una notificación.
 
 ## Publicación separada
 
