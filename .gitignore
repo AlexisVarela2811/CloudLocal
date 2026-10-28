@@ -23,3 +23,7 @@ odd/
 
 # Verification captures
 test-results/
+
+# Local build caches
+client/tmp/
+client/.tmp/

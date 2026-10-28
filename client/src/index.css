@@ -717,13 +717,6 @@ a { color: var(--accent); text-decoration: none; }
 
 .toolbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
 
-.search-row {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  flex: 1;
-  margin-bottom: .75rem;
-}
 .search-wrapper {
   position: relative;
   flex: 1;
@@ -1324,6 +1317,19 @@ a { color: var(--accent); text-decoration: none; }
   transition: background var(--duration) var(--ease), color var(--duration) var(--ease), border-color var(--duration) var(--ease);
 }
 .access-theme:hover { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+.access-actions { display: flex; align-items: center; gap: .5rem; }
+.access-status {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .68rem;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .access-status-text { display: none; }
+}
 .access-theme svg { width: 15px; height: 15px; }
 
 .access-stage {
@@ -1853,7 +1859,8 @@ a { color: var(--accent); text-decoration: none; }
   }
 }
 
-.app-shell { grid-template-columns: 64px minmax(0, 1fr) 344px; }
+.app-shell { grid-template-columns: 64px minmax(0, 1fr); }
+.app-shell.has-inspector { grid-template-columns: 64px minmax(0, 1fr) 344px; }
 
 .rail {
   grid-column: 1;
@@ -2208,6 +2215,19 @@ a { color: var(--accent); text-decoration: none; }
 .upload-bar-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .upload-bar-btn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+.upload-list {
+  display: grid;
+  gap: .35rem;
+  margin-bottom: .85rem;
+}
+.upload-item-head {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  margin-bottom: .25rem;
+}
+.upload-item-head .upload-name { flex: 1; min-width: 0; }
+.upload-item-head .upload-status { margin-left: auto; }
 /* Placa de tipo del inspector */
 .inspector-plate {
   width: 88px;
@@ -2243,4 +2263,146 @@ a { color: var(--accent); text-decoration: none; }
   .upload-bar-btn span { display: none; }
   .upload-bar-btn { padding: .38rem .5rem; }
   .inspector-plate { width: 72px; height: 72px; font-size: .9rem; }
+}
+
+/* Filtros de tipo del explorador */
+.type-chips {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  flex-wrap: wrap;
+  margin-bottom: .75rem;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .32rem .6rem;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background var(--duration) var(--ease), color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+}
+.chip:hover { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: transparent; color: #fff; }
+.chip[aria-pressed="true"]:hover { background: var(--accent2); color: #fff; }
+.chip-count {
+  min-width: 18px;
+  padding: 0 .32rem;
+  border-radius: 10px;
+  background: var(--line2);
+  color: var(--muted2);
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-size: .64rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  text-align: center;
+}
+.chip[aria-pressed="true"] .chip-count { background: rgba(255, 255, 255, .22); color: #fff; }
+[data-theme="dark"] .chip { background: var(--surface); border-color: var(--line); color: var(--muted); }
+[data-theme="dark"] .chip:hover { background: rgba(20, 184, 166, 0.06); border-color: var(--accent2); color: var(--accent2); }
+[data-theme="dark"] .chip[aria-pressed="true"] { background: var(--accent); border-color: transparent; color: #fff; }
+[data-theme="dark"] .chip-count { background: var(--line2); color: var(--muted2); }
+[data-theme="dark"] .chip[aria-pressed="true"] .chip-count { background: rgba(255, 255, 255, .22); color: #fff; }
+
+/* Franja "Añadido recientemente" de la galería */
+.recent-strip { padding: .85rem 1rem 1rem; }
+.recent-strip h2 { margin: 0 0 .65rem; font-size: .82rem; }
+.recent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  gap: .6rem;
+}
+.recent-tile { padding: .6rem .5rem .55rem; border-color: var(--line); }
+.recent-tile .grid-icon {
+  width: 46px;
+  height: 46px;
+  margin-bottom: .45rem;
+  border-radius: var(--radius-sm);
+}
+.recent-tile .grid-icon svg { width: 24px; height: 24px; }
+.recent-tile .grid-icon img { width: 46px; height: 46px; border-radius: 0; }
+.recent-tile .grid-name {
+  padding: 0;
+  font-size: .71rem;
+  -webkit-line-clamp: 1;
+  max-height: 1.4em;
+}
+[data-theme="dark"] .recent-tile { background: var(--surface); border-color: var(--line); }
+
+/* Actividad del inspector */
+.inspector-activity {
+  margin: .9rem 0 .85rem;
+  padding-top: .6rem;
+  border-top: 1px solid var(--line2);
+}
+.inspector-activity-title {
+  margin: 0 0 .4rem;
+  font-size: .61rem;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  color: var(--muted2);
+}
+.inspector-activity-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: .3rem;
+  max-height: 9.5rem;
+  overflow-y: auto;
+}
+.inspector-activity-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: .5rem;
+  font-size: .71rem;
+  color: var(--muted);
+}
+.inspector-activity-time {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-size: .67rem;
+  color: var(--muted2);
+  font-variant-numeric: tabular-nums;
+}
+.inspector-activity-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inspector-activity-name { color: var(--muted2); }
+.inspector-activity-empty { margin: 0; font-size: .71rem; color: var(--muted2); }
+
+/* La barra de herramientas admite una segunda fila en anchos reducidos */
+.toolbar { flex-wrap: wrap; }
+
+/* El detalle del inspector puede desplazarse cuando crece la actividad */
+.inspector-body { overflow-y: auto; }
+
+/* Barra del explorador en una sola fila: Volver → búsqueda → Actualizar → chips → vista */
+.files-toolbar { align-items: center; flex-wrap: wrap; }
+.files-toolbar .btn-back { margin-bottom: 0; }
+.files-toolbar .search-wrapper { flex: 1 1 200px; min-width: 0; }
+.files-toolbar .btn-refresh { flex-shrink: 0; }
+.files-toolbar .type-chips { margin-bottom: 0; flex-wrap: nowrap; }
+.files-toolbar .toolbar-gap { flex: 1 1 0; min-width: 0; }
+.files-toolbar .view-toggle { flex-shrink: 0; }
+
+@media (max-width: 768px) {
+  /* La barra se apila en varias líneas sin desbordar y con blancos de toque de 40px */
+  .files-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+  }
+  .files-toolbar .toolbar-gap { display: none; }
+  .files-toolbar .btn-back { min-height: 40px; padding: .4rem .6rem; }
+  .files-toolbar .search-wrapper { flex: 1 1 140px; max-width: none; }
+  .files-toolbar .type-chips { flex: 1 1 100%; flex-wrap: wrap; }
+  .files-toolbar .view-toggle { margin-left: auto; }
+  .files-toolbar .view-btn { min-width: 40px; min-height: 40px; }
 }

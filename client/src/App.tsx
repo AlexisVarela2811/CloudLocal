@@ -5,7 +5,7 @@ import {
   FaSignOutAlt, FaCopy, FaQuestionCircle,
   FaSpinner, FaExclamationTriangle, FaFolderOpen,
   FaFilePdf, FaEye, FaArrowsAlt,
-  FaPowerOff, FaMoon, FaSun
+  FaPowerOff, FaMoon, FaSun, FaHistory
 } from 'react-icons/fa';
 import { api, expired, failure, type Entry, type Session, type Status, type TrashEntry } from './api/api';
 import { useSSE } from './hooks/useSSE';
@@ -22,21 +22,30 @@ function isExtensionBlockedList(filenames: string[]): string[] {
 }
 
 const SERVER_SHUTDOWN_KEY = 'cloudlocal-server-shutdown';
-function getShutdownState(): { active: boolean; shuttingDown: boolean } {
+function readShutdownState(): { active: boolean; shuttingDown: boolean } | null {
   try {
     const raw = localStorage.getItem(SERVER_SHUTDOWN_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { active: true, shuttingDown: false };
+    return raw ? JSON.parse(raw) : null;
+  } catch (cause) {
+    console.warn('No se pudo leer el estado del servidor', cause);
+    return null;
+  }
+}
+function getShutdownState(): { active: boolean; shuttingDown: boolean } {
+  return readShutdownState() ?? { active: true, shuttingDown: false };
 }
 function persistShutdownState(value: { active: boolean; shuttingDown: boolean }) {
-  try { localStorage.setItem(SERVER_SHUTDOWN_KEY, JSON.stringify(value)); } catch {}
+  try {
+    localStorage.setItem(SERVER_SHUTDOWN_KEY, JSON.stringify(value));
+  } catch (cause) {
+    console.warn('No se pudo guardar el estado del servidor', cause);
+  }
 }
 import { Access } from './components/Access';
 import { Preview } from './components/Preview';
 import { DragAndDrop } from './components/DragAndDrop';
 import { SettingsPanel } from './components/Settings';
-import { Details } from './components/Details';
+import { Details, type ActivityEvent } from './components/Details';
 import { FileVisual } from './components/FileVisual';
 import { classifyExtension } from './components/fileVisuals.mjs';
 import { breadcrumbs, bytes, exceedsLimit, previewKind, sortEntries } from './workspace.mjs';
@@ -58,6 +67,32 @@ interface UploadItem {
   error?: string;
 }
 
+type TypeFilter = 'all' | 'image' | 'video' | 'document';
+
+const TYPE_FILTERS: { id: TypeFilter; label: string }[] = [
+  { id: 'all', label: 'Todo' },
+  { id: 'image', label: 'Imágenes' },
+  { id: 'video', label: 'Vídeo' },
+  { id: 'document', label: 'Documentos' },
+];
+
+const DOCUMENT_KINDS = new Set(['pdf', 'word', 'excel', 'powerpoint', 'text']);
+
+function matchesTypeFilter(kind: string, filter: TypeFilter): boolean {
+  if (filter === 'all') return true;
+  return filter === 'document' ? DOCUMENT_KINDS.has(kind) : kind === filter;
+}
+
+// Newest first; entries with an unreadable date sink to the end.
+function sortByModifiedAt(entries: Entry[]): Entry[] {
+  const time = (value: string) => {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+  return [...entries].sort((a, b) => time(b.modifiedAt) - time(a.modifiedAt) ||
+    a.name.localeCompare(b.name, 'es', { sensitivity: 'base', numeric: true }));
+}
+
 function date(value: string) {
   const time = new Date(value);
   return Number.isNaN(time.getTime()) ? '—' : new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(time);
@@ -69,6 +104,9 @@ function App() {
   const [folder, setFolder] = useState('');
   const [view, setView] = useState<View>('files');
   const [fileView, setFileView] = useState<'list' | 'grid'>('list');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [recentMode, setRecentMode] = useState(false);
+  const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [query, setQuery] = useState('');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [trash, setTrash] = useState<TrashEntry[]>([]);
@@ -90,11 +128,22 @@ function App() {
   const refresh = useCallback(() => setRevision(value => value + 1), []);
   const toggleTheme = useCallback(() => {
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    try { localStorage.setItem('cloudlocal-theme', next); } catch {}
+    try {
+      localStorage.setItem('cloudlocal-theme', next);
+    } catch (cause) {
+      console.warn('No se pudo guardar el tema', cause);
+    }
     window.dispatchEvent(new CustomEvent('cloudlocal-theme-change', { detail: { theme: next } }));
   }, []);
-  // SSE: auto-refresh on file events
-  const handleSseEvent = useCallback(() => {
+  // SSE: keep a short activity log and auto-refresh on file events.
+  const handleSseEvent = useCallback((type: string, data: unknown) => {
+    let path = '';
+    if (data && typeof data === 'object') {
+      const payload = data as { path?: unknown; to?: unknown };
+      if (typeof payload.path === 'string') path = payload.path;
+      else if (typeof payload.to === 'string') path = payload.to;
+    }
+    setActivity(previous => [{ type, path, at: Date.now() }, ...previous].slice(0, 20));
     refresh();
   }, [refresh]);
   useSSE(handleSseEvent);
@@ -106,22 +155,27 @@ function App() {
   const [uploadBusy, setUploadBusy] = useState(false);
   const cancelUploadRef = useRef(false);
   const uploadControllerRef = useRef<AbortController | null>(null);
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
   const uploadNextId = useRef(0);
   const pendingUploadsRef = useRef<{ file: File; id: number; folder: string }[]>([]);
   const isUploadingRef = useRef(false);
   const MAX_RECONNECT = 3;
 
-  function updateUploadItem(_id: number, _patch: Partial<UploadItem>) {
-    // Upload item state tracking placeholder — kept for API compatibility
+  function updateUploadItem(id: number, patch: Partial<UploadItem>) {
+    setUploads(previous => previous.map(item => item.id === id ? { ...item, ...patch } : item));
   }
 
-  function enqueueFiles(files: File[], _folderPath: string) {
+  function enqueueFiles(files: File[], folderPath: string) {
     const blockedNames = isExtensionBlockedList(files.map(f => f.name));
     if (blockedNames.length > 0) {
       setError(`No se permiten los siguientes tipos de archivo: ${blockedNames.join(', ')}`);
       return;
     }
-    const batch = files.map(file => ({ file, id: ++uploadNextId.current, folder }));
+    const batch = files.map(file => ({ file, id: ++uploadNextId.current, folder: folderPath }));
+    setUploads(previous => [
+      ...batch.map(item => ({ id: item.id, name: item.file.name, state: 'En cola', progress: 0 })),
+      ...previous,
+    ].slice(0, 6));
     pendingUploadsRef.current.push(...batch);
     startNextUpload();
   }
@@ -192,7 +246,19 @@ function App() {
     startNextUpload();
   }
 
-  const sorted = sortEntries(entries);
+  const typeCounts: Record<TypeFilter, number> = { all: entries.length, image: 0, video: 0, document: 0 };
+  for (const entry of entries) {
+    if (entry.type !== 'file') continue;
+    const kind = classifyExtension(entry.name);
+    if (kind === 'image') typeCounts.image += 1;
+    else if (kind === 'video') typeCounts.video += 1;
+    else if (DOCUMENT_KINDS.has(kind)) typeCounts.document += 1;
+  }
+  const filteredEntries = entries.filter(entry =>
+    typeFilter === 'all' || (entry.type === 'file' && matchesTypeFilter(classifyExtension(entry.name), typeFilter))
+  );
+  const sorted = recentMode ? sortByModifiedAt(filteredEntries) : sortEntries(filteredEntries);
+  const recentlyAdded = fileView === 'grid' && sorted.length >= 2 ? sortByModifiedAt(sorted).slice(0, 4) : [];
 
   useEffect(() => {
     let active = true;
@@ -289,6 +355,7 @@ function App() {
         !event.metaKey &&
         event.key.toLowerCase() === 'n' &&
         view === 'files' &&
+        !recentMode &&
         !isInputFocused
       ) {
         event.preventDefault();
@@ -300,7 +367,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selected, sorted, clipboard, preview, renaming, folder, action]);
+  }, [selected, sorted, clipboard, preview, renaming, folder, action, recentMode]);
 
   useEffect(() => {
     if (!renaming) return;
@@ -369,9 +436,9 @@ function App() {
     if (!renaming) return;
     const newName = renameInput.trim();
     if (!newName) return;
-    const invalidChars = /[\/:*?"<>|\\]/;
+    const invalidChars = /[/:*?"<>|\\]/;
     if (invalidChars.test(newName)) {
-      setError('El nombre no puede contener: / \ : * ? " < > |');
+      setError('El nombre no puede contener: / \\ : * ? " < > |');
       return;
     }
     const fromPath = renaming.path;
@@ -498,25 +565,34 @@ function App() {
     : null;
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${inspectorEntry && view === 'files' ? ' has-inspector' : ''}`}>
       <aside className="rail" aria-label="Navegación principal">
         <button
           className="rail-brand"
           aria-label="CloudLocal, ir a Archivos"
-          onClick={() => setView('files')}
+          onClick={() => { setView('files'); setRecentMode(false); }}
         >
           <img src="/cloudlocal.svg" alt="" />
         </button>
 
         <nav className="rail-nav" aria-label="Secciones">
           <button
-            className={`rbtn${view === 'files' ? ' active' : ''}`}
-            aria-current={view === 'files' ? 'page' : undefined}
+            className={`rbtn${view === 'files' && !recentMode ? ' active' : ''}`}
+            aria-current={view === 'files' && !recentMode ? 'page' : undefined}
             aria-label="Archivos"
-            onClick={() => setView('files')}
+            onClick={() => { setView('files'); setRecentMode(false); }}
           >
             <FaFolder aria-hidden="true" />
             <span className="railtip">Archivos</span>
+          </button>
+          <button
+            className={`rbtn${view === 'files' && recentMode ? ' active' : ''}`}
+            aria-current={view === 'files' && recentMode ? 'page' : undefined}
+            aria-label="Recientes"
+            onClick={() => { setView('files'); setRecentMode(true); setCreating(false); setSelected([]); setPreview(null); }}
+          >
+            <FaHistory aria-hidden="true" />
+            <span className="railtip">Recientes</span>
           </button>
           <button
             className={`rbtn${view === 'trash' ? ' active' : ''}`}
@@ -577,12 +653,6 @@ function App() {
       <div className="main-area">
         <header className="topbar">
           <div className="topbar-left">
-            {folder !== '' && view === 'files' && (
-              <button className="btn-back" onClick={() => go(folder.includes('/') ? folder.slice(0, folder.lastIndexOf('/')) : '')}>
-                <FaArrowLeft aria-hidden="true" /> Volver
-              </button>
-            )}
-
             <nav className="breadcrumb" aria-label="Ruta">
               {crumbs.map((crumb, index) => (
                 <span key={crumb.path}>
@@ -600,9 +670,12 @@ function App() {
 
             <div>
               <h1 className="page-title">
-                {view === 'trash' ? 'Papelera' : view === 'settings' ? 'Configuración' : 'Mis archivos'}
+                {view === 'trash' ? 'Papelera' : view === 'settings' ? 'Configuración' : recentMode ? 'Recientes' : 'Mis archivos'}
               </h1>
               {view === 'trash' && <p className="page-subtitle">Restaura o elimina permanentemente los archivos borrados.</p>}
+              {view === 'files' && recentMode && (
+                <p className="page-subtitle">Ordenados por fecha de modificación en esta carpeta.</p>
+              )}
             </div>
           </div>
 
@@ -614,40 +687,7 @@ function App() {
               </button>
             )}
 
-            {view === 'files' && (
-              <div className="view-toggle" role="radiogroup" aria-label="Vista de archivos">
-                <button
-                  className={`view-btn ${fileView === 'list' ? 'active' : ''}`}
-                  onClick={() => setFileView('list')}
-                  role="radio"
-                  aria-checked={fileView === 'list'}
-                  aria-label="Vista de lista"
-                  title="Vista de lista"
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <rect x="2" y="2" width="12" height="2" rx="0.5" fill="currentColor" />
-                    <rect x="2" y="7" width="12" height="2" rx="0.5" fill="currentColor" />
-                    <rect x="2" y="12" width="12" height="2" rx="0.5" fill="currentColor" />
-                  </svg>
-                </button>
-                <button
-                  className={`view-btn ${fileView === 'grid' ? 'active' : ''}`}
-                  onClick={() => setFileView('grid')}
-                  role="radio"
-                  aria-checked={fileView === 'grid'}
-                  aria-label="Vista de cuadrícula"
-                  title="Vista de cuadrícula"
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                    <rect x="9" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                    <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                    <rect x="9" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                  </svg>
-                </button>
-              </div>
-            )}
-
+            {!recentMode && (
             <button
               className="btn-icon"
               onClick={() => setCreating(value => !value)}
@@ -658,10 +698,11 @@ function App() {
               <span className="btn-label">Nueva carpeta</span>
               <span className="shortcut-hint">Ctrl+Alt+N</span>
             </button>
+            )}
 
             <label className={`btn-upload button-like${uploadBusy ? ' busy' : ''}`} title="Elegir archivos para subir">
               <FaUpload aria-hidden="true" />
-              <span className="btn-label">Elegir archivos</span>
+              <span className="btn-label">Subir</span>
               <input
                 type="file"
                 multiple
@@ -676,6 +717,7 @@ function App() {
 
             <button
               className="btn-danger topbar-shutdown"
+              aria-label={shutdownState.shuttingDown ? 'Apagando el servidor' : 'Apagar servidor'}
               disabled={shutdownState.shuttingDown || !shutdownState.active}
               onClick={async () => {
                 setShutdownState(prev => ({ ...prev, shuttingDown: true }));
@@ -692,7 +734,7 @@ function App() {
               }}
             >
               <FaPowerOff aria-hidden="true" />
-              <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Detener Server'}</span>
+              <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Apagar'}</span>
             </button>
 
           </div>
@@ -700,33 +742,82 @@ function App() {
         <div className="workspace-body">
           {view === 'files' ? (
             <>
-              <div className="toolbar">
-                <div className="search-row">
-                  <div className="search-wrapper">
-                    <input
-                      className="search-input"
-                      type="search"
-                      value={query}
-                      onChange={e => setQuery(e.target.value)}
-                      placeholder="Buscar en esta carpeta…"
-                      aria-label="Buscar archivos"
-                    />
-                    {query && (
-                      <button className="btn-clear" onClick={() => setQuery('')} aria-label="Limpiar búsqueda">✕</button>
-                    )}
-                  </div>
+              <div className="toolbar files-toolbar">
+                {folder !== '' && (
+                  <button className="btn-back" onClick={() => go(folder.includes('/') ? folder.slice(0, folder.lastIndexOf('/')) : '')}>
+                    <FaArrowLeft aria-hidden="true" /> Volver
+                  </button>
+                )}
+                <div className="search-wrapper">
+                  <input
+                    className="search-input"
+                    type="search"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Buscar en esta carpeta…"
+                    aria-label="Buscar archivos"
+                  />
+                  {query && (
+                    <button className="btn-clear" onClick={() => setQuery('')} aria-label="Limpiar búsqueda">✕</button>
+                  )}
+                </div>
+                <button
+                  className="btn-icon btn-refresh"
+                  onClick={refresh}
+                  disabled={loading}
+                  title="Actualizar"
+                >
+                  <FaSync aria-hidden="true" />
+                  <span className="btn-label">Actualizar</span>
+                </button>
+                <div className="type-chips" role="group" aria-label="Filtrar por tipo de archivo">
+                  {TYPE_FILTERS.map(option => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className="chip"
+                      aria-pressed={typeFilter === option.id}
+                      onClick={() => setTypeFilter(option.id)}
+                    >
+                      {option.label}
+                      <span className="chip-count">{typeCounts[option.id]}</span>
+                    </button>
+                  ))}
+                </div>
+                <span className="toolbar-gap" aria-hidden="true" />
+                <div className="view-toggle" role="radiogroup" aria-label="Vista de archivos">
                   <button
-                    className="btn-icon btn-refresh"
-                    onClick={refresh}
-                    disabled={loading}
-                    title="Actualizar"
+                    className={`view-btn ${fileView === 'list' ? 'active' : ''}`}
+                    onClick={() => setFileView('list')}
+                    role="radio"
+                    aria-checked={fileView === 'list'}
+                    aria-label="Vista de lista"
+                    title="Vista de lista"
                   >
-                    <FaSync aria-hidden="true" />
-                    <span className="btn-label">Actualizar</span>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <rect x="2" y="2" width="12" height="2" rx="0.5" fill="currentColor" />
+                      <rect x="2" y="7" width="12" height="2" rx="0.5" fill="currentColor" />
+                      <rect x="2" y="12" width="12" height="2" rx="0.5" fill="currentColor" />
+                    </svg>
+                  </button>
+                  <button
+                    className={`view-btn ${fileView === 'grid' ? 'active' : ''}`}
+                    onClick={() => setFileView('grid')}
+                    role="radio"
+                    aria-checked={fileView === 'grid'}
+                    aria-label="Vista de cuadrícula"
+                    title="Vista de cuadrícula"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                      <rect x="9" y="1.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                      <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                      <rect x="9" y="9" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                    </svg>
                   </button>
                 </div>
               </div>
-              {creating && (
+              {creating && !recentMode && (
                 <form className="card folder-form" onSubmit={create}>
                   <h3>Nueva carpeta</h3>
                   <div className="form-row">
@@ -770,6 +861,7 @@ function App() {
                   </button>
                 </div>
               )}
+              {!recentMode && (
               <div className="upload-bar" aria-label="Subir archivos">
                 <span className="upload-bar-icon" aria-hidden="true"><FaUpload /></span>
                 <div className="upload-bar-text">
@@ -795,6 +887,32 @@ function App() {
                   />
                 </label>
               </div>
+              )}
+              {uploads.length > 0 && (
+                <div className="upload-list" aria-live="polite" aria-label="Subidas en curso">
+                  {uploads.map(item => (
+                    <div
+                      key={item.id}
+                      className={`upload-item ${
+                        /subido|completado/i.test(item.state) ? 'state-done'
+                          : /cancelado/i.test(item.state) ? 'state-paused'
+                            : /error|no se pudo|supera|sesión/i.test(item.state) ? 'state-error'
+                              : 'state-uploading'
+                      }`}
+                    >
+                      <div className="upload-item-head">
+                        <span className="upload-name" title={item.name}>{item.name}</span>
+                        <span className="upload-status">{item.state}</span>
+                        {item.progress > 0 && <span className="upload-progress-text">{item.progress}%</span>}
+                      </div>
+                      <div className="upload-progress-bar">
+                        <div style={{ width: `${Math.min(item.progress, 100)}%` }} />
+                      </div>
+                      {item.error && <span className="upload-error">{item.error}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
               <DragAndDrop onFilesDropped={enqueueFiles} folderPath={folder || 'inicio'} />
               {fileView === 'list' ? (
                 <section
@@ -1144,9 +1262,8 @@ function App() {
                           }
                           onClick={(e) => {
                             e.stopPropagation();
-                            entry.type === 'directory'
-                              ? go(entry.path)
-                              : startRename(entry.path, entry.name);
+                            if (entry.type === 'directory') go(entry.path);
+                            else startRename(entry.path, entry.name);
                           }}
                         >
                           {entry.type === 'directory'
@@ -1297,10 +1414,36 @@ function App() {
                   </div>
                 </section>
               )}
+              {recentlyAdded.length > 0 && (
+                <section className="card recent-strip" aria-label="Añadido recientemente">
+                  <h2>Añadido recientemente</h2>
+                  <div className="recent-grid">
+                    {recentlyAdded.map(entry => (
+                      <button
+                        key={entry.path}
+                        type="button"
+                        className="grid-item recent-tile"
+                        title={entry.path}
+                        onClick={() => setSelected([entry.path])}
+                      >
+                        <span
+                          className="grid-icon"
+                          data-icon-type={entry.type === 'directory' ? 'folder' : classifyExtension(entry.name)}
+                        >
+                          {entry.type === 'directory'
+                            ? <FaFolder aria-hidden="true" />
+                            : <FileVisual path={entry.path} contentUrl={api.content(entry.path, true)} view="grid" />}
+                        </span>
+                        <span className="grid-name">{entry.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
             </>
           ) : view === 'trash' ? (
             <>
-              <button className="btn-back" onClick={() => setView('files')}>
+              <button className="btn-back" onClick={() => { setView('files'); setRecentMode(false); }}>
                 <FaArrowLeft aria-hidden="true" /> Volver a archivos
               </button>
               <section className="card file-table" aria-label="Archivos en papelera">
@@ -1389,6 +1532,7 @@ function App() {
       {inspectorEntry && view === 'files' && (
         <Details
           entry={inspectorEntry}
+          activity={activity}
           onOpen={() => {
             if (inspectorEntry.type === 'directory') go(inspectorEntry.path);
             else setPreview(inspectorEntry);
