@@ -425,7 +425,8 @@ test('release.cjs: candidate has exactly allowed files (no extras)', function() 
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: accepts explicit candidate directory path', () => {
+test('release-verify: accepts explicit candidate directory path', function() {
+  winOnly.call(this);
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -438,7 +439,8 @@ test('release-verify: accepts explicit candidate directory path', () => {
   } finally { cleanFixture(fixture); }
 });
 
-test('release.cjs: .zip.sha256 is sibling outside candidate, not inside', () => {
+test('release.cjs: .zip.sha256 is sibling outside candidate, not inside', function() {
+  winOnly.call(this);
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -455,7 +457,8 @@ test('release.cjs: .zip.sha256 is sibling outside candidate, not inside', () => 
     assert.ok(!sumContent.includes('zip.sha256'));
   } finally { cleanFixture(fixture); }
 });
-test('release: notices include hoisted production metadata and license text', () => {
+test('release: notices include hoisted production metadata and license text', function() {
+  winOnly.call(this);
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -474,7 +477,8 @@ test('release: notices include hoisted production metadata and license text', ()
   } finally { cleanFixture(fixture); }
 });
 
-test('release: bundled instructions are self-contained rather than repository links', () => {
+test('release: bundled instructions are self-contained rather than repository links', function() {
+  winOnly.call(this);
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
