@@ -80,7 +80,21 @@ async function main() {
       child.kill('SIGTERM');
       await new Promise(resolve => child.once('exit', resolve));
     }
-    await fs.rm(fixture, { recursive: true, force: true });
+    // Windows can briefly keep file handles alive after process exit (AV,
+    // endpoint protection, deferred handle release). Cleanup is best-effort
+    // and must never mask a passing smoke run.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await fs.rm(fixture, { recursive: true, force: true });
+        break;
+      } catch (error) {
+        if (attempt >= 4 || (error.code !== 'EBUSY' && error.code !== 'EPERM')) {
+          console.warn(`WARN: could not remove smoke fixture ${fixture}: ${error.message}`);
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
+    }
   }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
