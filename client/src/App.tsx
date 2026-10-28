@@ -695,23 +695,6 @@ function App() {
               <span className="btn-label">{shutdownState.shuttingDown ? 'Apagando…' : 'Detener Server'}</span>
             </button>
 
-            <button className="btn-ghost" onClick={async () => {
-              if (saving) return;
-              setSaving(true);
-              try {
-                await api.logout();
-                setSession({ ...session, authenticated: false });
-                setSelected([]);
-                setPreview(null);
-                setNotice('Sesión cerrada.');
-              } catch (cause: unknown) {
-                if (expired(cause)) loseSession();
-                else setError(failure(cause));
-              } finally { setSaving(false); }
-            }}>
-              <FaSignOutAlt aria-hidden="true" />
-              <span className="btn-label">Cerrar sesión</span>
-            </button>
           </div>
         </header>
         <div className="workspace-body">
@@ -787,36 +770,31 @@ function App() {
                   </button>
                 </div>
               )}
-              <section className="card card-upload" aria-label="Subir archivos">
-                <div className="card-content">
-                  <h3>Subir archivos</h3>
-                  <p>
-                    {status
-                      ? `Sube archivos aquí. Tamaño máximo por archivo: ${bytes(status.maxUploadBytes)}.`
-                      : 'Sube tus archivos aquí.'}
-                  </p>
-                  <div className="upload-warning">
-                    <FaExclamationTriangle size={13} />
-                    <span>Algunos tipos de archivo no están permitidos</span>
-                  </div>
-                  <div className="upload-actions-row">
-                    <label className={`btn-accent button-like${uploadBusy ? ' busy' : ''}`}>
-                      <FaUpload aria-hidden="true" />
-                      <span>Elegir archivos</span>
-                      <input
-                        type="file"
-                        multiple
-                        onChange={e => {
-                          if (e.target.files?.length) selectFilePickerFiles(Array.from(e.target.files));
-                          e.target.value = '';
-                        }}
-                        disabled={uploadBusy}
-                        aria-label="Elegir archivos para subir"
-                      />
-                    </label>
-                  </div>
+              <div className="upload-bar" aria-label="Subir archivos">
+                <span className="upload-bar-icon" aria-hidden="true"><FaUpload /></span>
+                <div className="upload-bar-text">
+                  <strong>Subir archivos</strong>
+                  <span>{status ? `Máximo ${bytes(status.maxUploadBytes)} por archivo` : 'Arrastra o elige archivos'}</span>
                 </div>
-              </section>
+                <span className="upload-bar-limit">
+                  <FaExclamationTriangle aria-hidden="true" />
+                  .exe, .bat y similares bloqueados
+                </span>
+                <label className={`upload-bar-btn${uploadBusy ? ' busy' : ''}`}>
+                  <FaUpload aria-hidden="true" />
+                  <span>Elegir archivos</span>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={e => {
+                      if (e.target.files?.length) selectFilePickerFiles(Array.from(e.target.files));
+                      e.target.value = '';
+                    }}
+                    disabled={uploadBusy}
+                    aria-label="Elegir archivos para subir"
+                  />
+                </label>
+              </div>
               <DragAndDrop onFilesDropped={enqueueFiles} folderPath={folder || 'inicio'} />
               {fileView === 'list' ? (
                 <section
@@ -862,7 +840,8 @@ function App() {
                       />
                     </div>
                     <div className="col-name">NOMBRE</div>
-                    <div className="col-details">DETALLES</div>
+                    <div className="col-modified">MODIFICADO</div>
+                    <div className="col-size">TAMAÑO</div>
                     <div className="col-actions">ACCIONES</div>
                   </div>
 
@@ -872,7 +851,8 @@ function App() {
                       <div className="col-name">
                         <span className="placeholder">Cargando archivos…</span>
                       </div>
-                      <div className="col-details" />
+                      <div className="col-modified" />
+                      <div className="col-size" />
                       <div className="col-actions" />
                     </div>
                   )}
@@ -886,7 +866,8 @@ function App() {
                           <button onClick={refresh}>Reintentar</button>
                         </div>
                       </div>
-                      <div className="col-details" />
+                      <div className="col-modified" />
+                      <div className="col-size" />
                       <div className="col-actions" />
                     </div>
                   )}
@@ -998,13 +979,8 @@ function App() {
                           </span>
                         )}
                       </div>
-                      <div className="col-details" title={entry.type === 'file'
-                          ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}`
-                          : `Carpeta · ${date(entry.modifiedAt)}`}>
-                        {entry.type === 'file'
-                          ? `${bytes(entry.size)} · ${date(entry.modifiedAt)}`
-                          : `Carpeta · ${date(entry.modifiedAt)}`}
-                      </div>
+                                            <div className="col-modified">{date(entry.modifiedAt)}</div>
+                      <div className="col-size">{entry.type === 'file' ? bytes(entry.size) : '—'}</div>
                       <div className="col-actions">
                         {entry.type === 'file' ? (
                           <span className="action-group">
@@ -1176,6 +1152,9 @@ function App() {
                           {entry.type === 'directory'
                             ? <FaFolder aria-hidden="true" />
                             : <FileVisual path={entry.path} contentUrl={api.content(entry.path, true)} view={fileView} />}
+                          {entry.type === 'directory' && (
+                            <span className="grid-count" aria-hidden="true">{entry.children ?? 0}</span>
+                          )}
                         </div>
                         <div className="grid-check">
                           <input
@@ -1217,8 +1196,10 @@ function App() {
                               {entry.name}
                             </button>
                           )}
-                          {entry.type === 'directory' && <small>{bytes(entry.size)}</small>}
                         </span>
+                        {entry.type === 'directory' && (
+                          <small className="grid-meta">{entry.children ?? 0} elementos</small>
+                        )}
                         <div className="grid-actions">
                           {entry.type === 'file' && (
                             <>
@@ -1326,7 +1307,8 @@ function App() {
                 <div className="table-head">
                   <div className="col-check" />
                   <div className="col-name">NOMBRE</div>
-                  <div className="col-details">DETALLES</div>
+                  <div className="col-modified">MODIFICADO</div>
+                  <div className="col-size">TAMAÑO</div>
                   <div className="col-actions">ACCIONES</div>
                 </div>
 
@@ -1374,7 +1356,8 @@ function App() {
                         <small>Antes: {item.path}</small>
                       </span>
                     </div>
-                    <div className="col-details">Eliminado: {date(item.deletedAt)}</div>
+                    <div className="col-modified">{date(item.deletedAt)}</div>
+                    <div className="col-size" />
                     <div className="col-actions">
                       <button
                         className="btn-action"

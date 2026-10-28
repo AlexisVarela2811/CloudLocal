@@ -1,5 +1,6 @@
 import { FaDownload, FaEye, FaFolderOpen, FaPen, FaTrash } from 'react-icons/fa';
 import { api, type Entry } from '../api/api';
+import { classifyExtension } from './fileVisuals.mjs';
 import { bytes } from '../workspace.mjs';
 import { FileVisual } from './FileVisual';
 
@@ -26,6 +27,9 @@ function kindLabel(entry: Entry): string {
 
 export function Details({ entry, onOpen, onDownload, onRename, onDelete }: DetailsProps) {
   const isFolder = entry.type === 'directory';
+  const kind = isFolder ? 'folder' : classifyExtension(entry.name);
+  const extension = entry.name.includes('.') ? entry.name.slice(entry.name.lastIndexOf('.') + 1).toUpperCase() : '';
+  const previewable = kind === 'image' || kind === 'video' || kind === 'audio';
 
   return (
     <aside className="inspector" aria-label="Detalle del elemento seleccionado">
@@ -33,18 +37,22 @@ export function Details({ entry, onOpen, onDownload, onRename, onDelete }: Detai
         <span className="inspector-label">Detalle</span>
       </div>
 
-      <div className={`inspector-preview${isFolder ? ' is-folder' : ''}`}>
+      <div className="inspector-preview">
         {isFolder ? (
           <span className="inspector-folder" aria-hidden="true">
             <FaFolderOpen />
           </span>
-        ) : (
+        ) : previewable ? (
           <FileVisual
             path={entry.path}
             contentUrl={api.content(entry.path)}
             view="grid"
             className="inspector-visual"
           />
+        ) : (
+          <span className={`inspector-plate plate-${kind}`} aria-hidden="true">
+            {extension || 'FILE'}
+          </span>
         )}
       </div>
 

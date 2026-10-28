@@ -96,7 +96,13 @@ function createStorage(root) {
         if (parts.length === 0 && name.toLowerCase() === '.cloudlocal') continue;
         const { info } = await locate([...parts, name]);
         if (!info.isFile() && !info.isDirectory()) throw new StorageError('Unsupported storage entry');
-        result.push(await entry(parts, name, info));
+        const item = await entry(parts, name, info);
+        if (item.type === 'directory') {
+          item.children = await fsp.readdir(path.join(absolute, name))
+            .then(names => names.length)
+            .catch(() => 0);
+        }
+        result.push(item);
       }
       return result;
     } catch (error) { throw filesystemError(error); }

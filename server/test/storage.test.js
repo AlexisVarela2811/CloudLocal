@@ -157,3 +157,20 @@ test('usage reports filesystem bytes, not a fabricated capacity', async t => {
   assert.ok(Number.isFinite(total) && total > 0);
   assert.ok(Number.isFinite(free) && free >= 0 && free <= total);
 });
+
+test('reports how many entries each folder holds', async t => {
+  const { root, storage } = await fixture(t);
+  await storage.mkdir('', 'photos');
+  await fs.writeFile(path.join(root, 'photos', 'a.jpg'), 'a');
+  await fs.writeFile(path.join(root, 'photos', 'b.jpg'), 'b');
+  await storage.mkdir('photos', 'raw');
+  await storage.mkdir('', 'empty');
+
+  const entries = await storage.list();
+  const photos = entries.find(e => e.name === 'photos');
+  const empty = entries.find(e => e.name === 'empty');
+
+  assert.equal(photos.children, 3);
+  assert.equal(empty.children, 0);
+  assert.equal(entries.find(e => e.name === 'empty').type, 'directory');
+});
