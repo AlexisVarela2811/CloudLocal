@@ -1,0 +1,110 @@
+# CI — Cross-platform validation for CloudLocal.
+#
+# Strategy (matches the current release surface):
+# - The only published release artifact today is CloudLocal.exe (Windows x64),
+#   built by launcher/scripts/build.cjs (Windows-only by design).
+# - The matrix job proves the codebase (server, client, launcher) works on
+#   macOS, Linux and Windows, catching portability regressions early.
+# - The Windows job runs the full local release pipeline end to end:
+#   build -> candidate -> verify -> smoke, so every push to master proves the
+#   artifact we would ship actually boots and serves. When native Linux/macOS
+#   builds land in build.cjs, extend the release job to a matrix.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            launcher/package-lock.json
+
+      - name: Install dependencies (root workspaces)
+        run: npm ci
+
+      - name: Install dependencies (launcher)
+        run: npm ci --prefix launcher
+
+      - name: Install Playwright Chromium (with system deps)
+        if: runner.os == 'Linux'
+        run: npx playwright install chromium --with-deps
+
+      - name: Install Playwright Chromium
+        if: runner.os != 'Linux'
+        run: npx playwright install chromium
+
+      - name: Run test suite
+        run: npm test
+
+  release-windows:
+    name: Release candidate (windows-x64)
+    runs-on: windows-latest
+    timeout-minutes: 25
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            launcher/package-lock.json
+
+      - name: Install dependencies (root workspaces)
+        run: npm ci
+
+      - name: Install dependencies (launcher)
+        run: npm ci --prefix launcher
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      - name: Build frontend
+        run: npm run build:frontend
+
+      - name: Build Windows executable
+        run: npm run build:exe
+
+      - name: Create release candidate
+        run: npm run release:candidate -- 0.0.1-rc.1
+
+      - name: Verify release candidate
+        run: npm run release:verify -- launcher/dist/release/0.0.1-rc.1-windows-x64
+
+      - name: Smoke test the executable
+        run: npm run smoke:exe
+
+      - name: Upload release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudlocal-0.0.1-rc.1-windows-x64
+          path: |
+            launcher/dist/release/0.0.1-rc.1-windows-x64.zip
+            launcher/dist/release/0.0.1-rc.1-windows-x64.zip.sha256
+          retention-days: 7
+          if-no-files-found: error
