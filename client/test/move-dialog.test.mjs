@@ -60,6 +60,22 @@ function stubBackend({ folders = folder => (folder === 'Destino' ? [FOTOS] : fol
   return { server, calls };
 }
 
+// Rendered geometry of the "Añadido recientemente" strip: gap to the gallery
+// above it and the plate height of the recent thumbnail vs. the gallery one.
+function recentGeometry(page) {
+  return page.evaluate(() => {
+    const gallery = document.querySelector('.file-grid').getBoundingClientRect();
+    const heading = document.querySelector('.recent-strip h2').getBoundingClientRect();
+    const recent = document.querySelector('.recent-tile .grid-icon').getBoundingClientRect();
+    const plate = document.querySelector('.file-grid .grid-item .grid-icon').getBoundingClientRect();
+    return {
+      gap: heading.top - gallery.bottom,
+      recent: { width: recent.width, height: recent.height },
+      plate: { width: plate.width, height: plate.height },
+    };
+  });
+}
+
 async function openMoveDialog(t, backend, name = 'notas.txt') {
   const { server, calls } = backend;
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -91,6 +107,30 @@ test('move dialog sends files and folders to the chosen folder', async t => {
 
   await page.locator('.view-btn').nth(1).click();
   await page.waitForTimeout(300);
+  const desktop = await recentGeometry(page);
+  assert.ok(Math.abs(desktop.recent.height - 46) <= 1, `la miniatura reciente mide 46 px de alto (fue ${desktop.recent.height}px)`);
+  assert.ok(Math.abs(desktop.recent.width - 52) <= 1, `la miniatura reciente mide 52 px de ancho (fue ${desktop.recent.width}px)`);
+  assert.ok(Math.abs(desktop.plate.height - 122) <= 1, `la miniatura de la galería conserva 122 px (fue ${desktop.plate.height}px)`);
+  assert.ok(desktop.gap >= 12 && desktop.gap <= 16, `la franja reciente se separa de la galería entre 12 y 16 px (fue ${desktop.gap}px)`);
+  const recent = page.locator('.recent-tile', { hasText: 'notas.txt' });
+  const layout = await recent.evaluate(element => {
+    const image = element.querySelector('.grid-icon').getBoundingClientRect();
+    const label = element.querySelector('.grid-name').getBoundingClientRect();
+    return { direction: getComputedStyle(element).flexDirection, image, label };
+  });
+  assert.equal(layout.direction, 'row', 'los elementos recientes son horizontales');
+  assert.ok(layout.image.right <= layout.label.left, 'la miniatura aparece antes del nombre');
+  assert.match(await recent.innerText(), /120 B/, 'se muestra el tamaño del archivo');
+  await recent.click();
+  assert.ok(await page.locator('.inspector').isVisible(), 'el elemento reciente sigue seleccionando el archivo');
+  await page.setViewportSize({ width: 390, height: 900 });
+  assert.equal(await recent.evaluate(element => getComputedStyle(element).flexDirection), 'row', 'el elemento sigue horizontal en móvil');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), false, 'sin desbordamiento horizontal en móvil');
+  const mobile = await recentGeometry(page);
+  assert.ok(mobile.gap >= 12 && mobile.gap <= 16, `la franja reciente se separa de la galería entre 12 y 16 px también en móvil (fue ${mobile.gap}px)`);
+  assert.ok(Math.abs(mobile.recent.height - 36) <= 1, `la miniatura reciente mide 36 px de alto en móvil (fue ${mobile.recent.height}px)`);
+  assert.ok(Math.abs(mobile.plate.height - 96) <= 1, `la miniatura de la galería conserva 96 px en móvil (fue ${mobile.plate.height}px)`);
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.getByRole('button', { name: 'Mover Destino' }).first().click();
   await page.waitForSelector('.move-dialog');
   await page.getByRole('button', { name: 'Mover aquí' }).click();

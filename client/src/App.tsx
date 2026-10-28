@@ -1569,7 +1569,7 @@ function App() {
                 </section>
               )}
               {recentlyAdded.length > 0 && (
-                <section className="card recent-strip" aria-label="Añadido recientemente">
+                <section className="recent-strip" aria-label="Añadido recientemente">
                   <h2>Añadido recientemente</h2>
                   <div className="recent-grid">
                     {recentlyAdded.map(entry => (
@@ -1588,7 +1588,10 @@ function App() {
                             ? <FaFolder aria-hidden="true" />
                             : <FileVisual path={entry.path} contentUrl={api.content(entry.path, true)} view="grid" />}
                         </span>
-                        <span className="grid-name">{entry.name}</span>
+                        <span className="recent-details">
+                          <span className="grid-name">{entry.name}</span>
+                          <span className="recent-meta">{entry.type === 'directory' ? 'Carpeta' : bytes(entry.size)} · {date(entry.modifiedAt)}</span>
+                        </span>
                       </button>
                     ))}
                   </div>

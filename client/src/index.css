@@ -2430,28 +2430,30 @@ a { color: var(--accent); text-decoration: none; }
 [data-theme="dark"] .chip[aria-pressed="true"] .chip-count { background: rgba(255, 255, 255, .22); color: #fff; }
 
 /* Franja "Añadido recientemente" de la galería */
-.recent-strip { padding: .85rem 1rem 1rem; }
-.recent-strip h2 { margin: 0 0 .65rem; font-size: .82rem; }
+.recent-strip { margin-top: 14px; }
+.recent-strip h2 { margin: 0 0 .55rem; font-size: .65rem; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; color: var(--muted); }
 .recent-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: .6rem;
 }
-.recent-tile { padding: .6rem .5rem .55rem; border-color: var(--line); }
-.recent-tile .grid-icon {
-  width: 46px;
-  height: 46px;
-  margin-bottom: .45rem;
-  border-radius: var(--radius-sm);
+.recent-tile {
+  --plate: 46px;
+  flex-direction: row;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+  padding: .35rem;
+  text-align: left;
+  background: var(--surface);
+  border-color: var(--line);
 }
+.recent-tile .grid-icon { width: 52px; margin: 0; border-radius: var(--radius-sm); }
 .recent-tile .grid-icon svg { width: 24px; height: 24px; }
-.recent-tile .grid-icon img { width: 46px; height: 46px; border-radius: 0; }
-.recent-tile .grid-name {
-  padding: 0;
-  font-size: .71rem;
-  -webkit-line-clamp: 1;
-  max-height: 1.4em;
-}
+.recent-tile .grid-icon img { width: 100%; height: 100%; border-radius: 0; }
+.recent-details { display: flex; flex-direction: column; gap: .16rem; min-width: 0; flex: 1; }
+.recent-tile .grid-name { padding: 0; font-size: .72rem; -webkit-line-clamp: 1; max-height: 1.4em; }
+.recent-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; font-size: .6rem; }
 [data-theme="dark"] .recent-tile { background: var(--surface); border-color: var(--line); }
 
 /* Actividad del inspector */
@@ -2533,15 +2535,7 @@ a { color: var(--accent); text-decoration: none; }
   .files-toolbar .search-wrapper { flex: 1 1 100%; }
 
   .recent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
-  .recent-tile {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
-    gap: .5rem;
-    padding: .45rem .5rem;
-    text-align: left;
-  }
+  .recent-tile { --plate: 36px; }
   .recent-tile .grid-icon {
     width: 36px;
     height: 36px;
@@ -2583,6 +2577,29 @@ a { color: var(--accent); text-decoration: none; }
 @media (max-width: 768px) {
   .grid-item { --plate: 96px; }
   .grid-item .grid-icon img { border-radius: 0; }
+}
+
+/* La franja reciente conserva su miniatura compacta: las reglas de .grid-item
+   fijan --plate y la altura de la placa más abajo en el archivo, así que la
+   franja vuelve a declarar su propia medida. */
+.recent-tile { --plate: 46px; }
+.recent-tile .grid-icon {
+  width: 52px;
+  height: var(--plate);
+  max-height: var(--plate);
+  flex: 0 0 auto;
+}
+.recent-tile .grid-icon img {
+  width: 100%;
+  height: 100%;
+  max-height: var(--plate);
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+@media (max-width: 768px) {
+  .recent-tile { --plate: 36px; }
+  .recent-tile .grid-icon { width: 36px; height: var(--plate); max-height: var(--plate); }
 }
 
 .move-dialog {
