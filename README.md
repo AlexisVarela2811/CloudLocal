@@ -404,4 +404,5 @@ npm test
 
 - [Servidor portable y configuración](docs/server-launcher.md)
 - [API y autenticación](docs/api.md)
+- [Notas de la versión 0.1.0](docs/release-0.1.0.md)
 - [Notas de la versión 0.0.1](docs/release-0.0.1.md)

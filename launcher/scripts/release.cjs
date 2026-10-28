@@ -295,7 +295,7 @@ function main() {
 
     // Bundle user instructions without links to files outside this archive.
     fs.writeFileSync(path.join(candidateRoot, 'README.md'), [
-      '# CloudLocal 0.0.1 — candidato local para Windows x64', '',
+      `# CloudLocal ${version} — candidato local para Windows x64`, '',
       'Extrae todos los archivos del ZIP en una carpeta y ejecuta CloudLocal.exe.',
       'No necesitas instalar Node.js ni Bun. El servidor funciona sin consola.', '',
       'Abre http://localhost:80 en el equipo servidor. Si ese puerto está ocupado,',
