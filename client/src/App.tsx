@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { blobatar } from 'blobatar/blob';
 import {
   FaFolder, FaFile, FaDownload, FaTrash, FaUndo,
   FaArrowLeft, FaPlus, FaUpload, FaSync,
@@ -19,6 +20,21 @@ function isExtensionBlocked(name: string): boolean {
 
 function isExtensionBlockedList(filenames: string[]): string[] {
   return filenames.filter(isExtensionBlocked);
+}
+
+const AVATAR_SEED_KEY = 'cloudlocal-avatar-seed';
+function createAvatar(): string {
+  let seed: string;
+  try {
+    seed = localStorage.getItem(AVATAR_SEED_KEY) || '';
+    if (!seed) {
+      seed = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
+      localStorage.setItem(AVATAR_SEED_KEY, seed);
+    }
+  } catch {
+    seed = Math.random().toString(36).slice(2);
+  }
+  return blobatar(seed, { background: 'circle', hue: 174 });
 }
 
 const SERVER_SHUTDOWN_KEY = 'cloudlocal-server-shutdown';
@@ -99,6 +115,7 @@ function date(value: string) {
 }
 
 function App() {
+  const [avatar] = useState(createAvatar);
   const [session, setSession] = useState<Session | null>(null);
   const [entryError, setEntryError] = useState('');
   const [folder, setFolder] = useState('');
@@ -746,6 +763,7 @@ function App() {
           <FaSignOutAlt aria-hidden="true" />
           <span className="railtip">Cerrar sesión</span>
         </button>
+        <span className="rail-avatar" aria-hidden="true" dangerouslySetInnerHTML={{ __html: avatar }} />
       </aside>
       <div className="main-area">
         <header className="topbar">

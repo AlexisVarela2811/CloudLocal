@@ -39,6 +39,7 @@ test('theme switch in settings follows the rail toggle and vice versa', async t 
           : file.endsWith('.woff2') ? 'font/woff2'
             : 'text/html';
       res.setHeader('Content-Type', type);
+      if (file === 'index.html') res.setHeader('Content-Security-Policy', "default-src 'self'; object-src 'none'; frame-ancestors 'none'");
       res.end(contents);
     } catch {
       res.writeHead(404).end();
@@ -52,6 +53,14 @@ test('theme switch in settings follows the rail toggle and vice versa', async t 
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await page.goto(origin, { waitUntil: 'networkidle' });
     await page.waitForSelector('.table-row.entry');
+
+    const avatar = page.locator('.rail-avatar svg');
+    await avatar.waitFor({ timeout: 3000 });
+    const avatarMarkup = await avatar.evaluate(element => element.outerHTML);
+    assert.ok(await avatar.locator('path').count() > 0, 'el avatar se genera localmente');
+    assert.equal(await page.locator('.rail-avatar').getAttribute('aria-hidden'), 'true', 'el avatar es decorativo');
+    await page.reload({ waitUntil: 'networkidle' });
+    assert.equal(await avatar.evaluate(element => element.outerHTML), avatarMarkup, 'el avatar se conserva al recargar');
 
     const state = () => page.evaluate(key => ({
       theme: document.documentElement.getAttribute('data-theme') ?? 'light',
