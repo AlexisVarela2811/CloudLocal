@@ -29,6 +29,21 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
   const [shutdownMessage, setShutdownMessage] = useState('');
 
   useEffect(() => {
+    const sync = () => setDarkMode(getSavedTheme() === 'dark');
+    const onTheme = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { theme?: 'dark' | 'light' } | undefined;
+      setDarkMode((detail?.theme ?? getSavedTheme()) === 'dark');
+    };
+    window.addEventListener('cloudlocal-theme-change', onTheme);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('cloudlocal-theme-change', onTheme);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+
+
+  useEffect(() => {
     let active = true;
     api.settings().then(value => {
       if (!active) return;
