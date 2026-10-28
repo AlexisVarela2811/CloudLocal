@@ -74,6 +74,11 @@ function start(options = {}) {
         shutdownCallback = () => process.exit(0);
         setTimeout(() => process.exit(0), 3000).unref();
         shutdown();
+        // Long-lived UI connections (SSE /api/events, keep-alive) never end on
+        // their own, so server.close() would only finish via the drain cap.
+        // Close them shortly after the shutdown response is flushed, so the
+        // graceful path completes and 'CloudLocal: stopped' is printed.
+        setTimeout(() => server.closeAllConnections?.(), 500).unref();
     };
     process.once('SIGTERM', shutdown);
     process.once('disconnect', shutdown);

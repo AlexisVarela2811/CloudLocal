@@ -60,7 +60,7 @@ async function main() {
     await page.context().addCookies([{ name: cookieName, value: cookieValue, url: base + '/api', httpOnly: true, sameSite: 'Strict' }]);
     await page.goto(base);
     await expect(page.locator('.shortcut-hint')).toHaveText('Ctrl+Alt+N');
-    const stop = page.getByRole('button', { name: 'Detener Server', exact: true });
+    const stop = page.getByRole('button', { name: 'Apagar servidor', exact: true });
     await expect(stop).toBeEnabled();
     await stop.click();
     let timer;
