@@ -45,15 +45,17 @@ jobs:
       - name: Install dependencies (root workspaces)
         run: npm ci
 
-      # node-win-x64 (used only by build.cjs on Windows) declares os=win32,
-      # so plain npm ci fails with EBADPLATFORM on macOS/Linux runners.
-      - name: Install dependencies (launcher)
-        if: runner.os != 'Windows'
-        run: npm ci --prefix launcher --force
-
+      # Launcher unit tests only use node built-ins and the sources under
+      # launcher/src, so devDependencies (esbuild, postject, node-win-x64)
+      # are not needed off Windows and node-win-x64 breaks install there.
       - name: Install dependencies (launcher)
         if: runner.os == 'Windows'
         run: npm ci --prefix launcher
+
+      # Client tests serve the compiled frontend from client/dist, which is
+      # gitignored, so build it before running the suite.
+      - name: Build frontend
+        run: npm run build:frontend
 
       - name: Install Playwright Chromium (with system deps)
         if: runner.os == 'Linux'
