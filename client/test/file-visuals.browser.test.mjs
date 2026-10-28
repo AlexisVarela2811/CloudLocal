@@ -304,6 +304,12 @@ describe('FileVisual — real component in chromium', { timeout: 120_000 }, () =
 
       await waitForSelector('[data-testid="item-0"] .file-icon svg', 8_000);
       assert.equal(await item(0).locator('.file-icon').getAttribute('data-category'), 'video');
+      // Both mounted copies (grid and table views) must settle; the hidden
+      // one can resolve later than the visible one depending on the platform.
+      await waitFor(
+        async () => (await item(0).locator('.file-icon .fa-spin').count()) === 0,
+        8_000,
+      );
       assert.equal(await item(0).locator('.file-icon .fa-spin').count(), 0);
     });
   });

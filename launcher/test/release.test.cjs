@@ -108,8 +108,16 @@ function runVerify(dirPath, extraArgs = []) {
   });
 }
 
+// release.cjs builds the Windows-only release candidate (bsdtar from
+// System32, win32 platform fields), so tests that create a real candidate
+// only run on Windows. release-verify.cjs itself is pure fs and stays
+// covered there through the same tests.
+function winOnly() {
+  if (process.platform !== 'win32') this.skip();
+}
+
 test('release: bsdtar.exe path is discoverable on Windows', function() {
-  if (process.platform !== 'win32') { this.skip(); return; }
+  winOnly.call(this);
   const tarExe = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
   assert.ok(fs.existsSync(tarExe), 'bsdtar.exe should exist at ' + tarExe);
 });
@@ -138,7 +146,8 @@ test('release-verify.cjs --help prints usage and exits 0', () => {
   } finally { cleanFixture(fixture); }
 });
 
-test('release.cjs creates candidate; verify passes; extract validates', () => {
+test('release.cjs creates candidate; verify passes; extract validates', function() {
+  winOnly.call(this);
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -274,7 +283,8 @@ test('release.cjs fails when CloudLocal.exe is missing', () => {
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: rejects — tampered CloudLocal.exe', () => {
+test('release-verify: rejects — tampered CloudLocal.exe', function() {
+  winOnly.call(this);
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -293,7 +303,8 @@ test('release-verify: rejects — tampered CloudLocal.exe', () => {
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: rejects — tampered candidate.json', () => {
+test('release-verify: rejects — tampered candidate.json', function() {
+  winOnly.call(this);
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -313,7 +324,8 @@ test('release-verify: rejects — tampered candidate.json', () => {
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: rejects — missing checksum entries', () => {
+test('release-verify: rejects — missing checksum entries', function() {
+  winOnly.call(this);
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -329,7 +341,8 @@ test('release-verify: rejects — missing checksum entries', () => {
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: rejects — symlink in payload', () => {
+test('release-verify: rejects — symlink in payload', function() {
+  winOnly.call(this);
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -347,7 +360,8 @@ test('release-verify: rejects — symlink in payload', () => {
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: rejects — SHA256SUMS with path traversal', () => {
+test('release-verify: rejects — SHA256SUMS with path traversal', function() {
+  winOnly.call(this);
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -366,7 +380,8 @@ test('release-verify: rejects — SHA256SUMS with path traversal', () => {
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: no-clobber — verify does not modify candidate', () => {
+test('release-verify: no-clobber — verify does not modify candidate', function() {
+  winOnly.call(this);
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -390,7 +405,8 @@ test('release-verify: no-clobber — verify does not modify candidate', () => {
   } finally { cleanFixture(fixture); }
 });
 
-test('release.cjs: candidate has exactly allowed files (no extras)', () => {
+test('release.cjs: candidate has exactly allowed files (no extras)', function() {
+  winOnly.call(this);
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
