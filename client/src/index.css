@@ -1960,6 +1960,8 @@ a { color: var(--accent); text-decoration: none; }
 
 .rail-spacer { flex: 1; }
 .rail-status { width: 40px; height: 24px; display: grid; place-items: center; flex-shrink: 0; }
+.rail-avatar { width: 32px; height: 32px; margin-top: .3rem; flex-shrink: 0; }
+.rail-avatar svg { display: block; width: 100%; height: 100%; border-radius: 50%; }
 .rail-theme-sun { display: none; }
 [data-theme="dark"] .rail-theme-moon { display: none; }
 [data-theme="dark"] .rail-theme-sun { display: block; }
@@ -2638,7 +2640,6 @@ a { color: var(--accent); text-decoration: none; }
 .settings-view {
   display: grid;
   gap: .9rem;
-  max-width: 880px;
 }
 .settings-section {
   background: var(--surface);

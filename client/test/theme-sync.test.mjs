@@ -39,6 +39,7 @@ test('theme switch in settings follows the rail toggle and vice versa', async t 
           : file.endsWith('.woff2') ? 'font/woff2'
             : 'text/html';
       res.setHeader('Content-Type', type);
+      if (file === 'index.html') res.setHeader('Content-Security-Policy', "default-src 'self'; object-src 'none'; frame-ancestors 'none'");
       res.end(contents);
     } catch {
       res.writeHead(404).end();
@@ -52,6 +53,14 @@ test('theme switch in settings follows the rail toggle and vice versa', async t 
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await page.goto(origin, { waitUntil: 'networkidle' });
     await page.waitForSelector('.table-row.entry');
+
+    const avatar = page.locator('.rail-avatar svg');
+    await avatar.waitFor({ timeout: 3000 });
+    const avatarMarkup = await avatar.evaluate(element => element.outerHTML);
+    assert.ok(await avatar.locator('path').count() > 0, 'el avatar se genera localmente');
+    assert.equal(await page.locator('.rail-avatar').getAttribute('aria-hidden'), 'true', 'el avatar es decorativo');
+    await page.reload({ waitUntil: 'networkidle' });
+    assert.equal(await avatar.evaluate(element => element.outerHTML), avatarMarkup, 'el avatar se conserva al recargar');
 
     const state = () => page.evaluate(key => ({
       theme: document.documentElement.getAttribute('data-theme') ?? 'light',
@@ -75,6 +84,21 @@ test('theme switch in settings follows the rail toggle and vice versa', async t 
     await page.waitForTimeout(200);
     const settingsOpen = await state();
     assert.equal(settingsOpen.switchChecked, 'true', 'el interruptor nace sincronizado con el rail');
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      const layout = await page.locator('.settings-view').evaluate(element => {
+        const parent = element.parentElement;
+        const style = getComputedStyle(parent);
+        return {
+          actual: element.getBoundingClientRect().width,
+          available: parent.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+          overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        };
+      });
+      assert.ok(Math.abs(layout.actual - layout.available) < 1, `configuración ocupa el ancho disponible a ${width}px`);
+      assert.equal(layout.overflow, false, `sin desbordamiento horizontal a ${width}px`);
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
 
     // 3) Estando DENTRO de Configuración, el rail cambia el tema y el interruptor debe seguirlo.
     await page.getByRole('button', { name: 'Cambiar de tema', exact: true }).click();
