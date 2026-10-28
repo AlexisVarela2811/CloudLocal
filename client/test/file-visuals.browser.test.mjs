@@ -222,6 +222,16 @@ describe('FileVisual — real component in chromium', { timeout: 120_000 }, () =
     await page.waitForSelector(selector, { timeout });
   }
 
+  /** Wait until every mounted copy of an item's icon stops spinning. Two
+   *  copies exist per item (grid and table views); the hidden one can settle
+   *  later than the visible one depending on the platform. */
+  async function waitForNoSpinner(index, timeout = 8_000) {
+    await waitFor(
+      async () => (await item(index).locator('.file-icon .fa-spin').count()) === 0,
+      timeout,
+    );
+  }
+
   /** Read the media server control state. */
   async function mediaState() {
     const resp = await fetch(media.url('/control/state'));
@@ -269,6 +279,7 @@ describe('FileVisual — real component in chromium', { timeout: 120_000 }, () =
       await page.waitForFunction(() => window.__loaded.includes(0), null, { timeout: 5_000 });
 
       assert.equal(await item(0).locator('.file-icon img').getAttribute('src'), src);
+      await waitForNoSpinner(0);
       assert.equal(await item(0).locator('.file-icon .fa-spin').count(), 0);
     });
 
@@ -294,6 +305,7 @@ describe('FileVisual — real component in chromium', { timeout: 120_000 }, () =
       await waitForSelector('[data-testid="item-0"] .file-icon svg', 5_000);
       assert.equal(await item(0).locator('.file-icon').getAttribute('data-category'), 'image');
       assert.equal(await item(0).locator('.file-icon img').count(), 0);
+      await waitForNoSpinner(0);
       assert.equal(await item(0).locator('.file-icon .fa-spin').count(), 0);
     });
   });
@@ -327,6 +339,7 @@ describe('FileVisual — real component in chromium', { timeout: 120_000 }, () =
       await waitForSelector('[data-testid="item-4"] .file-icon img', 8_000);
       for (let i = 0; i < 4; i++) {
         assert.equal(await item(i).locator('.file-icon svg').count(), 1, `failed item ${i} shows an icon`);
+        await waitForNoSpinner(i);
         assert.equal(await item(i).locator('.file-icon .fa-spin').count(), 0, `failed item ${i} is not stuck`);
       }
     });
