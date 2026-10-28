@@ -135,6 +135,12 @@ function createStorage(root) {
     }
   }
 
+  async function moveIntoTrash(source, destination) {
+    const info = await fsp.lstat(source);
+    if (info.isDirectory()) await fsp.rename(source, destination);
+    else await moveExclusive(source, destination);
+  }
+
   async function renameFile(source, destination) {
     // Simple rename for move API; caller must verify destination does not exist
     await fsp.rename(source, destination);
@@ -169,14 +175,21 @@ function createStorage(root) {
 
   async function trash(relativePath) {
     const parts = segments(relativePath);
-    const { absolute } = await locate(parts, 'file');
+    const { absolute, info } = await locate(parts);
+    if (!info.isFile() && !info.isDirectory()) throw new StorageError('Unsupported storage entry');
     const id = randomUUID();
-    const record = { id, name: parts.at(-1), path: parts.join('/'), deletedAt: new Date().toISOString() };
+    const record = {
+      id,
+      name: parts.at(-1),
+      path: parts.join('/'),
+      type: info.isDirectory() ? 'directory' : 'file',
+      deletedAt: new Date().toISOString()
+    };
     const meta = path.join(trashDir, `${id}.json`);
     const payload = path.join(trashDir, id);
     try {
       await fsp.writeFile(meta, JSON.stringify(record), { flag: 'wx' });
-      try { await moveExclusive(absolute, payload); }
+      try { await moveIntoTrash(absolute, payload); }
       catch (error) { await fsp.unlink(meta); throw error; }
       return record;
     } catch (error) { throw filesystemError(error); }
@@ -189,7 +202,8 @@ function createStorage(root) {
     try {
       const metaInfo = await fsp.lstat(meta);
       const info = await fsp.lstat(payload);
-      if (!metaInfo.isFile() || metaInfo.isSymbolicLink() || !info.isFile() || info.isSymbolicLink()) {
+      const payloadValid = (info.isFile() || info.isDirectory()) && !info.isSymbolicLink();
+      if (!metaInfo.isFile() || metaInfo.isSymbolicLink() || !payloadValid) {
         throw new StorageError('Invalid trash entry');
       }
       const record = JSON.parse(await fsp.readFile(meta, 'utf8'));
@@ -219,9 +233,12 @@ function createStorage(root) {
     const { absolute: parent } = await locate(parts.slice(0, -1), 'directory');
     const target = path.join(parent, parts.at(-1));
     try {
-      await moveExclusive(path.join(trashDir, id), target);
+      const payloadPath = path.join(trashDir, id);
+      const payloadInfo = await fsp.lstat(payloadPath);
+      if (payloadInfo.isDirectory()) await fsp.rename(payloadPath, target);
+      else await moveExclusive(payloadPath, target);
       await fsp.unlink(path.join(trashDir, `${id}.json`));
-      const { info } = await locate(parts, 'file');
+      const { info } = await locate(parts);
       return entry(parts.slice(0, -1), parts.at(-1), info);
     } catch (error) { throw filesystemError(error); }
   }
@@ -375,7 +392,9 @@ function createStorage(root) {
     const meta = path.join(trashDir, `${id}.json`);
     const payload = path.join(trashDir, id);
     try {
-      await fsp.unlink(payload);
+      const info = await fsp.lstat(payload);
+      if (info.isDirectory()) await fsp.rm(payload, { recursive: true, force: true });
+      else await fsp.unlink(payload);
     } catch (error) {
       if (error.code !== 'ENOENT') throw filesystemError(error);
     }
@@ -395,7 +414,9 @@ function createStorage(root) {
         const id = name.slice(0, -5);
         try {
           const payload = path.join(trashDir, id);
-          await fsp.unlink(payload);
+          const payloadInfo = await fsp.lstat(payload).catch(() => null);
+          if (payloadInfo?.isDirectory()) await fsp.rm(payload, { recursive: true, force: true });
+          else await fsp.unlink(payload);
           await fsp.unlink(path.join(trashDir, name));
           deletedIds.push(id);
         } catch (error) {
