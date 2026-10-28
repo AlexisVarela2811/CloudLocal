@@ -45,7 +45,14 @@ jobs:
       - name: Install dependencies (root workspaces)
         run: npm ci
 
+      # node-win-x64 (used only by build.cjs on Windows) declares os=win32,
+      # so plain npm ci fails with EBADPLATFORM on macOS/Linux runners.
       - name: Install dependencies (launcher)
+        if: runner.os != 'Windows'
+        run: npm ci --prefix launcher --force
+
+      - name: Install dependencies (launcher)
+        if: runner.os == 'Windows'
         run: npm ci --prefix launcher
 
       - name: Install Playwright Chromium (with system deps)
