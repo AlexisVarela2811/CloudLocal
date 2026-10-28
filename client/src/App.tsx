@@ -62,6 +62,7 @@ import { Preview } from './components/Preview';
 import { DragAndDrop } from './components/DragAndDrop';
 import { SettingsPanel } from './components/Settings';
 import { Details, type ActivityEvent } from './components/Details';
+import { MultiDetails } from './components/MultiDetails';
 import { FileVisual } from './components/FileVisual';
 import { classifyExtension } from './components/fileVisuals.mjs';
 import { breadcrumbs, bytes, exceedsLimit, previewKind, sortEntries } from './workspace.mjs';
@@ -674,12 +675,18 @@ function App() {
       {notice && <p className="session-notice" role="status">{notice}</p>}
     </>;
   const crumbs = breadcrumbs(folder);
-  const inspectorEntry = selected.length === 1
-    ? entries.find(entry => entry.path === selected[0]) ?? null
+  // The inspector follows the selection: one entry keeps the original Details
+  // panel, two or more keep a summary of the whole selection, none hides it.
+  const selectedEntries = selected
+    .map(path => entries.find(entry => entry.path === path))
+    .filter((entry): entry is Entry => Boolean(entry));
+  const inspectorEntry = selected.length === 1 ? selectedEntries[0] ?? null : null;
+  const multiSelection = selected.length > 1 && selectedEntries.length === selected.length && view === 'files'
+    ? selectedEntries
     : null;
 
   return (
-    <div className={`app-shell${inspectorEntry && view === 'files' ? ' has-inspector' : ''}`}>
+    <div className={`app-shell${(inspectorEntry && view === 'files') || multiSelection ? ' has-inspector' : ''}`}>
       <aside className="rail" aria-label="Navegación principal">
         <button
           className="rail-brand"
@@ -1718,6 +1725,18 @@ function App() {
             action(() => api.trashFile(inspectorEntry.path), `«${inspectorEntry.name}» está en la papelera.`)
               .then(() => setSelected([]));
           }}
+        />
+      )}
+      {multiSelection && (
+        <MultiDetails
+          entries={multiSelection}
+          onDownload={() => {
+            // Folders have no downloadable content: only files are requested.
+            const files = multiSelection.filter(entry => entry.type === 'file');
+            if (files.length > 0) download(files.map(entry => entry.path));
+          }}
+          onMove={() => openMove(selected)}
+          onClear={() => setSelected([])}
         />
       )}
       {preview && <Preview entry={preview} onClose={() => setPreview(null)} />}

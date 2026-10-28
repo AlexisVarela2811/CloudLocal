@@ -37,7 +37,8 @@ function formatDate(value: string): string {
   return new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(time);
 }
 
-function kindLabel(entry: Entry): string {
+// Also used by the multi-selection panel, which labels every selected entry.
+export function kindLabel(entry: Entry): string {
   if (entry.type === 'directory') return 'Carpeta';
   const dot = entry.name.lastIndexOf('.');
   const ext = dot > 0 ? entry.name.slice(dot + 1).toUpperCase() : '';
