@@ -84,6 +84,21 @@ test('theme switch in settings follows the rail toggle and vice versa', async t 
     await page.waitForTimeout(200);
     const settingsOpen = await state();
     assert.equal(settingsOpen.switchChecked, 'true', 'el interruptor nace sincronizado con el rail');
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      const layout = await page.locator('.settings-view').evaluate(element => {
+        const parent = element.parentElement;
+        const style = getComputedStyle(parent);
+        return {
+          actual: element.getBoundingClientRect().width,
+          available: parent.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+          overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        };
+      });
+      assert.ok(Math.abs(layout.actual - layout.available) < 1, `configuración ocupa el ancho disponible a ${width}px`);
+      assert.equal(layout.overflow, false, `sin desbordamiento horizontal a ${width}px`);
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
 
     // 3) Estando DENTRO de Configuración, el rail cambia el tema y el interruptor debe seguirlo.
     await page.getByRole('button', { name: 'Cambiar de tema', exact: true }).click();

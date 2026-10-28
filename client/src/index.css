@@ -2640,7 +2640,6 @@ a { color: var(--accent); text-decoration: none; }
 .settings-view {
   display: grid;
   gap: .9rem;
-  max-width: 880px;
 }
 .settings-section {
   background: var(--surface);
