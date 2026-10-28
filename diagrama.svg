@@ -1,230 +1,251 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1760" height="1160" viewBox="0 0 1760 1160" role="img" aria-labelledby="svg-title svg-desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1760" height="1160" viewBox="0 0 1760 1160" role="img" aria-labelledby="svg-title svg-desc" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
 <title id="svg-title">CloudLocal — Arquitectura del sistema</title>
-<desc id="svg-desc">Diagrama técnico CloudLocal: Frontend React, Backend Express.js, almacenamiento de archivos local, ejecutable Windows Node SEA, dispositivos externos de la LAN, mecanismos de autenticación, seguridad y compresión. Las flechas indican HTTP API, Agent API, operaciones de archivos y arranque del backend.</desc>
+<desc id="svg-desc">Diagrama técnico CloudLocal: Frontend React con inspector de selección múltiple y miniaturas, Backend Express.js con eventos SSE, almacenamiento local con papelera, ejecutable Windows Node SEA, navegadores de la LAN, autenticación, seguridad y compresión. Estilo según design/system.md: acento teal, fondo cream, Inter y radios 5/8/12/16.</desc>
 <defs>
-  <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#DCE5F2" opacity=".46"/></pattern>
-  <linearGradient id="page" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F8FAFF"/><stop offset="1" stop-color="#F2F5FB"/></linearGradient>
-  <marker id="ar-blue" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L8 4.5 L1 8" stroke="#2563EB" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></marker>
-  <marker id="ar-cyan" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L8 4.5 L1 8" stroke="#0E7490" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></marker>
-  <marker id="ar-green" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L8 4.5 L1 8" stroke="#047857" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></marker>
-  <marker id="ar-orange" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L8 4.5 L1 8" stroke="#B45309" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></marker>
-<marker id="ar-back" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L8 4.5 L1 8" stroke="#6D28D9" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#ddd6cd" opacity=".5"/></pattern>
+  <linearGradient id="page" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f5f0eb"/><stop offset="1" stop-color="#efe9e1"/></linearGradient>
+  <marker id="ar-teal" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L8 4.5 L1 8" stroke="#0d9488" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  <marker id="ar-cyan" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L8 4.5 L1 8" stroke="#0891b2" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  <marker id="ar-green" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L8 4.5 L1 8" stroke="#15803d" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  <marker id="ar-orange" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L8 4.5 L1 8" stroke="#b45309" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  <marker id="ar-teal2" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L8 4.5 L1 8" stroke="#14b8a6" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="ar-purple" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L8 4.5 L1 8" stroke="#7c3aed" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></marker>
 </defs>
 <rect x="0" y="0" width="1760" height="1160" rx="0" fill="url(#page)" stroke="none" stroke-width="1" />
 <rect x="0" y="0" width="1760" height="1160" rx="0" fill="url(#dots)" stroke="none" stroke-width="1" />
-<rect x="64" y="48" width="10" height="76" rx="5" fill="#2563EB" stroke="none" stroke-width="1" />
-<text x="92" y="83" font-size="37" fill="#0F172A" font-weight="780" text-anchor="start" letter-spacing="-1.1" >CloudLocal</text>
-<text x="92" y="114" font-size="20" fill="#334155" font-weight="500" text-anchor="start"  >Arquitectura del sistema</text>
-<rect x="1264" y="62" width="190" height="40" rx="20.0" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" />
-<text x="1359.0" y="86.76" font-size="14" fill="#334155" font-weight="700" text-anchor="middle"  >APLICACIÓN LOCAL</text>
-<rect x="1466" y="62" width="230" height="40" rx="20.0" fill="#EAF2FF" stroke="#BFDBFE" stroke-width="1" />
-<text x="1581.0" y="86.76" font-size="14" fill="#1D4ED8" font-weight="700" text-anchor="middle"  >WINDOWS  ·  LAN</text>
-<line x1="64" y1="148" x2="1696" y2="148" stroke="#DCE4EF" stroke-width="1.5" />
-<rect x="64" y="182" width="441" height="365" rx="18" fill="#D9E2F0" stroke="none" stroke-width="1" opacity="0.24"/>
-<rect x="64" y="177" width="441" height="365" rx="18" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="1.35" />
-<rect x="65" y="178" width="439" height="63" rx="17" fill="#EFF6FF" stroke="none" stroke-width="1" />
-<rect x="65" y="202" width="439" height="39" rx="0" fill="#EFF6FF" stroke="none" stroke-width="1" />
-<line x1="65" y1="241" x2="504" y2="241" stroke="#BFDBFE" stroke-width="1" />
-<rect x="84" y="192" width="36" height="36" rx="11" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="1" />
-<g transform="translate(90 198) scale(1.0)" stroke="#2563EB" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 22h8M12 18v4M7 8h10M7 12h6"/></g>
-<text x="132" y="207" font-size="21" fill="#0F172A" font-weight="700" text-anchor="start"  >Frontend</text>
-<text x="132" y="226" font-size="13" fill="#64748B" font-weight="500" text-anchor="start"  >React · SPA</text>
-<text x="481" y="214" font-size="13" fill="#2563EB" font-weight="700" text-anchor="end" letter-spacing="1" >01</text>
-<rect x="86" y="258" width="397" height="66" rx="12" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.0" />
-<rect x="101" y="272" width="39" height="38" rx="9" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="1" />
-<g transform="translate(109 279) scale(0.98)" stroke="#2563EB" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m8 8-4 4 4 4m8-8 4 4-4 4m-3-11-2 14"/></g>
-<text x="155" y="283" font-size="17" fill="#0F172A" font-weight="700" text-anchor="start"  >App.tsx</text>
-<text x="155" y="305" font-size="14" fill="#64748B" font-weight="400" text-anchor="start"  >Punto de entrada de la SPA</text>
-<rect x="86" y="338" width="397" height="122" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<text x="104" y="361" font-size="12" fill="#2563EB" font-weight="700" text-anchor="start" letter-spacing="1.2" >COMPONENTES</text>
-<rect x="103" y="372" width="109" height="29" rx="14.5" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
-<text x="157.5" y="390.716" font-size="12.4" fill="#334155" font-weight="600" text-anchor="middle"  >Access</text>
-<rect x="224" y="372" width="103" height="29" rx="14.5" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
-<text x="275.5" y="390.716" font-size="12.4" fill="#334155" font-weight="600" text-anchor="middle"  >Devices</text>
-<rect x="338" y="372" width="126" height="29" rx="14.5" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
-<text x="401.0" y="390.716" font-size="12.4" fill="#334155" font-weight="600" text-anchor="middle"  >Preview</text>
-<rect x="103" y="411" width="109" height="29" rx="14.5" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
-<text x="157.5" y="429.716" font-size="12.4" fill="#334155" font-weight="600" text-anchor="middle"  >Settings</text>
-<rect x="224" y="411" width="127" height="29" rx="14.5" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
-<text x="287.5" y="429.716" font-size="12.4" fill="#334155" font-weight="600" text-anchor="middle"  >UploadQueue</text>
-<rect x="362" y="411" width="102" height="29" rx="14.5" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
-<text x="413.0" y="429.716" font-size="12.4" fill="#334155" font-weight="600" text-anchor="middle"  >DragAndDrop</text>
-<rect x="86" y="475" width="190" height="44" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.0" />
-<rect x="286" y="475" width="197" height="44" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.0" />
-<text x="101" y="493" font-size="11" fill="#2563EB" font-weight="700" text-anchor="start" letter-spacing=".8" >HOOK</text>
-<text x="101" y="510" font-size="14" fill="#334155" font-weight="600" text-anchor="start"  >useDragUpload</text>
-<text x="301" y="493" font-size="11" fill="#2563EB" font-weight="700" text-anchor="start" letter-spacing=".8" >HTTP CLIENT</text>
-<text x="301" y="510" font-size="14" fill="#334155" font-weight="600" text-anchor="start"  >Axios</text>
-<rect x="64" y="570" width="441" height="243" rx="18" fill="#D9E2F0" stroke="none" stroke-width="1" opacity="0.24"/>
-<rect x="64" y="565" width="441" height="243" rx="18" fill="#FFFFFF" stroke="#A5F3FC" stroke-width="1.35" />
-<rect x="65" y="566" width="439" height="63" rx="17" fill="#ECFEFF" stroke="none" stroke-width="1" />
-<rect x="65" y="590" width="439" height="39" rx="0" fill="#ECFEFF" stroke="none" stroke-width="1" />
-<line x1="65" y1="629" x2="504" y2="629" stroke="#A5F3FC" stroke-width="1" />
-<rect x="84" y="580" width="36" height="36" rx="11" fill="#FFFFFF" stroke="#A5F3FC" stroke-width="1" />
-<g transform="translate(90 586) scale(1.0)" stroke="#0E7490" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2M10 5h4"/></g>
-<text x="132" y="595" font-size="21" fill="#0F172A" font-weight="700" text-anchor="start"  >Dispositivos externos</text>
-<text x="132" y="614" font-size="13" fill="#64748B" font-weight="500" text-anchor="start"  >Clientes conectados en la LAN</text>
-<text x="481" y="602" font-size="13" fill="#0E7490" font-weight="700" text-anchor="end" letter-spacing="1" >02</text>
-<rect x="86" y="645" width="397" height="88" rx="12" fill="#ECFEFF" stroke="#A5F3FC" stroke-width="1.0" />
-<rect x="102" y="664" width="48" height="49" rx="11" fill="#FFFFFF" stroke="#A5F3FC" stroke-width="1" />
-<g transform="translate(112 676) scale(1.2)" stroke="#0E7490" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2M10 5h4"/></g>
-<text x="166" y="674" font-size="17" fill="#0F172A" font-weight="700" text-anchor="start"  >Companion Device</text>
-<text x="166" y="698" font-size="14" fill="#334155" font-weight="500" text-anchor="start"  >File browser · File picker</text>
-<text x="166" y="716" font-size="13" fill="#64748B" font-weight="400" text-anchor="start"  >Explora y selecciona archivos</text>
-<rect x="86" y="744" width="397" height="45" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<circle cx="107" cy="766" r="5" fill="#0E7490" stroke="none" stroke-width="1"/>
-<text x="122" y="771" font-size="13.2" fill="#334155" font-weight="600" text-anchor="start"  >Conexión local · emparejamiento · agente</text>
-<rect x="590" y="182" width="760" height="631" rx="18" fill="#D9E2F0" stroke="none" stroke-width="1" opacity="0.24"/>
-<rect x="590" y="177" width="760" height="631" rx="18" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1.35" />
-<rect x="591" y="178" width="758" height="63" rx="17" fill="#F5F3FF" stroke="none" stroke-width="1" />
-<rect x="591" y="202" width="758" height="39" rx="0" fill="#F5F3FF" stroke="none" stroke-width="1" />
-<line x1="591" y1="241" x2="1349" y2="241" stroke="#DDD6FE" stroke-width="1" />
-<rect x="610" y="192" width="36" height="36" rx="11" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" />
-<g transform="translate(616 198) scale(1.0)" stroke="#6D28D9" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="8" rx="2"/><rect x="4" y="13" width="16" height="8" rx="2"/><path d="M8 7h.01M8 17h.01M12 7h5M12 17h5"/></g>
-<text x="658" y="207" font-size="21" fill="#0F172A" font-weight="700" text-anchor="start"  >Backend</text>
-<text x="658" y="226" font-size="13" fill="#64748B" font-weight="500" text-anchor="start"  >Node.js · Express.js</text>
-<text x="1326" y="214" font-size="13" fill="#6D28D9" font-weight="700" text-anchor="end" letter-spacing="1" >03</text>
-<rect x="612" y="260" width="716" height="72" rx="12" fill="#F5F3FF" stroke="#DDD6FE" stroke-width="1.0" />
-<rect x="627" y="270" width="314" height="52" rx="10" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" />
-<rect x="996" y="270" width="316" height="52" rx="10" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" />
-<text x="644" y="290" font-size="17" fill="#0F172A" font-weight="700" text-anchor="start"  >server.js</text>
-<text x="644" y="311" font-size="13.5" fill="#64748B" font-weight="400" text-anchor="start"  >Arranque del servidor</text>
-<text x="1013" y="290" font-size="17" fill="#0F172A" font-weight="700" text-anchor="start"  >app.js</text>
-<text x="1013" y="311" font-size="13.5" fill="#64748B" font-weight="400" text-anchor="start"  >Configuración de Express</text>
-<line x1="950" y1="296" x2="984" y2="296" stroke="#6D28D9" stroke-width="2.2" marker-end="url(#ar-back)"/>
-<rect x="612" y="346" width="273" height="142" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<text x="630" y="373" font-size="12" fill="#6D28D9" font-weight="700" text-anchor="start" letter-spacing="1.2" >SEGURIDAD HTTP</text>
-<g transform="translate(839 358) scale(0.85)" stroke="#6D28D9" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></g>
-<text x="630" y="399" font-size="14.8" fill="#334155" font-weight="600" text-anchor="start"  >CSP · nosniff · X-Frame</text>
-<text x="630" y="425" font-size="14.8" fill="#334155" font-weight="500" text-anchor="start"  >Validación de Origin</text>
-<text x="630" y="452" font-size="13" fill="#64748B" font-weight="500" text-anchor="start"  >Middleware de protección</text>
-<rect x="899" y="346" width="429" height="142" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<text x="917" y="373" font-size="12" fill="#6D28D9" font-weight="700" text-anchor="start" letter-spacing="1.2" >ROUTERS / API</text>
-<text x="917" y="399" font-size="15" fill="#334155" font-weight="600" text-anchor="start"  >fileRouter.js   ·   settingsRouter.js</text>
-<text x="917" y="425" font-size="15" fill="#334155" font-weight="600" text-anchor="start"  >/api/devices  ·  DeviceHub</text>
-<text x="917" y="454" font-size="13" fill="#64748B" font-weight="500" text-anchor="start"  >Rutas de archivos, ajustes y dispositivos</text>
-<rect x="612" y="502" width="224" height="167" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<rect x="849" y="502" width="229" height="167" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<rect x="1091" y="502" width="237" height="167" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<text x="629" y="529" font-size="12" fill="#6D28D9" font-weight="700" text-anchor="start" letter-spacing="1.2" >MÓDULOS</text>
-<text x="630" y="557" font-size="15" fill="#334155" font-weight="550" text-anchor="start"  >auth.js</text>
-<text x="630" y="582" font-size="15" fill="#334155" font-weight="550" text-anchor="start"  >devices.js</text>
-<text x="630" y="607" font-size="15" fill="#334155" font-weight="550" text-anchor="start"  >settings.js</text>
-<text x="630" y="632" font-size="15" fill="#334155" font-weight="550" text-anchor="start"  >network.js</text>
-<text x="866" y="529" font-size="12" fill="#6D28D9" font-weight="700" text-anchor="start" letter-spacing="1.2" >CONTROLLERS / SERVICES</text>
-<text x="867" y="558" font-size="15" fill="#334155" font-weight="550" text-anchor="start"  >fileController.js</text>
-<text x="867" y="585" font-size="15" fill="#334155" font-weight="550" text-anchor="start"  >fileService.js</text>
-<text x="867" y="612" font-size="15" fill="#334155" font-weight="550" text-anchor="start"  >Detección MIME</text>
-<text x="867" y="643" font-size="13" fill="#64748B" font-weight="400" text-anchor="start"  >Lógica de archivos</text>
-<text x="1108" y="529" font-size="12" fill="#6D28D9" font-weight="700" text-anchor="start" letter-spacing="1.2" >UPLOADS · MULTER</text>
-<text x="1108" y="558" font-size="14.3" fill="#334155" font-weight="550" text-anchor="start"  >diskStorage · tempDir</text>
-<text x="1108" y="585" font-size="14.3" fill="#334155" font-weight="550" text-anchor="start"  >4 transferencias en paralelo</text>
-<text x="1108" y="612" font-size="14.3" fill="#334155" font-weight="550" text-anchor="start"  >Máximo: 512 MB</text>
-<text x="1108" y="643" font-size="13" fill="#64748B" font-weight="400" text-anchor="start"  >Carga controlada</text>
-<rect x="612" y="684" width="716" height="104" rx="12" fill="#F5F3FF" stroke="#DDD6FE" stroke-width="1.0" />
-<text x="630" y="709" font-size="12" fill="#6D28D9" font-weight="700" text-anchor="start" letter-spacing="1.2" >OPERACIONES DISPONIBLES</text>
-<rect x="630" y="726" width="75" height="37" rx="18.5" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" />
-<text x="667.5" y="749.056" font-size="13.4" fill="#334155" font-weight="600" text-anchor="middle"  >upload</text>
-<rect x="713" y="726" width="65" height="37" rx="18.5" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" />
-<text x="745.5" y="749.056" font-size="13.4" fill="#334155" font-weight="600" text-anchor="middle"  >list</text>
-<rect x="786" y="726" width="73" height="37" rx="18.5" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" />
-<text x="822.5" y="749.056" font-size="13.4" fill="#334155" font-weight="600" text-anchor="middle"  >move</text>
-<rect x="867" y="726" width="61" height="37" rx="18.5" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" />
-<text x="897.5" y="749.056" font-size="13.4" fill="#334155" font-weight="600" text-anchor="middle"  >zip</text>
-<rect x="936" y="726" width="86" height="37" rx="18.5" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" />
-<text x="979.0" y="749.056" font-size="13.4" fill="#334155" font-weight="600" text-anchor="middle"  >preview</text>
-<rect x="1030" y="726" width="68" height="37" rx="18.5" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" />
-<text x="1064.0" y="749.056" font-size="13.4" fill="#334155" font-weight="600" text-anchor="middle"  >pair</text>
-<rect x="1106" y="726" width="69" height="37" rx="18.5" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" />
-<text x="1140.5" y="749.056" font-size="13.4" fill="#334155" font-weight="600" text-anchor="middle"  >poll</text>
-<rect x="1183" y="726" width="124" height="37" rx="18.5" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" />
-<text x="1245.0" y="749.056" font-size="13.4" fill="#334155" font-weight="600" text-anchor="middle"  >agent API</text>
-<rect x="1430" y="182" width="266" height="292" rx="18" fill="#D9E2F0" stroke="none" stroke-width="1" opacity="0.24"/>
-<rect x="1430" y="177" width="266" height="292" rx="18" fill="#FFFFFF" stroke="#A7F3D0" stroke-width="1.35" />
-<rect x="1431" y="178" width="264" height="63" rx="17" fill="#ECFDF5" stroke="none" stroke-width="1" />
-<rect x="1431" y="202" width="264" height="39" rx="0" fill="#ECFDF5" stroke="none" stroke-width="1" />
-<line x1="1431" y1="241" x2="1695" y2="241" stroke="#A7F3D0" stroke-width="1" />
-<rect x="1450" y="192" width="36" height="36" rx="11" fill="#FFFFFF" stroke="#A7F3D0" stroke-width="1" />
-<g transform="translate(1456 198) scale(1.0)" stroke="#047857" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></g>
-<text x="1498" y="207" font-size="21" fill="#0F172A" font-weight="700" text-anchor="start"  >Storage</text>
-<text x="1498" y="226" font-size="13" fill="#64748B" font-weight="500" text-anchor="start"  >Sistema de archivos</text>
-<text x="1672" y="214" font-size="13" fill="#047857" font-weight="700" text-anchor="end" letter-spacing="1" >04</text>
-<rect x="1451" y="258" width="224" height="79" rx="12" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1.0" />
-<text x="1465" y="281" font-size="12" fill="#047857" font-weight="700" text-anchor="start" letter-spacing="1.2" >DIRECTORIO BASE</text>
-<text x="1465" y="305" font-size="16" fill="#0F172A" font-weight="700" text-anchor="start"  >dataDir / upload</text>
-<text x="1465" y="324" font-size="12.8" fill="#64748B" font-weight="400" text-anchor="start"  >Almacenamiento local</text>
-<rect x="1451" y="350" width="224" height="99" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<text x="1465" y="373" font-size="12" fill="#047857" font-weight="700" text-anchor="start" letter-spacing="1.2" >ESTRUCTURA</text>
-<text x="1465" y="397" font-size="14" fill="#334155" font-weight="550" text-anchor="start"  >archivos · carpetas</text>
-<text x="1465" y="419" font-size="14" fill="#334155" font-weight="550" text-anchor="start"  >trash · .cloudlocal</text>
-<text x="1465" y="440" font-size="14" fill="#334155" font-weight="550" text-anchor="start"  >tmp</text>
-<rect x="1430" y="500" width="266" height="313" rx="18" fill="#D9E2F0" stroke="none" stroke-width="1" opacity="0.24"/>
-<rect x="1430" y="495" width="266" height="313" rx="18" fill="#FFFFFF" stroke="#FDE68A" stroke-width="1.35" />
-<rect x="1431" y="496" width="264" height="63" rx="17" fill="#FFFBEB" stroke="none" stroke-width="1" />
-<rect x="1431" y="520" width="264" height="39" rx="0" fill="#FFFBEB" stroke="none" stroke-width="1" />
-<line x1="1431" y1="559" x2="1695" y2="559" stroke="#FDE68A" stroke-width="1" />
-<rect x="1450" y="510" width="36" height="36" rx="11" fill="#FFFFFF" stroke="#FDE68A" stroke-width="1" />
-<g transform="translate(1456 516) scale(1.0)" stroke="#B45309" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9ZM3 7.5 12 12l9-4.5M12 12v9M8 5l9 4.5"/></g>
-<text x="1498" y="525" font-size="21" fill="#0F172A" font-weight="700" text-anchor="start"  >Launcher</text>
-<text x="1498" y="544" font-size="13" fill="#64748B" font-weight="500" text-anchor="start"  >Node.js · SEA</text>
-<text x="1672" y="532" font-size="13" fill="#B45309" font-weight="700" text-anchor="end" letter-spacing="1" >05</text>
-<rect x="1451" y="573" width="224" height="54" rx="12" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1.0" />
-<text x="1465" y="591" font-size="12" fill="#B45309" font-weight="700" text-anchor="start" letter-spacing="1.2" >SEA ASSETS</text>
-<text x="1465" y="609" font-size="13.4" fill="#334155" font-weight="600" text-anchor="start"  >materializeAssets()</text>
-<text x="1465" y="623" font-size="12.9" fill="#64748B" font-weight="400" text-anchor="start"  >client/dist · Express</text>
-<rect x="1451" y="637" width="224" height="54" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<text x="1465" y="655" font-size="12" fill="#B45309" font-weight="700" text-anchor="start" letter-spacing="1.2" >BUILD PIPELINE</text>
-<text x="1465" y="673" font-size="13.3" fill="#334155" font-weight="600" text-anchor="start"  >esbuild · sea.json</text>
-<text x="1465" y="687" font-size="13.0" fill="#64748B" font-weight="400" text-anchor="start"  >sea.blob · postject</text>
-<rect x="1451" y="701" width="224" height="88" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<text x="1465" y="720" font-size="12" fill="#B45309" font-weight="700" text-anchor="start" letter-spacing="1.2" >RUNTIME WINDOWS</text>
-<text x="1465" y="741" font-size="13.5" fill="#334155" font-weight="600" text-anchor="start"  >Node 22.23.2 · win-x64</text>
-<text x="1465" y="759" font-size="12.8" fill="#334155" font-weight="550" text-anchor="start"  >launch() · start · onReady</text>
-<text x="1465" y="776" font-size="12.0" fill="#64748B" font-weight="400" text-anchor="start"  >5000/5001 · SIGINT · SIGTERM</text>
-<text x="1465" y="789" font-size="11.5" fill="#64748B" font-weight="400" text-anchor="start"  >stdin · shutdown</text>
-<path d="M510 322 L583 322" fill="none" stroke="#2563EB" stroke-width="3" marker-end="url(#ar-blue)" stroke-linecap="round"/>
-<text x="546.5" y="300" font-size="12" fill="#2563EB" font-weight="700" text-anchor="middle"  >HTTP /api</text>
-<path d="M510 698 L583 698" fill="none" stroke="#0E7490" stroke-width="3" marker-end="url(#ar-cyan)" stroke-linecap="round"/>
-<text x="546.5" y="676" font-size="12" fill="#0E7490" font-weight="700" text-anchor="middle"  >Agent API</text>
-<path d="M1356 311 L1424 311" fill="none" stroke="#047857" stroke-width="3" marker-end="url(#ar-green)" stroke-linecap="round"/>
-<text x="1390.0" y="289" font-size="12" fill="#047857" font-weight="700" text-anchor="middle"  >FS I/O</text>
-<path d="M1424 678 L1356 678" fill="none" stroke="#B45309" stroke-width="3" marker-end="url(#ar-orange)" stroke-linecap="round"/>
-<text x="1390.0" y="656" font-size="12" fill="#B45309" font-weight="700" text-anchor="middle"  >start()</text>
-<rect x="64" y="855" width="1632" height="237" rx="18" fill="#D9E2F0" stroke="none" stroke-width="1" opacity="0.24"/>
-<rect x="64" y="850" width="1632" height="237" rx="18" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.35" />
-<rect x="65" y="851" width="1630" height="63" rx="17" fill="#F1F5F9" stroke="none" stroke-width="1" />
-<rect x="65" y="875" width="1630" height="39" rx="0" fill="#F1F5F9" stroke="none" stroke-width="1" />
-<line x1="65" y1="914" x2="1695" y2="914" stroke="#CBD5E1" stroke-width="1" />
-<rect x="84" y="865" width="36" height="36" rx="11" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" />
+<rect x="64" y="48" width="10" height="76" rx="5" fill="#0d9488" stroke="none" stroke-width="1" />
+<text x="92" y="83" font-size="37" fill="#1a1f2b" font-weight="700" text-anchor="start" letter-spacing="-1.1" >CloudLocal</text>
+<text x="92" y="114" font-size="20" fill="#5c6674" font-weight="500" text-anchor="start"  >Arquitectura del sistema</text>
+<rect x="1264" y="62" width="190" height="40" rx="8" fill="#fdfbf6" stroke="#ddd6cd" stroke-width="1" />
+<text x="1359" y="88" font-size="14" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >APLICACIÓN LOCAL</text>
+<rect x="1466" y="62" width="230" height="40" rx="8" fill="rgba(13,148,136,0.08)" stroke="rgba(13,148,136,0.35)" stroke-width="1" />
+<text x="1581" y="88" font-size="14" fill="#0d9488" font-weight="600" text-anchor="middle"  >WINDOWS  ·  LAN</text>
+<line x1="64" y1="148" x2="1696" y2="148" stroke="#ddd6cd" stroke-width="1.5" />
+<!-- 01 · Frontend -->
+<rect x="64" y="182" width="441" height="365" rx="12" fill="rgba(13,148,136,0.05)" stroke="none" stroke-width="1" opacity="0.5"/>
+<rect x="64" y="177" width="441" height="365" rx="16" fill="#fdfbf6" stroke="rgba(13,148,136,0.30)" stroke-width="1.35" />
+<rect x="65" y="178" width="439" height="63" rx="15" fill="rgba(13,148,136,0.06)" stroke="none" stroke-width="1" />
+<rect x="65" y="202" width="439" height="39" rx="0" fill="rgba(13,148,136,0.06)" stroke="none" stroke-width="1" />
+<line x1="65" y1="241" x2="504" y2="241" stroke="rgba(13,148,136,0.25)" stroke-width="1" />
+<rect x="84" y="192" width="36" height="36" rx="8" fill="#fdfbf6" stroke="rgba(13,148,136,0.30)" stroke-width="1" />
+<g transform="translate(90 198) scale(1.0)" stroke="#0d9488" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 22h8M12 18v4M7 8h10M7 12h6"/></g>
+<text x="132" y="207" font-size="21" fill="#1a1f2b" font-weight="700" text-anchor="start"  >Frontend</text>
+<text x="132" y="226" font-size="13" fill="#687382" font-weight="500" text-anchor="start"  >React · SPA</text>
+<text x="481" y="214" font-size="13" fill="#0d9488" font-weight="700" text-anchor="end" letter-spacing="1" >01</text>
+<rect x="86" y="258" width="397" height="66" rx="8" fill="rgba(13,148,136,0.05)" stroke="rgba(13,148,136,0.22)" stroke-width="1.0" />
+<rect x="101" y="272" width="39" height="38" rx="8" fill="#fdfbf6" stroke="rgba(13,148,136,0.30)" stroke-width="1" />
+<g transform="translate(109 279) scale(0.98)" stroke="#0d9488" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m8 8-4 4 4 4m8-8 4 4-4 4m-3-11-2 14"/></g>
+<text x="155" y="283" font-size="17" fill="#1a1f2b" font-weight="700" text-anchor="start"  >App.tsx</text>
+<text x="155" y="305" font-size="14" fill="#687382" font-weight="400" text-anchor="start"  >Punto de entrada de la SPA</text>
+<rect x="86" y="338" width="397" height="122" rx="8" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<text x="104" y="361" font-size="12" fill="#0d9488" font-weight="700" text-anchor="start" letter-spacing="1.2" >COMPONENTES</text>
+<rect x="103" y="372" width="60" height="27" rx="13.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="133" y="389.7" font-size="11.5" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >Access</text>
+<rect x="173" y="372" width="64" height="27" rx="13.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="205" y="389.7" font-size="11.5" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >Details</text>
+<rect x="247" y="372" width="96" height="27" rx="13.5" fill="rgba(13,148,136,0.07)" stroke="rgba(13,148,136,0.30)" stroke-width="1" />
+<text x="295" y="389.7" font-size="11.5" fill="#0d9488" font-weight="600" text-anchor="middle"  >MultiDetails</text>
+<rect x="353" y="372" width="84" height="27" rx="13.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="395" y="389.7" font-size="11.5" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >FileVisual</text>
+<rect x="103" y="409" width="62" height="27" rx="13.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="134" y="426.7" font-size="11.5" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >Preview</text>
+<rect x="175" y="409" width="66" height="27" rx="13.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="208" y="426.7" font-size="11.5" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >Settings</text>
+<rect x="251" y="409" width="90" height="27" rx="13.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="296" y="426.7" font-size="11.5" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >UploadQueue</text>
+<rect x="351" y="409" width="94" height="27" rx="13.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="398" y="426.7" font-size="11.5" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >DragAndDrop</text>
+<text x="104" y="457" font-size="11.5" fill="#687382" font-weight="500" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >thumbnailQueue · fileVisuals · workspace</text>
+<rect x="86" y="475" width="140" height="44" rx="8" fill="#f7f2ea" stroke="#ece7de" stroke-width="1.0" />
+<rect x="236" y="475" width="118" height="44" rx="8" fill="#f7f2ea" stroke="#ece7de" stroke-width="1.0" />
+<rect x="364" y="475" width="119" height="44" rx="8" fill="#f7f2ea" stroke="#ece7de" stroke-width="1.0" />
+<text x="101" y="493" font-size="11" fill="#0d9488" font-weight="700" text-anchor="start" letter-spacing=".8" >HOOK</text>
+<text x="101" y="510" font-size="14" fill="#1a1f2b" font-weight="600" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >useDragUpload</text>
+<text x="251" y="493" font-size="11" fill="#0d9488" font-weight="700" text-anchor="start" letter-spacing=".8" >HOOK · SSE</text>
+<text x="251" y="510" font-size="14" fill="#1a1f2b" font-weight="600" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >useSSE</text>
+<text x="379" y="493" font-size="11" fill="#0d9488" font-weight="700" text-anchor="start" letter-spacing=".8" >HTTP CLIENT</text>
+<text x="379" y="510" font-size="14" fill="#1a1f2b" font-weight="600" text-anchor="start"  >Axios</text>
+<!-- 02 · Navegadores en la LAN -->
+<rect x="64" y="570" width="441" height="243" rx="12" fill="rgba(8,145,178,0.05)" stroke="none" stroke-width="1" opacity="0.5"/>
+<rect x="64" y="565" width="441" height="243" rx="16" fill="#fdfbf6" stroke="rgba(8,145,178,0.30)" stroke-width="1.35" />
+<rect x="65" y="566" width="439" height="63" rx="15" fill="rgba(8,145,178,0.06)" stroke="none" stroke-width="1" />
+<rect x="65" y="590" width="439" height="39" rx="0" fill="rgba(8,145,178,0.06)" stroke="none" stroke-width="1" />
+<line x1="65" y1="629" x2="504" y2="629" stroke="rgba(8,145,178,0.25)" stroke-width="1" />
+<rect x="84" y="580" width="36" height="36" rx="8" fill="#fdfbf6" stroke="rgba(8,145,178,0.30)" stroke-width="1" />
+<g transform="translate(90 586) scale(1.0)" stroke="#0891b2" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></g>
+<text x="132" y="595" font-size="21" fill="#1a1f2b" font-weight="700" text-anchor="start"  >Navegadores en la LAN</text>
+<text x="132" y="614" font-size="13" fill="#687382" font-weight="500" text-anchor="start"  >Clientes conectados en la red</text>
+<text x="481" y="602" font-size="13" fill="#0891b2" font-weight="700" text-anchor="end" letter-spacing="1" >02</text>
+<rect x="86" y="645" width="397" height="88" rx="12" fill="rgba(8,145,178,0.05)" stroke="rgba(8,145,178,0.22)" stroke-width="1.0" />
+<rect x="102" y="664" width="48" height="49" rx="11" fill="#fdfbf6" stroke="rgba(8,145,178,0.30)" stroke-width="1" />
+<g transform="translate(112 676) scale(1.2)" stroke="#0891b2" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></g>
+<text x="166" y="674" font-size="17" fill="#1a1f2b" font-weight="700" text-anchor="start"  >Cliente web</text>
+<text x="166" y="698" font-size="14" fill="#1a1f2b" font-weight="500" text-anchor="start"  >Galería · Tabla · Inspector · Papelera</text>
+<text x="166" y="716" font-size="13" fill="#687382" font-weight="400" text-anchor="start"  >Explora, sube y organiza archivos</text>
+<rect x="86" y="744" width="397" height="45" rx="8" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<circle cx="107" cy="766" r="5" fill="#10b981" stroke="none" stroke-width="1"/>
+<text x="122" y="771" font-size="13.2" fill="#1a1f2b" font-weight="600" text-anchor="start"  >Eventos en vivo vía SSE · sin recargar</text>
+<!-- 03 · Backend -->
+<rect x="590" y="182" width="760" height="631" rx="12" fill="rgba(124,58,237,0.04)" stroke="none" stroke-width="1" opacity="0.5"/>
+<rect x="590" y="177" width="760" height="631" rx="16" fill="#fdfbf6" stroke="rgba(124,58,237,0.28)" stroke-width="1.35" />
+<rect x="591" y="178" width="758" height="63" rx="15" fill="rgba(124,58,237,0.05)" stroke="none" stroke-width="1" />
+<rect x="591" y="202" width="758" height="39" rx="0" fill="rgba(124,58,237,0.05)" stroke="none" stroke-width="1" />
+<line x1="591" y1="241" x2="1349" y2="241" stroke="rgba(124,58,237,0.22)" stroke-width="1" />
+<rect x="610" y="192" width="36" height="36" rx="8" fill="#fdfbf6" stroke="rgba(124,58,237,0.28)" stroke-width="1" />
+<g transform="translate(616 198) scale(1.0)" stroke="#7c3aed" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="8" rx="2"/><rect x="4" y="13" width="16" height="8" rx="2"/><path d="M8 7h.01M8 17h.01M12 7h5M12 17h5"/></g>
+<text x="658" y="207" font-size="21" fill="#1a1f2b" font-weight="700" text-anchor="start"  >Backend</text>
+<text x="658" y="226" font-size="13" fill="#687382" font-weight="500" text-anchor="start"  >Node.js · Express.js</text>
+<text x="1326" y="214" font-size="13" fill="#7c3aed" font-weight="700" text-anchor="end" letter-spacing="1" >03</text>
+<rect x="612" y="260" width="716" height="72" rx="12" fill="rgba(124,58,237,0.05)" stroke="rgba(124,58,237,0.22)" stroke-width="1.0" />
+<rect x="627" y="270" width="314" height="52" rx="8" fill="#fdfbf6" stroke="#ece7de" stroke-width="1" />
+<rect x="996" y="270" width="316" height="52" rx="8" fill="#fdfbf6" stroke="#ece7de" stroke-width="1" />
+<text x="644" y="290" font-size="17" fill="#1a1f2b" font-weight="700" text-anchor="start"  >server.js</text>
+<text x="644" y="311" font-size="13.5" fill="#687382" font-weight="400" text-anchor="start"  >Arranque del servidor</text>
+<text x="1013" y="290" font-size="17" fill="#1a1f2b" font-weight="700" text-anchor="start"  >app.js</text>
+<text x="1013" y="311" font-size="13.5" fill="#687382" font-weight="400" text-anchor="start"  >Configuración de Express</text>
+<line x1="950" y1="296" x2="984" y2="296" stroke="#7c3aed" stroke-width="2.2" marker-end="url(#ar-purple)" stroke-dasharray="1 0"/>
+<rect x="612" y="346" width="273" height="142" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<text x="630" y="373" font-size="12" fill="#7c3aed" font-weight="700" text-anchor="start" letter-spacing="1.2" >SEGURIDAD HTTP</text>
+<g transform="translate(839 358) scale(0.85)" stroke="#7c3aed" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></g>
+<text x="630" y="399" font-size="14.8" fill="#1a1f2b" font-weight="600" text-anchor="start"  >CSP · nosniff · X-Frame</text>
+<text x="630" y="425" font-size="14.8" fill="#1a1f2b" font-weight="500" text-anchor="start"  >Validación de Origin</text>
+<text x="630" y="452" font-size="13" fill="#687382" font-weight="500" text-anchor="start"  >Middleware de protección</text>
+<rect x="899" y="346" width="429" height="142" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<text x="917" y="373" font-size="12" fill="#7c3aed" font-weight="700" text-anchor="start" letter-spacing="1.2" >ROUTERS / API</text>
+<text x="917" y="399" font-size="15" fill="#1a1f2b" font-weight="600" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >fileRouter.js   ·   settingsRouter.js</text>
+<text x="917" y="425" font-size="15" fill="#1a1f2b" font-weight="600" text-anchor="start"  >/api/folders  ·  /api/trash  ·  /api/status</text>
+<text x="917" y="454" font-size="13" fill="#687382" font-weight="500" text-anchor="start"  >Archivos, ajustes, papelera y estado</text>
+<rect x="612" y="502" width="224" height="167" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<rect x="849" y="502" width="229" height="167" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<rect x="1091" y="502" width="237" height="167" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<text x="629" y="529" font-size="12" fill="#7c3aed" font-weight="700" text-anchor="start" letter-spacing="1.2" >MÓDULOS</text>
+<text x="630" y="557" font-size="15" fill="#1a1f2b" font-weight="550" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >auth.js</text>
+<text x="630" y="582" font-size="15" fill="#1a1f2b" font-weight="550" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >settings.js</text>
+<text x="630" y="607" font-size="15" fill="#1a1f2b" font-weight="550" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >network.js</text>
+<text x="630" y="632" font-size="15" fill="#1a1f2b" font-weight="550" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >sseHub.js</text>
+<text x="630" y="657" font-size="15" fill="#1a1f2b" font-weight="550" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >storage.js</text>
+<text x="866" y="529" font-size="12" fill="#7c3aed" font-weight="700" text-anchor="start" letter-spacing="1.2" >CONTROLLERS / SERVICES</text>
+<text x="867" y="558" font-size="15" fill="#1a1f2b" font-weight="550" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >fileController.js</text>
+<text x="867" y="585" font-size="15" fill="#1a1f2b" font-weight="550" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >fileService.js</text>
+<text x="867" y="612" font-size="15" fill="#1a1f2b" font-weight="550" text-anchor="start"  >Papelera · restauración</text>
+<text x="867" y="643" font-size="13" fill="#687382" font-weight="400" text-anchor="start"  >Lógica de archivos</text>
+<text x="1108" y="529" font-size="12" fill="#7c3aed" font-weight="700" text-anchor="start" letter-spacing="1.2" >UPLOADS · MULTER</text>
+<text x="1108" y="558" font-size="14.3" fill="#1a1f2b" font-weight="550" text-anchor="start"  >diskStorage · tempDir</text>
+<text x="1108" y="585" font-size="14.3" fill="#1a1f2b" font-weight="550" text-anchor="start"  >4 transferencias en paralelo</text>
+<text x="1108" y="612" font-size="14.3" fill="#1a1f2b" font-weight="550" text-anchor="start"  >Máximo: 512 MB</text>
+<text x="1108" y="643" font-size="13" fill="#687382" font-weight="400" text-anchor="start"  >Carga controlada</text>
+<rect x="612" y="684" width="716" height="104" rx="12" fill="rgba(124,58,237,0.05)" stroke="rgba(124,58,237,0.22)" stroke-width="1.0" />
+<text x="630" y="709" font-size="12" fill="#7c3aed" font-weight="700" text-anchor="start" letter-spacing="1.2" >OPERACIONES DISPONIBLES</text>
+<rect x="630" y="726" width="72" height="37" rx="18.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="666" y="749.1" font-size="13.4" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >upload</text>
+<rect x="710" y="726" width="58" height="37" rx="18.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="739" y="749.1" font-size="13.4" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >list</text>
+<rect x="776" y="726" width="64" height="37" rx="18.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="808" y="749.1" font-size="13.4" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >move</text>
+<rect x="848" y="726" width="52" height="37" rx="18.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="874" y="749.1" font-size="13.4" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >zip</text>
+<rect x="908" y="726" width="78" height="37" rx="18.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="947" y="749.1" font-size="13.4" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >preview</text>
+<rect x="994" y="726" width="76" height="37" rx="18.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="1032" y="749.1" font-size="13.4" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >folders</text>
+<rect x="1078" y="726" width="64" height="37" rx="18.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="1110" y="749.1" font-size="13.4" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >trash</text>
+<rect x="1150" y="726" width="80" height="37" rx="18.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="1190" y="749.1" font-size="13.4" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >settings</text>
+<rect x="1238" y="726" width="72" height="37" rx="18.5" fill="#f7f2ea" stroke="#ece7de" stroke-width="1" />
+<text x="1274" y="749.1" font-size="13.4" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >status</text>
+<!-- 04 · Storage -->
+<rect x="1430" y="182" width="266" height="292" rx="12" fill="rgba(21,128,61,0.05)" stroke="none" stroke-width="1" opacity="0.5"/>
+<rect x="1430" y="177" width="266" height="292" rx="16" fill="#fdfbf6" stroke="rgba(21,128,61,0.30)" stroke-width="1.35" />
+<rect x="1431" y="178" width="264" height="63" rx="15" fill="rgba(21,128,61,0.06)" stroke="none" stroke-width="1" />
+<rect x="1431" y="202" width="264" height="39" rx="0" fill="rgba(21,128,61,0.06)" stroke="none" stroke-width="1" />
+<line x1="1431" y1="241" x2="1695" y2="241" stroke="rgba(21,128,61,0.25)" stroke-width="1" />
+<rect x="1450" y="192" width="36" height="36" rx="8" fill="#fdfbf6" stroke="rgba(21,128,61,0.30)" stroke-width="1" />
+<g transform="translate(1456 198) scale(1.0)" stroke="#15803d" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></g>
+<text x="1498" y="207" font-size="21" fill="#1a1f2b" font-weight="700" text-anchor="start"  >Storage</text>
+<text x="1498" y="226" font-size="13" fill="#687382" font-weight="500" text-anchor="start"  >Sistema de archivos</text>
+<text x="1672" y="214" font-size="13" fill="#15803d" font-weight="700" text-anchor="end" letter-spacing="1" >04</text>
+<rect x="1451" y="258" width="224" height="79" rx="12" fill="rgba(21,128,61,0.05)" stroke="rgba(21,128,61,0.22)" stroke-width="1.0" />
+<text x="1465" y="281" font-size="12" fill="#15803d" font-weight="700" text-anchor="start" letter-spacing="1.2" >DIRECTORIO BASE</text>
+<text x="1465" y="305" font-size="16" fill="#1a1f2b" font-weight="700" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >dataDir / upload</text>
+<text x="1465" y="324" font-size="12.8" fill="#687382" font-weight="400" text-anchor="start"  >Almacenamiento local</text>
+<rect x="1451" y="350" width="224" height="99" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<text x="1465" y="373" font-size="12" fill="#15803d" font-weight="700" text-anchor="start" letter-spacing="1.2" >ESTRUCTURA</text>
+<text x="1465" y="397" font-size="14" fill="#1a1f2b" font-weight="550" text-anchor="start"  >archivos · carpetas</text>
+<text x="1465" y="419" font-size="14" fill="#1a1f2b" font-weight="550" text-anchor="start"  >trash · .cloudlocal</text>
+<text x="1465" y="440" font-size="14" fill="#1a1f2b" font-weight="550" text-anchor="start"  >tmp</text>
+<!-- 05 · Launcher -->
+<rect x="1430" y="500" width="266" height="313" rx="12" fill="rgba(180,83,9,0.05)" stroke="none" stroke-width="1" opacity="0.5"/>
+<rect x="1430" y="495" width="266" height="313" rx="16" fill="#fdfbf6" stroke="rgba(180,83,9,0.30)" stroke-width="1.35" />
+<rect x="1431" y="496" width="264" height="63" rx="15" fill="rgba(180,83,9,0.06)" stroke="none" stroke-width="1" />
+<rect x="1431" y="520" width="264" height="39" rx="0" fill="rgba(180,83,9,0.06)" stroke="none" stroke-width="1" />
+<line x1="1431" y1="559" x2="1695" y2="559" stroke="rgba(180,83,9,0.25)" stroke-width="1" />
+<rect x="1450" y="510" width="36" height="36" rx="8" fill="#fdfbf6" stroke="rgba(180,83,9,0.30)" stroke-width="1" />
+<g transform="translate(1456 516) scale(1.0)" stroke="#b45309" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9ZM3 7.5 12 12l9-4.5M12 12v9M8 5l9 4.5"/></g>
+<text x="1498" y="525" font-size="21" fill="#1a1f2b" font-weight="700" text-anchor="start"  >Launcher</text>
+<text x="1498" y="544" font-size="13" fill="#687382" font-weight="500" text-anchor="start"  >Node.js · SEA</text>
+<text x="1672" y="532" font-size="13" fill="#b45309" font-weight="700" text-anchor="end" letter-spacing="1" >05</text>
+<rect x="1451" y="573" width="224" height="54" rx="12" fill="rgba(180,83,9,0.05)" stroke="rgba(180,83,9,0.22)" stroke-width="1.0" />
+<text x="1465" y="591" font-size="12" fill="#b45309" font-weight="700" text-anchor="start" letter-spacing="1.2" >SEA ASSETS</text>
+<text x="1465" y="609" font-size="13.4" fill="#1a1f2b" font-weight="600" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >materializeAssets()</text>
+<text x="1465" y="623" font-size="12.9" fill="#687382" font-weight="400" text-anchor="start"  >client/dist · Express</text>
+<rect x="1451" y="637" width="224" height="54" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<text x="1465" y="655" font-size="12" fill="#b45309" font-weight="700" text-anchor="start" letter-spacing="1.2" >BUILD PIPELINE</text>
+<text x="1465" y="673" font-size="13.3" fill="#1a1f2b" font-weight="600" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >esbuild · sea.json</text>
+<text x="1465" y="687" font-size="13.0" fill="#687382" font-weight="400" text-anchor="start"  >sea.blob · postject</text>
+<rect x="1451" y="701" width="224" height="88" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<text x="1465" y="720" font-size="12" fill="#b45309" font-weight="700" text-anchor="start" letter-spacing="1.2" >RUNTIME WINDOWS</text>
+<text x="1465" y="741" font-size="13.5" fill="#1a1f2b" font-weight="600" text-anchor="start"  >Node 22 · win-x64</text>
+<text x="1465" y="759" font-size="12.8" fill="#1a1f2b" font-weight="550" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >launch() · start · onReady</text>
+<text x="1465" y="773" font-size="12.0" fill="#1a1f2b" font-weight="550" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >5000/5001 · SIGINT · SIGTERM</text>
+<text x="1465" y="788" font-size="11.5" fill="#687382" font-weight="400" text-anchor="start"  >stdin · shutdown</text>
+<!-- Arrows -->
+<path d="M510 322 L583 322" fill="none" stroke="#0d9488" stroke-width="3" marker-end="url(#ar-teal)" stroke-linecap="round"/>
+<text x="546.5" y="300" font-size="12" fill="#0d9488" font-weight="700" text-anchor="middle"  >HTTP /api</text>
+<path d="M583 356 L510 356" fill="none" stroke="#14b8a6" stroke-width="2.4" marker-end="url(#ar-teal2)" stroke-linecap="round" stroke-dasharray="6 5"/>
+<text x="546.5" y="378" font-size="12" fill="#14b8a6" font-weight="700" text-anchor="middle"  >SSE</text>
+<path d="M510 698 L583 698" fill="none" stroke="#0891b2" stroke-width="3" marker-end="url(#ar-cyan)" stroke-linecap="round"/>
+<text x="546.5" y="676" font-size="12" fill="#0891b2" font-weight="700" text-anchor="middle"  >HTTP /api</text>
+<path d="M1356 311 L1424 311" fill="none" stroke="#15803d" stroke-width="3" marker-end="url(#ar-green)" stroke-linecap="round"/>
+<text x="1390" y="289" font-size="12" fill="#15803d" font-weight="700" text-anchor="middle"  >FS I/O</text>
+<path d="M1424 678 L1356 678" fill="none" stroke="#b45309" stroke-width="3" marker-end="url(#ar-orange)" stroke-linecap="round"/>
+<text x="1390" y="656" font-size="12" fill="#b45309" font-weight="700" text-anchor="middle"  >start()</text>
+<!-- 06 · Protocolos -->
+<rect x="64" y="855" width="1632" height="237" rx="12" fill="rgba(71,85,105,0.04)" stroke="none" stroke-width="1" opacity="0.5"/>
+<rect x="64" y="850" width="1632" height="237" rx="16" fill="#fdfbf6" stroke="#c4bbae" stroke-width="1.35" />
+<rect x="65" y="851" width="1630" height="63" rx="15" fill="#f1ede6" stroke="none" stroke-width="1" />
+<rect x="65" y="875" width="1630" height="39" rx="0" fill="#f1ede6" stroke="none" stroke-width="1" />
+<line x1="65" y1="914" x2="1695" y2="914" stroke="#ddd6cd" stroke-width="1" />
+<rect x="84" y="865" width="36" height="36" rx="8" fill="#fdfbf6" stroke="#ddd6cd" stroke-width="1" />
 <g transform="translate(90 871) scale(1.0)" stroke="#475569" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></g>
-<text x="132" y="880" font-size="21" fill="#0F172A" font-weight="700" text-anchor="start"  >Protocolos y mecanismos</text>
-<text x="132" y="899" font-size="13" fill="#64748B" font-weight="500" text-anchor="start"  >Controles transversales · Seguridad, archivos y transferencia</text>
+<text x="132" y="880" font-size="21" fill="#1a1f2b" font-weight="700" text-anchor="start"  >Protocolos y mecanismos</text>
+<text x="132" y="899" font-size="13" fill="#687382" font-weight="500" text-anchor="start"  >Controles transversales · Seguridad, archivos y transferencia</text>
 <text x="1672" y="887" font-size="13" fill="#475569" font-weight="700" text-anchor="end" letter-spacing="1" >06</text>
-<rect x="85" y="930" width="388" height="131" rx="13" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<circle cx="120" cy="963" r="22" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1"/>
+<rect x="85" y="930" width="388" height="131" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<circle cx="120" cy="963" r="22" fill="#f1ede6" stroke="#ece7de" stroke-width="1"/>
 <g transform="translate(108 951) scale(1.0)" stroke="#475569" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3M12 14v3"/></g>
 <text x="155" y="967" font-size="12" fill="#475569" font-weight="700" text-anchor="start" letter-spacing="1.2" >AUTENTICACIÓN</text>
-<text x="107" y="1009" font-size="19" fill="#0F172A" font-weight="680" text-anchor="start"  >scrypt + cookie</text>
-<text x="107" y="1035" font-size="15" fill="#64748B" font-weight="500" text-anchor="start"  >Sesión de 12 horas</text>
-<rect x="485" y="930" width="388" height="131" rx="13" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<circle cx="520" cy="963" r="22" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1"/>
+<text x="107" y="1009" font-size="19" fill="#1a1f2b" font-weight="600" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >scrypt + cookie</text>
+<text x="107" y="1035" font-size="15" fill="#687382" font-weight="500" text-anchor="start"  >Sesión de 12 horas</text>
+<rect x="485" y="930" width="388" height="131" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<circle cx="520" cy="963" r="22" fill="#f1ede6" stroke="#ece7de" stroke-width="1"/>
 <g transform="translate(508 951) scale(1.0)" stroke="#475569" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></g>
 <text x="555" y="967" font-size="12" fill="#475569" font-weight="700" text-anchor="start" letter-spacing="1.2" >PROTECCIÓN HTTP</text>
-<text x="507" y="1009" font-size="19" fill="#0F172A" font-weight="680" text-anchor="start"  >CSP · nosniff · X-Frame</text>
-<text x="507" y="1035" font-size="15" fill="#64748B" font-weight="500" text-anchor="start"  >Rate limiting · 15 min</text>
-<rect x="885" y="930" width="388" height="131" rx="13" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<circle cx="920" cy="963" r="22" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1"/>
+<text x="507" y="1009" font-size="19" fill="#1a1f2b" font-weight="600" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >CSP · nosniff · X-Frame</text>
+<text x="507" y="1035" font-size="15" fill="#687382" font-weight="500" text-anchor="start"  >Rate limiting · 15 min</text>
+<rect x="885" y="930" width="388" height="131" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<circle cx="920" cy="963" r="22" fill="#f1ede6" stroke="#ece7de" stroke-width="1"/>
 <g transform="translate(908 951) scale(1.0)" stroke="#475569" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></g>
 <text x="955" y="967" font-size="12" fill="#475569" font-weight="700" text-anchor="start" letter-spacing="1.2" >RUTAS SEGURAS</text>
-<text x="907" y="1009" font-size="19" fill="#0F172A" font-weight="680" text-anchor="start"  >Path validation · anti-symlink</text>
-<text x="907" y="1035" font-size="15" fill="#64748B" font-weight="500" text-anchor="start"  >Verificación de accesos</text>
-<rect x="1285" y="930" width="390" height="131" rx="13" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.0" />
-<circle cx="1320" cy="963" r="22" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1"/>
+<text x="907" y="1009" font-size="19" fill="#1a1f2b" font-weight="600" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >Path validation · anti-symlink</text>
+<text x="907" y="1035" font-size="15" fill="#687382" font-weight="500" text-anchor="start"  >Verificación de accesos</text>
+<rect x="1285" y="930" width="390" height="131" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
+<circle cx="1320" cy="963" r="22" fill="#f1ede6" stroke="#ece7de" stroke-width="1"/>
 <g transform="translate(1308 951) scale(1.0)" stroke="#475569" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v11h14V9M10 13h4"/></g>
 <text x="1355" y="967" font-size="12" fill="#475569" font-weight="700" text-anchor="start" letter-spacing="1.2" >ZIP E INTEGRIDAD</text>
-<text x="1307" y="1009" font-size="19" fill="#0F172A" font-weight="680" text-anchor="start"  >Deflate nivel 9</text>
-<text x="1307" y="1035" font-size="15" fill="#64748B" font-weight="500" text-anchor="start"  >CRC32 · archivos ZIP</text>
-<line x1="64" y1="1114" x2="1696" y2="1114" stroke="#CBD5E1" stroke-width="1" />
-<text x="64" y="1140" font-size="12" fill="#64748B" font-weight="700" text-anchor="start" letter-spacing=".9" >CLOUDLOCAL  /  ARQUITECTURA DE REFERENCIA</text>
-<text x="1696" y="1140" font-size="13" fill="#64748B" font-weight="500" text-anchor="end"  >Monolito local  ·  HTTP en LAN  ·  Árbol de archivos con papelera</text>
+<text x="1307" y="1009" font-size="19" fill="#1a1f2b" font-weight="600" text-anchor="start"  >Deflate nivel 9</text>
+<text x="1307" y="1035" font-size="15" fill="#687382" font-weight="500" text-anchor="start"  >CRC32 · archivos ZIP</text>
+<line x1="64" y1="1114" x2="1696" y2="1114" stroke="#ddd6cd" stroke-width="1" />
+<text x="64" y="1140" font-size="12" fill="#5c6674" font-weight="700" text-anchor="start" letter-spacing=".9" >CLOUDLOCAL  /  ARQUITECTURA DE REFERENCIA</text>
+<text x="1696" y="1140" font-size="13" fill="#687382" font-weight="500" text-anchor="end"  >Monolito local  ·  HTTP + SSE en LAN  ·  Árbol de archivos con papelera</text>
 </svg>
