@@ -233,6 +233,19 @@ GET /api/status
 
 ---
 
+## Eventos en vivo (SSE)
+
+```
+GET /api/events
+```
+
+Stream `text/event-stream` con los cambios del sistema de archivos. Usa la
+misma cookie de sesión que el resto de `/api`. El cliente abre una conexión al
+entrar y refresca el listado al recibir un evento (`created`, `updated`,
+`deleted`). Al detener el servidor la conexión se cierra.
+
+---
+
 ## Configuración
 
 ### Obtener configuración

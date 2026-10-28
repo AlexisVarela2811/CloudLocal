@@ -42,6 +42,9 @@ test('shutdown button lifecycle', async t => {
           shutdownCalls++;
           status = shutdownStatus;
           body = status === 200 ? { success: true } : { message: 'Shutdown failed' };
+        } else if (path === '/api/events') {
+          await route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' });
+          return;
         } else throw new Error(`Unexpected API request: ${path}`);
         await route.fulfill({ status, json: body });
       });
