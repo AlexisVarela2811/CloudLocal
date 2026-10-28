@@ -27,3 +27,7 @@ test-results/
 # Local build caches
 client/tmp/
 client/.tmp/
+
+# Design artboards (kept local, not published)
+design/cloudlocal-shell/
+design/system.html
