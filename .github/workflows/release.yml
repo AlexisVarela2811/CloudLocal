@@ -93,6 +93,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: assets
     steps:
+      # gh resolves the repository from the git checkout context.
+      - uses: actions/checkout@v4
+
       - name: Download all candidate artifacts
         uses: actions/download-artifact@v4
         with:
