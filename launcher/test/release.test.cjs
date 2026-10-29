@@ -20,6 +20,14 @@ function cleanFixture(dir) {
   try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
 }
 
+// Platform identity, mirroring build.cjs and release.cjs.
+const PLATFORM_MAP = {
+  win32: { binary: 'CloudLocal.exe', id: 'windows-x64' },
+  linux: { binary: 'cloudlocal-linux-x64', id: 'linux-x64' },
+  darwin: { binary: 'cloudlocal-darwin-arm64', id: 'darwin-arm64' },
+};
+const PLATFORM = PLATFORM_MAP[process.platform];
+
 function createProjectFixture(fixtureDir) {
   const launcherDir = path.join(fixtureDir, 'launcher');
   const scriptsDir = path.join(launcherDir, 'scripts');
@@ -41,7 +49,7 @@ function createProjectFixture(fixtureDir) {
 
   const exeBuf = Buffer.alloc(128 * 1024, 0);
   exeBuf.writeUInt16LE(0x5a4d, 0);
-  fs.writeFileSync(path.join(distDir, 'CloudLocal.exe'), exeBuf);
+  fs.writeFileSync(path.join(distDir, PLATFORM.binary), exeBuf);
 
   fs.writeFileSync(path.join(fixtureDir, 'LICENSE'),
     'MIT License\n\nCopyright (c) 2024 CloudLocal\n\n' +
@@ -222,7 +230,7 @@ test('release.cjs rejects existing candidate directory (no-clobber)', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
-    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64');
+    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-' + PLATFORM.id);
     fs.mkdirSync(candidateDir, { recursive: true });
     fs.writeFileSync(path.join(candidateDir, 'README.md'), 'existing');
 
@@ -245,7 +253,7 @@ test('release.cjs fails without LICENSE (no partial output)', () => {
     const result = runRelease(proj, '0.0.1-rc.1');
     assert.equal(result.status, 1);
     assert.ok(result.stderr.includes('LICENSE') || result.stderr.includes('Error'));
-    assert.ok(!fs.existsSync(path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64')));
+    assert.ok(!fs.existsSync(path.join(proj.distDir, 'release', '0.0.1-rc.1-' + PLATFORM.id)));
   } finally { cleanFixture(fixture); }
 });
 
@@ -258,7 +266,7 @@ test('release.cjs fails without NODE-LICENSE (no partial output)', () => {
     const result = runRelease(proj, '0.0.1-rc.1');
     assert.equal(result.status, 1);
     assert.ok(result.stderr.includes('LICENSE') || result.stderr.includes('NODE'));
-    assert.ok(!fs.existsSync(path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64')));
+    assert.ok(!fs.existsSync(path.join(proj.distDir, 'release', '0.0.1-rc.1-' + PLATFORM.id)));
   } finally { cleanFixture(fixture); }
 });
 
@@ -272,11 +280,11 @@ test('release.cjs rejects invalid version tag', () => {
   } finally { cleanFixture(fixture); }
 });
 
-test('release.cjs fails when CloudLocal.exe is missing', () => {
+test('release.cjs fails when the platform binary is missing', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
-    fs.unlinkSync(path.join(proj.distDir, 'CloudLocal.exe'));
+    fs.unlinkSync(path.join(proj.distDir, PLATFORM.binary));
     const result = runRelease(proj, '0.0.1-rc.1');
     assert.equal(result.status, 1);
     assert.ok(result.stderr.includes('CloudLocal.exe') || result.stderr.includes('not found'));
@@ -500,13 +508,13 @@ test('release: an existing archive is never overwritten even without its directo
     const proj = createProjectFixture(fixture);
     const release = path.join(proj.distDir, 'release');
     fs.mkdirSync(release, { recursive: true });
-    const zip = path.join(release, '0.0.1-rc.1-windows-x64.zip');
+    const zip = path.join(release, '0.0.1-rc.1-' + PLATFORM.id + '.zip');
     fs.writeFileSync(zip, 'existing archive');
     const before = sha256file(zip);
     const result = runRelease(proj);
     assert.equal(result.status, 1);
     assert.ok(result.stderr.includes('already exists'));
     assert.equal(sha256file(zip), before);
-    assert.ok(!fs.existsSync(path.join(release, '0.0.1-rc.1-windows-x64')));
+    assert.ok(!fs.existsSync(path.join(release, '0.0.1-rc.1-' + PLATFORM.id)));
   } finally { cleanFixture(fixture); }
 });
