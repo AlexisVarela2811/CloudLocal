@@ -5,7 +5,11 @@ const { spawn } = require('node:child_process');
 const assert = require('node:assert/strict');
 const { chromium, expect } = require('@playwright/test');
 const root = path.resolve(__dirname, '../..');
-const exe = path.join(root, 'launcher/dist/CloudLocal.exe');
+// Native artifact built by build.cjs for the host platform.
+const EXE_NAMES = { win32: 'CloudLocal.exe', linux: 'cloudlocal-linux-x64', darwin: 'cloudlocal-darwin-arm64' };
+const exeName = EXE_NAMES[process.platform];
+if (!exeName) throw new Error('Unsupported platform for smoke: ' + process.platform);
+const exe = path.join(root, 'launcher/dist', exeName);
 
 async function main() {
   const cache = path.join(root, '.cache');
