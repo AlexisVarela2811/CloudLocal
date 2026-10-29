@@ -80,7 +80,7 @@ function saveUrls(port, urls) {
 
 /**
  * Notify the user that CloudLocal is running (non-blocking), auto-opens
- * the browser to the LAN URL.
+ * the browser locally so initial setup is permitted.
  *
  * @param {number}   port  — the port the server is listening on
  * @param {string[]} urls  — all URLs the server is reachable at
@@ -105,7 +105,7 @@ function openTray(port, urls) {
     // Auto-open browser after a short delay
     setTimeout(() => {
       console.log('[notify] opening browser...');
-      launchBrowser(url);
+      launchBrowser(`http://127.0.0.1:${port}`);
       console.log('[notify] browser launched');
     }, 1500);
 

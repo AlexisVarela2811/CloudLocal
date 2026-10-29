@@ -48,9 +48,10 @@ CloudLocal es un servidor de archivos local privado que se ejecuta como un únic
 
 1. Descarga `launcher/dist/CloudLocal.exe` (construido en un equipo Windows x64)
 2. Ejecuta el archivo. El servidor funciona en segundo plano, sin consola
-3. Abre `http://localhost:80` (o el puerto configurado) en el navegador
-4. Configura una contraseña de entre 12 y 256 caracteres en la pantalla de acceso inicial
-5. Desde otros equipos de la red, abre `http://<IP-SERVIDOR>:80` e inicia sesión
+3. El navegador se abre automáticamente en el equipo servidor; configura una contraseña de entre 12 y 256 caracteres en la pantalla inicial
+4. Desde otros equipos de la red, abre la dirección IP y el puerto indicados por CloudLocal e inicia sesión
+
+Si el navegador no se abre, visita `http://127.0.0.1:80` en el equipo servidor, usando el puerto real si es diferente. La configuración inicial solo está permitida desde ese equipo.
 
 Para detenerlo, espera a que finalicen las transferencias y pulsa **Detener Server**. Se cierra únicamente la instancia que atiende esa dirección, no otros procesos de Node. Para reiniciar, ejecuta otra vez `CloudLocal.exe` y recarga la página; tus archivos y contraseña se conservan. Consulta [Detener y reiniciar](docs/server-launcher.md#detener-y-reiniciar).
 

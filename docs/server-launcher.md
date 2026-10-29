@@ -24,10 +24,12 @@ CloudLocal.exe es un ejecutable autocontenido construido con **Node.js SEA** (Si
 
 La primera vez que ejecutas CloudLocal:
 
-1. Abre `http://localhost:80` (o el puerto configurado)
-2. Verás la pantalla de **Acceso** con campo de contraseña
-3. Configura una contraseña de entre 12 y 256 caracteres
-4. Guarda la contraseña en un gestor seguro (es la única forma de entrar después)
+1. El navegador se abre automáticamente en el equipo servidor, con el puerto real del servidor.
+2. En la pantalla de **Acceso**, configura una contraseña de entre 12 y 256 caracteres.
+3. Guarda la contraseña en un gestor seguro (es la única forma de entrar después).
+4. En otros dispositivos de la misma red, usa la dirección IP y el puerto indicados por CloudLocal para iniciar sesión.
+
+Si el navegador no se abre, visita `http://127.0.0.1:80` en el equipo servidor, usando el puerto real si es diferente. Por seguridad, la contraseña inicial solo se puede configurar desde ese equipo.
 
 ## Detener y reiniciar
 
