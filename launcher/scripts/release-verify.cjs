@@ -7,6 +7,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
+// Binary name inside a candidate depends on the host platform (build.cjs).
+const BINARY_NAMES = {
+  win32: 'CloudLocal.exe',
+  linux: 'cloudlocal-linux-x64',
+  darwin: 'cloudlocal-darwin-arm64',
+};
+const BINARY_NAME = BINARY_NAMES[process.platform] || 'CloudLocal.exe';
+
 function printHelp() {
   console.log('Usage: node launcher/scripts/release-verify.cjs <candidate-directory>');
   console.log('       node launcher/scripts/release-verify.cjs --help');
@@ -15,7 +23,7 @@ function printHelp() {
   console.log('');
   console.log('Checks performed:');
   console.log('  - Candidate directory exists and is a directory');
-  console.log('  - CloudLocal.exe exists as a regular file (>= 64 KB)');
+  console.log('  - ' + BINARY_NAME + ' exists as a regular file (>= 64 KB)');
   console.log('  - SHA256SUMS exists, all entries match actual file hashes');
   console.log('  - candidate.json has all required provenance fields');
   console.log('  - Only allowed files present (explicit allowlist, no extras)');
@@ -24,7 +32,7 @@ function printHelp() {
   console.log('  - SHA256SUMS entries exactly match allowed files (complete match)');
   console.log('');
   console.log('Allowed files:');
-  console.log('  CloudLocal.exe, LICENSE, NODE-LICENSE.txt, THIRD-PARTY-NOTICES.txt,');
+  console.log('  ' + BINARY_NAME + ', LICENSE, NODE-LICENSE.txt, THIRD-PARTY-NOTICES.txt,');
   console.log('  README.md, RELEASE-NOTES.md, candidate.json, SHA256SUMS');
   console.log('');
   console.log('Path handling:');
@@ -34,7 +42,7 @@ function printHelp() {
 }
 
 const ALLOWED_FILES = [
-  'CloudLocal.exe',
+  BINARY_NAME,
   'LICENSE',
   'NODE-LICENSE.txt',
   'THIRD-PARTY-NOTICES.txt',
@@ -129,17 +137,17 @@ function main() {
   let checks = 0;
 
   checks++;
-  const exePath = path.join(candidateDir, 'CloudLocal.exe');
+  const exePath = path.join(candidateDir, BINARY_NAME);
   if (!fs.existsSync(exePath)) {
-    fail('CloudLocal.exe not found in candidate directory');
+    fail(BINARY_NAME + ' not found in candidate directory');
   } else if (!isRegularFile(exePath)) {
-    fail('CloudLocal.exe is not a regular file (symlink or special)');
+    fail(BINARY_NAME + ' is not a regular file (symlink or special)');
   } else {
     const exeStat = fs.statSync(exePath);
     if (exeStat.size < 64 * 1024) {
-      fail('CloudLocal.exe is suspiciously small (' + exeStat.size + ' bytes) — likely not a valid executable');
+      fail(BINARY_NAME + ' is suspiciously small (' + exeStat.size + ' bytes) — likely not a valid executable');
     } else {
-      pass('CloudLocal.exe exists (' + exeStat.size + ' bytes)');
+      pass(BINARY_NAME + ' exists (' + exeStat.size + ' bytes)');
     }
   }
 
@@ -263,7 +271,7 @@ function main() {
       if (provData.sha256 && isRegularFile(exePath)) {
         const actualHash = sha256file(exePath);
         if (provData.sha256 !== actualHash) {
-          fail('candidate.json sha256 does not match actual CloudLocal.exe hash');
+          fail('candidate.json sha256 does not match actual ' + BINARY_NAME + ' hash');
           fieldsOk = false;
         } else {
           pass('Provenance SHA-256 matches executable');

@@ -14,6 +14,14 @@ const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '../..');
 const LAUNCHER_DIR = path.resolve(SCRIPT_DIR, '..');
 const DIST_DIR = path.join(LAUNCHER_DIR, 'dist');
 
+// ── Host platform identity (build.cjs produces the native binary) ─────────
+const PLATFORMS = {
+  win32: { id: 'windows-x64', binary: 'CloudLocal.exe', homeLabel: '%USERPROFILE%', hashPrefix: 'certutil -hashfile', hashSuffix: 'SHA256' },
+  linux: { id: 'linux-x64', binary: 'cloudlocal-linux-x64', homeLabel: '~', hashPrefix: 'sha256sum', hashSuffix: '' },
+  darwin: { id: 'darwin-arm64', binary: 'cloudlocal-darwin-arm64', homeLabel: '~', hashPrefix: 'shasum -a 256', hashSuffix: '' },
+};
+const PLATFORM = PLATFORMS[process.platform] || null;
+
 // ── Product versions (read from package.json files) ────────────────────────
 
 function readPackageJson(filePath) {
@@ -135,15 +143,23 @@ function collectThirdPartyNotices() {
   return lines;
 }
 
-// ── bsdtar ZIP creation using Windows System32 tar.exe ─────────────────────
+// ── Archive creation: bsdtar on Windows, zip elsewhere ─────────────────
 
-function createZipWithBsdtar(srcDir, zipPath) {
-  const tarExe = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
-  if (!fs.existsSync(tarExe)) {
-    throw new Error('bsdtar not found at ' + tarExe + ' — Windows 10+ archive utility required');
+function createArchive(srcDir, zipPath) {
+  if (process.platform === 'win32') {
+    const tarExe = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
+    if (!fs.existsSync(tarExe)) {
+      throw new Error('bsdtar not found at ' + tarExe + ' — Windows 10+ archive utility required');
+    }
+    // bsdtar -a -c -f <zip> -C <srcDir> .
+    execFileSync(tarExe, ['-a', '-c', '-f', zipPath, '-C', srcDir, '.'], {
+      cwd: srcDir,
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    return;
   }
-  // bsdtar -a -c -f <zip> -C <srcDir> .
-  execFileSync(tarExe, ['-a', '-c', '-f', zipPath, '-C', srcDir, '.'], {
+  // zip is preinstalled on macOS and standard Linux CI images.
+  execFileSync('zip', ['-r', '-q', zipPath, '.'], {
     cwd: srcDir,
     stdio: ['ignore', 'ignore', 'pipe'],
   });
@@ -154,7 +170,7 @@ function createZipWithBsdtar(srcDir, zipPath) {
 function printHelp() {
   console.log('Usage: node launcher/scripts/release.cjs [OPTIONS] [version-tag]');
   console.log('');
-  console.log('Create a local 0.0.1 Windows x64 release candidate.');
+  console.log('Create a local release candidate for the host platform (' + (PLATFORM ? PLATFORM.id : 'unsupported') + ').');
   console.log('');
   console.log('Options:');
   console.log('  --help    Print this help message and exit.');
@@ -169,7 +185,7 @@ function printHelp() {
   console.log('  launcher/dist/release/<candidateName>.zip.sha256 — archive checksum');
   console.log('');
   console.log('Candidate payload files:');
-  console.log('  CloudLocal.exe, LICENSE, NODE-LICENSE.txt, THIRD-PARTY-NOTICES.txt,');
+  console.log('  ' + (PLATFORM ? PLATFORM.binary : 'executable') + ', LICENSE, NODE-LICENSE.txt, THIRD-PARTY-NOTICES.txt,');
   console.log('  README.md, RELEASE-NOTES.md, candidate.json, SHA256SUMS');
   console.log('');
   console.log('Verification:');
@@ -179,6 +195,11 @@ function printHelp() {
 // ── Main ──────────────────────────────────────────────────────────────────
 
 function main() {
+  if (!PLATFORM) {
+    console.error('Error: unsupported platform for release candidate: ' + process.platform);
+    process.exitCode = 1;
+    return;
+  }
   // Parse arguments
   const args = process.argv.slice(2);
   let versionTag = '0.0.1-rc.1';
@@ -214,9 +235,9 @@ function main() {
   const versions = getVersions();
 
   // Locate executable
-  const exePath = path.join(DIST_DIR, 'CloudLocal.exe');
+  const exePath = path.join(DIST_DIR, PLATFORM.binary);
   if (!fs.existsSync(exePath)) {
-    console.error('Error: CloudLocal.exe not found at ' + exePath);
+    console.error('Error: ' + PLATFORM.binary + ' not found at ' + exePath);
     console.error('Run "npm run build:exe" first to build the executable.');
     process.exitCode = 1;
     return;
@@ -243,7 +264,7 @@ function main() {
 
   const exeHash = sha256file(exePath);
   const version = versions.root; // product version comes from the source manifest
-  const candidateName = versionTag + '-windows-x64';
+  const candidateName = versionTag + '-' + PLATFORM.id;
   const releaseDir = path.join(DIST_DIR, 'release');
   const candidateRoot = path.join(releaseDir, candidateName);
 
@@ -262,8 +283,8 @@ function main() {
   fs.mkdirSync(candidateRoot, { recursive: true });
 
   try {
-    fs.copyFileSync(exePath, path.join(candidateRoot, 'CloudLocal.exe'));
-    const exeHashActual = sha256file(path.join(candidateRoot, 'CloudLocal.exe'));
+    fs.copyFileSync(exePath, path.join(candidateRoot, PLATFORM.binary));
+    const exeHashActual = sha256file(path.join(candidateRoot, PLATFORM.binary));
     if (exeHashActual !== exeHash) {
       console.error('Error: Executable hash mismatch after copy');
       process.exitCode = 1;
@@ -295,8 +316,8 @@ function main() {
 
     // Bundle user instructions without links to files outside this archive.
     fs.writeFileSync(path.join(candidateRoot, 'README.md'), [
-      `# CloudLocal ${version} — candidato local para Windows x64`, '',
-      'Extrae todos los archivos del ZIP en una carpeta y ejecuta CloudLocal.exe.',
+      `# CloudLocal ${version} — candidato local para ${PLATFORM.id}`, '',
+      'Extrae todos los archivos del ZIP en una carpeta y ejecuta ' + PLATFORM.binary + '.',
       'No necesitas instalar Node.js ni Bun. El servidor funciona sin consola.', '',
       'Abre http://localhost:80 en el equipo servidor. Si ese puerto está ocupado,',
       'el launcher intenta usar el puerto 5000. El navegador se abre al iniciar;',
@@ -304,12 +325,12 @@ function main() {
       'Configura la contraseña desde localhost (entre 12 y 256 caracteres).',
       'En otros dispositivos de la misma LAN, abre la IP del servidor con ese puerto.',
       'Mantén el servidor encendido. HTTP no cifra el tráfico: no publiques el puerto en Internet.', '',
-      'Los archivos se guardan por defecto en %USERPROFILE%/.cloudlocal/files y',
-      'las credenciales en %USERPROFILE%/.cloudlocal/state. Guarda copias de seguridad.', '',
+      'Los archivos se guardan por defecto en ' + PLATFORM.homeLabel + '/.cloudlocal/files y',
+      'las credenciales en ' + PLATFORM.homeLabel + '/.cloudlocal/state. Guarda copias de seguridad.', '',
       'Para crear una carpeta usa el botón o Ctrl+Alt+N. Ctrl+N queda para el navegador.',
-      'Antes de detenerlo espera a que terminen las transferencias y pulsa Detener Server.',
-      'Solo se detiene esa instancia. Para reiniciar, ejecuta de nuevo CloudLocal.exe y recarga la página.', '',
-      'Verificación: ejecuta certutil -hashfile CloudLocal.exe SHA256 y compara el',
+      'Antes de detenerlo espera a que terminen las transferencias y usa el botón Apagar servidor.',
+      'Solo se detiene esa instancia. Para reiniciar, ejecuta de nuevo ' + PLATFORM.binary + ' y recarga la página.', '',
+      'Verificación: ejecuta ' + PLATFORM.hashPrefix + ' ' + PLATFORM.binary + (PLATFORM.hashSuffix ? ' ' + PLATFORM.hashSuffix : '') + ' y compara el',
       'resultado con SHA256SUMS. El ZIP tiene su checksum en un archivo .zip.sha256 separado.',
       'Un checksum comprueba integridad, no identidad del editor ni autenticidad.', '',
       'Este candidato es local y no publicado. No se realizó firma confiable de CloudLocal;',
@@ -333,7 +354,7 @@ function main() {
       '',
       '## Files',
       '',
-      '- `CloudLocal.exe` — the packed executable (SEA, subsystem GUI)',
+      '- `' + PLATFORM.binary + '` — the packed executable (SEA' + (process.platform === 'win32' ? ', GUI subsystem' : '') + ')',
       '- `LICENSE` — MIT license (project)',
       '- `NODE-LICENSE.txt` — Node.js MIT license (Node 22.23.2)',
       '- `THIRD-PARTY-NOTICES.txt` — third-party dependency notices',
@@ -346,7 +367,7 @@ function main() {
       '',
       'Compute SHA-256 of each file and compare against SHA256SUMS:',
       '',
-      '  `certutil -hashfile CloudLocal.exe SHA256` (Windows)',
+      '  `' + PLATFORM.hashPrefix + ' ' + PLATFORM.binary + (PLATFORM.hashSuffix ? ' ' + PLATFORM.hashSuffix : '') + '`' + (process.platform === 'win32' ? ' (Windows)' : '') + ',',
       '  or use the provided verify script:',
       '',
       '  `node launcher/scripts/release-verify.cjs <candidate-directory>`',
@@ -367,8 +388,8 @@ function main() {
       name: 'CloudLocal',
       version: versionTag,
       productVersion: version,
-      platform: 'win32',
-      arch: 'x64',
+      platform: process.platform,
+      arch: process.arch,
       unsigned: true,
       unsignedNote: 'No trusted CloudLocal signing performed. Authenticode status is not verified.',
       signatureStatus: 'not-verified',
@@ -387,7 +408,7 @@ function main() {
         launcher: versions.launcher,
       },
       files: {
-        executable: 'CloudLocal.exe',
+        executable: PLATFORM.binary,
         license: 'LICENSE',
         nodeLicense: 'NODE-LICENSE.txt',
         thirdPartyNotices: 'THIRD-PARTY-NOTICES.txt',
@@ -422,7 +443,7 @@ function main() {
     fs.writeFileSync(path.join(candidateRoot, 'SHA256SUMS'), sumLines.join('\n') + '\n');
 
     const zipPath = path.join(releaseDir, candidateName + '.zip');
-    createZipWithBsdtar(candidateRoot, zipPath);
+    createArchive(candidateRoot, zipPath);
 
     const zipHash = sha256file(zipPath);
     fs.writeFileSync(zipPath + '.sha256', zipHash + '  ' + candidateName + '.zip\n');

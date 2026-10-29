@@ -489,7 +489,7 @@ test('release: bundled instructions are self-contained rather than repository li
     const readme = fs.readFileSync(path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64', 'README.md'), 'utf8');
     assert.ok(!readme.includes('docs/missing.md'));
     assert.ok(readme.includes('CloudLocal.exe'));
-    assert.ok(readme.includes('Detener Server'));
+    assert.ok(readme.includes('Apagar servidor'));
     assert.ok(readme.includes('SHA256SUMS'));
   } finally { cleanFixture(fixture); }
 });
