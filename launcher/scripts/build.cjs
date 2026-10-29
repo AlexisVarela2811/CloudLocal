@@ -68,7 +68,10 @@ async function main() {
     await inject(exePath, 'NODE_SEA_BLOB', fs.readFileSync(seaBlob), {
       sentinelFuse: 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2'
     });
-    execFileSync('codesign', ['--sign', '-', exePath], { stdio: 'inherit' });
+    // Ad-hoc re-sign with the JIT entitlements V8 needs on Apple Silicon.
+    const entitlements = path.join(__dirname, '../resources/darwin-entitlements.plist');
+    execFileSync('codesign', ['--sign', '-', '--force', '--entitlements', entitlements, exePath], { stdio: 'inherit' });
+    execFileSync('codesign', ['--verify', '--strict', exePath], { stdio: 'inherit' });
   } else {
     await inject(exePath, 'NODE_SEA_BLOB', fs.readFileSync(seaBlob), {
       sentinelFuse: 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2'

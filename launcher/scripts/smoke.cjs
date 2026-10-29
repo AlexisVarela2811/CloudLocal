@@ -30,7 +30,7 @@ async function main() {
     const deadline = Date.now() + 15000;
     let match;
     while (!(match = /http:\/\/127\.0\.0\.1:(\d+)/.exec(stdout))) {
-      if (child.exitCode !== null || Date.now() > deadline) throw new Error(`No ready URL; stdout=${stdout} stderr=${stderr}`);
+      if (child.exitCode !== null || child.signalCode || Date.now() > deadline) throw new Error(`No ready URL (exit=${child.exitCode}, signal=${child.signalCode}); stdout=${stdout} stderr=${stderr}`);
       await new Promise(resolve => setTimeout(resolve, 50));
     }
     const base = `http://127.0.0.1:${match[1]}`;
