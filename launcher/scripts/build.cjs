@@ -66,7 +66,11 @@ async function main() {
     // builds are for SmartScreen.
     execFileSync('codesign', ['--remove-signature', exePath], { stdio: 'inherit' });
     await inject(exePath, 'NODE_SEA_BLOB', fs.readFileSync(seaBlob), {
-      sentinelFuse: 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2'
+      sentinelFuse: 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2',
+      // Mach-O: the blob must be a NODE_SEA_BLOB section inside a segment
+      // named NODE_SEA, or the SEA loader never finds it and the binary
+      // segfaults at boot (nodejs/postject#97).
+      machoSegmentName: 'NODE_SEA',
     });
     // Ad-hoc re-sign with the JIT entitlements V8 needs on Apple Silicon.
     const entitlements = path.join(__dirname, '../resources/darwin-entitlements.plist');
