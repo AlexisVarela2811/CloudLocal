@@ -14,7 +14,7 @@ function sendNotification(title, body) {
       fs.mkdirSync(dir, { recursive: true });
       const script = path.join(dir, 'n.ps1');
       fs.writeFileSync(script,
-        'try {' +
+        '\ufefftry {' +
         '$t = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent(' +
         '[Windows.UI.Notifications.ToastTemplateType]::ToastText02)' +
         '$x = $t.GetElementsByTagName("text")' +
@@ -98,7 +98,9 @@ function openTray(port, urls) {
     // Show notification (non-blocking)
     setTimeout(() => {
       console.log('[notify] sending notification...');
-      sendNotification('CloudLocal', `Running at ${url}`);
+      sendNotification('CloudLocal', lanIp === '127.0.0.1'
+        ? 'No se detectó una dirección para otros dispositivos.'
+        : `Dirección para otros dispositivos: ${url}`);
       console.log('[notify] notification sent');
     }, 100);
 
