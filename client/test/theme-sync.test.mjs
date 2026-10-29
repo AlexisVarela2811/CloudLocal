@@ -11,7 +11,7 @@ function apiBody(path) {
   if (path === '/api/files') {
     return { entries: [{ name: 'a.txt', path: 'a.txt', type: 'file', size: 1, modifiedAt: '2026-01-01T00:00:00Z' }] };
   }
-  if (path === '/api/status') return { storage: { free: 1, total: 2 }, urls: [], maxUploadBytes: 1048576 };
+  if (path === '/api/status') return { storage: { free: 1, total: 2 }, urls: ['http://127.0.0.1:5000', 'http://192.168.1.19:5000'], maxUploadBytes: 1048576 };
   if (path === '/api/trash') return { entries: [] };
   if (path === '/api/settings') {
     return { folderPath: null, activeFolderPath: '/data', envOverride: false, needsRestart: false };
@@ -51,6 +51,9 @@ test('theme switch in settings follows the rail toggle and vice versa', async t 
 
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText: async value => { window.__copiedAddress = value; } }, configurable: true });
+    });
     await page.goto(origin, { waitUntil: 'networkidle' });
     await page.waitForSelector('.table-row.entry');
 
@@ -81,6 +84,16 @@ test('theme switch in settings follows the rail toggle and vice versa', async t 
     // 2) Al entrar en Configuración, el interruptor refleja ese estado.
     await page.getByRole('button', { name: 'Configuración', exact: true }).click();
     await page.waitForSelector('#dark-mode-toggle');
+    await page.setViewportSize({ width: 1280, height: 600 });
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const rail = await page.locator('.rail').evaluate(el => ({ top: el.getBoundingClientRect().top, bottom: el.getBoundingClientRect().bottom, viewport: innerHeight }));
+    assert.ok(rail.top <= 0 && rail.bottom >= rail.viewport, `rail must cover viewport while scrolling: ${JSON.stringify(rail)}`);
+    assert.equal(await page.getByLabel('Dirección para otros dispositivos').inputValue(), 'http://192.168.1.19:5000');
+    await page.getByRole('button', { name: 'Copiar http://192.168.1.19:5000' }).click();
+    assert.equal(await page.evaluate(() => window.__copiedAddress), 'http://192.168.1.19:5000');
+    assert.equal(await page.getByText('Dirección copiada.').count(), 1);
+    assert.equal(await page.getByText('HTTP no cifra contraseñas ni archivos.', { exact: true }).count(), 1);
+    await page.setViewportSize({ width: 1280, height: 900 });
     await page.waitForTimeout(200);
     const settingsOpen = await state();
     assert.equal(settingsOpen.switchChecked, 'true', 'el interruptor nace sincronizado con el rail');
@@ -128,6 +141,12 @@ test('theme switch in settings follows the rail toggle and vice versa', async t 
     await page.waitForTimeout(200);
     const settingsAgain = await state();
     assert.equal(settingsAgain.switchChecked, 'false', 'el interruptor se resincroniza al reabrir Configuración');
+
+    await page.route('**/api/status', route => route.fulfill({ json: { storage: { free: 1, total: 2 }, urls: ['http://127.0.0.1:5000'], maxUploadBytes: 1048576 } }));
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: 'Configuración', exact: true }).click();
+    await page.getByText('No se detectó ninguna dirección de red. Comprueba la conexión del servidor.').waitFor();
+    assert.equal(await page.getByLabel('Dirección para otros dispositivos').count(), 0);
   } finally {
     await browser.close();
     await new Promise(resolve => server.close(resolve));

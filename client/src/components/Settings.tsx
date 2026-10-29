@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { api, type SettingsInfo, failure } from '../api/api';
+import { api, type SettingsInfo, type Status, failure } from '../api/api';
+import { visibleServerUrls } from '../workspace.mjs';
 
 interface SettingsPanelProps {
   onExpired?: () => void;
+  status: Status | null;
 }
 
 const THEME_KEY = 'cloudlocal-theme';
@@ -16,7 +18,7 @@ function setSavedTheme(theme: 'dark' | 'light') {
   window.dispatchEvent(new CustomEvent('cloudlocal-theme-change', { detail: { theme } }));
 }
 
-export function SettingsPanel({ onExpired }: SettingsPanelProps) {
+export function SettingsPanel({ onExpired, status }: SettingsPanelProps) {
   const [data, setData] = useState<SettingsInfo | null>(null);
   const [input, setInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -27,6 +29,17 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
   const [darkMode, setDarkMode] = useState(() => getSavedTheme() === 'dark');
   const [shuttingDown, setShuttingDown] = useState(false);
   const [shutdownMessage, setShutdownMessage] = useState('');
+  const [copyMessage, setCopyMessage] = useState('');
+  const networkUrls = visibleServerUrls(status?.urls ?? [], window.location.origin);
+
+  async function copyAddress(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopyMessage('Dirección copiada.');
+    } catch {
+      setCopyMessage('No se pudo copiar automáticamente. Selecciona y copia la dirección.');
+    }
+  }
 
   useEffect(() => {
     const sync = () => setDarkMode(getSavedTheme() === 'dark');
@@ -189,6 +202,20 @@ export function SettingsPanel({ onExpired }: SettingsPanelProps) {
         <div className="settings-section-head">
           <h2 id="settings-server">Servidor</h2>
           <p className="settings-desc">Detener el servidor cierra CloudLocal para todos los equipos hasta que lo vuelvas a abrir.</p>
+        </div>
+        <div className="settings-field">
+          <h3>Conectar otros dispositivos</h3>
+          <p className="settings-desc">En otro dispositivo conectado a la misma red, abre una de estas direcciones e inicia sesión.</p>
+          {status === null ? <p className="settings-hint">Cargando direcciones…</p> : networkUrls.length === 0 ? (
+            <p className="settings-hint">No se detectó ninguna dirección de red. Comprueba la conexión del servidor.</p>
+          ) : networkUrls.map((url, index) => (
+            <div className="settings-inline" key={url}>
+              <input aria-label={networkUrls.length === 1 ? 'Dirección para otros dispositivos' : `Dirección para otros dispositivos ${index + 1}`} value={url} readOnly />
+              <button type="button" className="btn-secondary" onClick={() => copyAddress(url)} aria-label={`Copiar ${url}`}>Copiar</button>
+            </div>
+          ))}
+          {copyMessage && <p className="settings-notice" role="status">{copyMessage}</p>}
+          <p className="settings-hint">HTTP no cifra contraseñas ni archivos.</p>
         </div>
         <div className="settings-row">
           <div className="settings-row-text">

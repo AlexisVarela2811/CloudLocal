@@ -160,7 +160,7 @@ a { color: var(--accent); text-decoration: none; }
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr) 344px;
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .sidebar {

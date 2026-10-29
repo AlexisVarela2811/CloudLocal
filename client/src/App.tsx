@@ -1703,7 +1703,7 @@ function App() {
               </section>
             </>
           ) : (
-            <SettingsPanel onExpired={loseSession} />
+            <SettingsPanel onExpired={loseSession} status={status} />
           )}
           {notice && (
             <p className="notice-bar" role="status" aria-live="polite">

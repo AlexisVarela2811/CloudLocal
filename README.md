@@ -49,7 +49,7 @@ CloudLocal es un servidor de archivos local privado que se ejecuta como un únic
 1. Descarga `launcher/dist/CloudLocal.exe` (construido en un equipo Windows x64)
 2. Ejecuta el archivo. El servidor funciona en segundo plano, sin consola
 3. El navegador se abre automáticamente en el equipo servidor; configura una contraseña de entre 12 y 256 caracteres en la pantalla inicial
-4. Desde otros equipos de la red, abre la dirección IP y el puerto indicados por CloudLocal e inicia sesión
+4. En **Configuración → Servidor → Conectar otros dispositivos**, consulta o copia la dirección. Ábrela desde otro equipo conectado a la misma red e inicia sesión.
 
 Si el navegador no se abre, visita `http://127.0.0.1:80` en el equipo servidor, usando el puerto real si es diferente. La configuración inicial solo está permitida desde ese equipo.
 
