@@ -424,7 +424,7 @@ function main() {
     fs.writeFileSync(path.join(candidateRoot, 'candidate.json'), JSON.stringify(candidate, null, 2) + '\n');
 
     const payloadFiles = [
-      'CloudLocal.exe',
+      PLATFORM.binary,
       'LICENSE',
       'NODE-LICENSE.txt',
       'THIRD-PARTY-NOTICES.txt',

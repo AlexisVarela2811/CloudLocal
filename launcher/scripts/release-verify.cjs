@@ -279,8 +279,8 @@ function main() {
       }
 
       // Check platform/arch
-      if (provData.platform !== 'win32' || provData.arch !== 'x64') {
-        fail('candidate.json platform/arch should be win32/x64, got ' + provData.platform + '/' + provData.arch);
+      if (provData.platform !== process.platform || provData.arch !== process.arch) {
+        fail('candidate.json platform/arch should be ' + process.platform + '/' + process.arch + ', got ' + provData.platform + '/' + provData.arch);
         fieldsOk = false;
       }
 

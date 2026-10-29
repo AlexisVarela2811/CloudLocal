@@ -45,9 +45,8 @@ jobs:
       - name: Install dependencies (root workspaces)
         run: npm ci
 
-      # Launcher optionalDependencies install only the host platform's node
-      # binary (node-win-x64/node-linux-x64/node-darwin-arm64), so plain
-      # npm ci works on every runner.
+      # Launcher devDependencies are platform-agnostic; the SEA base binary
+      # is the host node itself, so plain npm ci works on every runner.
       - name: Install dependencies (launcher)
         run: npm ci --prefix launcher
 

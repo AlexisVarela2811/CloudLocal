@@ -4,14 +4,15 @@ const { execFileSync } = require('node:child_process');
 const esbuild = require('esbuild');
 const { inject } = require('postject');
 
-// Host platform → Node binary package, executable name and platform id.
-// npm installs only the matching optionalDependency on each OS, so builds
-// always target the host (no cross-compilation): each OS builds its own
-// release asset.
+// Host platform → executable name and platform id. The SEA base binary is
+// always process.execPath: the Node that runs this build. Node SEA requires the
+// blob and the base binary to come from the same Node build, and npm platform
+// packages for node binaries are incomplete (node-darwin-arm64 stopped at 18),
+// so each OS builds its own asset with its own interpreter.
 const PLATFORMS = {
-  win32: { pkg: 'node-win-x64', bin: 'bin/node.exe', exe: 'CloudLocal.exe', id: 'windows-x64' },
-  linux: { pkg: 'node-linux-x64', bin: 'bin/node', exe: 'cloudlocal-linux-x64', id: 'linux-x64' },
-  darwin: { pkg: 'node-darwin-arm64', bin: 'bin/node', exe: 'cloudlocal-darwin-arm64', id: 'darwin-arm64' },
+  win32: { exe: 'CloudLocal.exe', id: 'windows-x64' },
+  linux: { exe: 'cloudlocal-linux-x64', id: 'linux-x64' },
+  darwin: { exe: 'cloudlocal-darwin-arm64', id: 'darwin-arm64' },
 };
 
 async function main() {
@@ -21,12 +22,7 @@ async function main() {
   const dist = path.join(root, 'client', 'dist');
   const output = path.join(__dirname, '../dist');
 
-  let nodeExe;
-  try {
-    nodeExe = path.join(path.dirname(require.resolve(platform.pkg + '/package.json')), platform.bin);
-  } catch {
-    throw new Error(platform.pkg + ' is not installed — npm only installs the optional dependency matching the host platform, so this build must run on ' + platform.id);
-  }
+  const nodeExe = process.execPath;
 
   const assets = {};
   function collect(dir, base) {
