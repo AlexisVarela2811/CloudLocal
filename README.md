@@ -1,4 +1,4 @@
-# CloudLocal — Private Local File Server
+# CloudLocal — Servidor de archivos local privado
 
 **Un ejecutable pone en marcha tu nube local; los demás equipos entran desde el navegador.** Los archivos quedan en el ordenador servidor, que debe permanecer encendido y despierto. No se necesitan clientes, códigos de vinculación ni otra aplicación en Ubuntu, móviles u otros ordenadores para subir, consultar y descargar archivos.
 
@@ -200,24 +200,25 @@ npm run dev          # Inicia Vite en http://localhost:5173 con HMR
 ## Arquitectura
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                        Red LAN                          │
-│                                                         │
-│  ┌──────────┐    HTTP     ┌──────────────────┐         │
-│  │  Navegador│ ──────────► │   server/        │         │
-│  │  (client/)│             │   (API + static) │         │
-│  └──────────┘             │                  │         │
-│  ┌──────────┐             │  ┌────────────┐  │         │
-│  │  Móvil   │ ──────────► │  │ .cloudlocal│  │         │
-│  └──────────┘             │  │ /state     │  │         │
-│                           │  └────────────┘  │         │
-│                           │  ┌────────────┐  │         │
-│                           │  │ .cloudlocal│  │         │
-│                           │  │ /files     │  │         │
-│                           │  └────────────┘  │         │
-│                           └──────────────────┘         │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                               Red LAN                                │
+│                                                                      │
+│  ┌────────────┐                        ┌──────────────────────────┐  │
+│  │ Navegador  │ HTTP /api ────────────►│ server/ · Express        │  │
+│  │ SPA React  │                        │ API JSON + estáticos     │  │
+│  │ client/dist│◄─────── SSE /api/events│ SPA (client/dist)        │  │
+│  └────────────┘                        │ (launcher: Node SEA)     │  │
+│  ┌────────────┐                        │                          │  │
+│  │ Móvil /    │ HTTP ─────────────────►│                          │  │
+│  │ otro equipo│                        │ dataDir                  │  │
+│  └────────────┘                        │  ~/.cloudlocal/files     │  │
+│                                        │  .cloudlocal/trash · tmp │  │
+│                                        │ stateDir                 │  │
+│                                        │  ~/.cloudlocal/state     │  │
+│                                        └──────────────────────────┘  │
+│                                                                      │
+│ un proceso · HTTP sin cifrar · solo en la LAN                        │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Server (`server/`)
@@ -225,10 +226,12 @@ npm run dev          # Inicia Vite en http://localhost:5173 con HMR
 API REST con autenticación basada en cookie (scrypt + token de sesión). Gestiona:
 
 - Listado y navegación de carpetas
-- Subida de archivos con barra de progreso
+- Subida de archivos con barra de progreso (máximo 4 subidas simultáneas; por encima responde `429`)
 - Descarga y vistas previas
-- Papelera (borrado temporal; eliminación permanente y vaciado vía API)
+- Papelera (borrado temporal, restauración, eliminación permanente y vaciado)
 - Configuración de carpeta de datos
+- Eventos en vivo por SSE (`/api/events`) para refrescar el listado sin recargar
+- Límite de intentos de inicio de sesión: 5 fallos por IP en una ventana de 15 minutos; a partir de ahí responde `429`
 - Cierre graceful del servidor HTTP
 
 ### Client (`client/`)
@@ -237,11 +240,15 @@ Aplicación React con TypeScript organizada en:
 
 - `App.tsx` — Orquestación principal (auth, routing, estado, shortcuts de teclado)
 - `components/Access.tsx` — Pantalla de autenticación (acceso con contraseña)
+- `components/Details.tsx` — Inspector de un elemento seleccionado
+- `components/MultiDetails.tsx` — Resumen de selección múltiple
+- `components/FileVisual.tsx` — Iconos y miniaturas por tipo de archivo
 - `components/Preview.tsx` — Modal de vista previa (imágenes, vídeo, audio, PDF)
 - `components/Settings.tsx` — Configuración y toggle de modo oscuro (toggle grande, 64px ancho)
 - `components/DragAndDrop.tsx` — Overlay de arrastrar y soltar (subida externa)
 - `components/UploadQueue.tsx` — Cola de subida con progreso y retry/cancel
 - `hooks/useDragUpload.ts` — Hook para arrastrar archivos externos
+- `hooks/useSSE.ts` — Conexión `EventSource` a `/api/events`
 - `api/api.ts` — Cliente HTTP Axios (todos los endpoints)
 - `workspace.mjs` — Utilidades (formateo, breadcrumb, tipado de preview)
 
@@ -283,9 +290,11 @@ El detalle de la Release multiplataforma está en [Notas de la versión 0.1.4](d
 | `POST` | `/api/files/copy` | Copiar archivo/folder (`{from, to}`) |
 | `POST` | `/api/files/move` | Mover archivo (`{from, to}`) |
 | `POST` | `/api/files/moveFolder` | Mover carpeta (`{from, to}`) |
+| `POST` | `/api/files/paste` | Pegar del portapapeles interno (`{from, to, type}`) |
 | `POST` | `/api/files/permanent` | Eliminación permanente (`{id}`) |
 | `GET` | `/api/files/zip` | Descargar como ZIP (`?paths[]=`) |
-| `GET` | `/api/files/content` | Obtener contenido (`?path=`) |
+| `GET` | `/api/files/content` | Obtener contenido (`?path=`, `?inline=1` para ver en el navegador) |
+| `GET` | `/api/files/preview/*` | Miniatura de imagen (`*` = ruta relativa; responde `400` si no es una imagen) |
 
 ### Papelera
 
@@ -294,7 +303,6 @@ El detalle de la Release multiplataforma está en [Notas de la versión 0.1.4](d
 | `GET` | `/api/trash` | Listar archivos en papelera |
 | `POST` | `/api/trash/:id/restore` | Restaurar archivo |
 | `POST` | `/api/trash/empty` | Vaciar papelera (todos) |
-| `DELETE` | `/api/trash` | Borrar archivo permanentemente |
 
 ### Estado
 
@@ -302,18 +310,7 @@ El detalle de la Release multiplataforma está en [Notas de la versión 0.1.4](d
 |---|---|---|
 | `GET` | `/api/status` | Espacio en disco, límite de subida, URLs |
 | `GET` | `/api/session` | Estado de sesión actual |
-
-### Dispositivos
-
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `GET` | `/api/devices/` | Listar dispositivos vinculados |
-| `GET` | `/api/devices/offers` | Listar ofertas pendientes |
-| `POST` | `/api/devices/pair-code` | Generar código de emparejamiento |
-| `POST` | `/api/devices/:id/offers` | Enviar oferta a dispositivo |
-| `GET` | `/api/devices/:id/entries` | Listar entradas compartidas |
-| `GET` | `/api/devices/:id/content` | Obtener contenido compartido |
-| `DELETE` | `/api/devices/:id` | Desvincular dispositivo |
+| `GET` | `/api/events` | Stream SSE (`text/event-stream`) con los eventos `upload`, `folder`, `paste`, `move`, `copy`, `trash` y `restore` |
 
 ### Configuración
 
@@ -351,7 +348,7 @@ El detalle de la Release multiplataforma está en [Notas de la versión 0.1.4](d
 
 ### Sidebar
 
-Panel lateral fijo con navegación rápida a Archivos, Papelera y Configuración. Incluye indicador de estado del servidor (en línea/desconectado) y botón para cerrar sesión. En móvil se muestra como panel deslizable.
+Panel lateral fijo con navegación rápida a Archivos, Papelera y Configuración. Incluye indicador de estado del servidor (en línea/desconectado) y botón para cerrar sesión. Por debajo de 768 px de ancho deja de ocupar espacio: se oculta y se abre como panel deslizable con el botón de menú del topbar y un overlay para cerrarlo.
 
 ### Navegación de carpetas
 
@@ -409,7 +406,8 @@ Selecciona un archivo y pulsa F2. El nombre se convierte en un campo editable. P
 
 - **Mover a papelera**: Delete (seleccionados) o botón eliminar
 - **Restaurar**: botón "Restaurar" en la UI (restaura al path original)
-- **Eliminación permanente** y **vaciar papelera**: solo disponibles vía API
+- **Eliminación permanente**: acción por elemento en la vista de papelera
+- **Vaciar papelera**: botón "Vaciar papelera" (borra todos los elementos de forma definitiva)
 
 ### Modo oscuro
 
@@ -419,10 +417,10 @@ Actívalo en la sección Configuración mediante un toggle grande (64×34px) con
 
 | Breakpoint | Comportamiento |
 |---|---|
-| `> 1024px` | Sidebar fijo, tabla completa |
-| `768px – 1024px` | Sidebar fijo, espacio reducido |
-| `481px – 768px` | Sidebar deslizable, columna de detalles oculta |
-| `≤ 480px` | Sidebar deslizable, acciones compactadas |
+| `> 1024px` | Sidebar fijo; tabla con todas las columnas |
+| `769px – 1024px` | Sidebar fijo; se oculta la columna de tamaño |
+| `≤ 768px` | Sidebar fuera de pantalla (se abre con el botón de menú y overlay); se ocultan las columnas de tamaño y modificación |
+| `≤ 480px` | Igual que la anterior, con el panel más estrecho (260 px) y la cuadrícula en 3 columnas |
 
 ---
 
@@ -442,22 +440,24 @@ CloudLocal/
 │   │   ├── api/      # Cliente HTTP Axios (api.ts)
 │   │   ├── components/
 │   │   │   ├── Access.tsx        # Pantalla de acceso
+│   │   │   ├── Details.tsx       # Inspector de un elemento
+│   │   │   ├── MultiDetails.tsx  # Resumen de selección múltiple
+│   │   │   ├── FileVisual.tsx    # Iconos y miniaturas por tipo
 │   │   │   ├── DragAndDrop.tsx   # Overlay de drag & drop
 │   │   │   ├── Preview.tsx       # Modal de vista previa
 │   │   │   ├── Settings.tsx      # Configuración y toggle dark mode
-│   │   │   ├── UploadQueue.tsx   # Cola de subida con progreso
-│   │   │   └── Devices.tsx       # Gestión de dispositivos LAN
+│   │   │   └── UploadQueue.tsx   # Cola de subida con progreso
 │   │   ├── hooks/
-│   │   │   └── useDragUpload.ts  # Hook de drag & drop
-│   │   ├── App.tsx         # Orquestación principal
-│   │   └── index.css       # Estilos globales (variables, focus, themes)
+│   │   │   ├── useDragUpload.ts  # Hook de drag & drop
+│   │   │   └── useSSE.ts         # Eventos en vivo desde /api/events
+│   │   └── App.tsx         # Orquestación principal
 │   └── public/
 ├── launcher/         # Empaquetado portátil (Node.js SEA)
 │   └── src/
 │       ├── main.cjs
 │       ├── runtime.cjs
 │       └── tray.cjs
-└── odd/              # Especificaciones y tareas (ODD)
+└── docs/             # Notas de versión y documentación de la API
 ```
 
 #### Flujo de trabajo
@@ -474,7 +474,7 @@ CloudLocal/
 
 - **TypeScript**: strict mode habilitado. No uses `any` salvo necesidad documentada.
 - **Componentes React**: funcionales con hooks. Nombres `PascalCase`.
-- **CSS**: TailwindCSS como base, variables CSS personalizadas para theming. Sin modificar `index.css` salvo indicación.
+- **CSS**: TailwindCSS como base, variables CSS personalizadas para theming.
 - **Comentarios**: en español. JSDoc para funciones exportadas.
 - **Tests**: unitarios en `test/` por componente.
 - **Commits**: estilo [Conventional Commits](https://www.conventionalcommits.org/).
@@ -484,6 +484,9 @@ CloudLocal/
 ```sh
 # Compilar cliente (TypeScript + Vite)
 npm run build:frontend
+
+# Enlaces, anclas y que cada endpoint documentado exista en server/src
+npm run check:docs
 
 # Ejecutar tests (server + client + launcher)
 npm test

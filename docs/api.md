@@ -122,11 +122,21 @@ POST /api/files/upload?folder=/path/to/dir
 GET /api/files/content?path=/path/to/file
 ```
 
+Añade `?inline=1` para que el navegador lo muestre en lugar de descargarlo.
+
 ### Descarga ZIP
 
 ```
 GET /api/files/zip?paths[]=/path1&paths[]=/path2
 ```
+
+### Vista previa de imagen
+
+```
+GET /api/files/preview/fotos/playa.jpg
+```
+
+El `*` de la ruta es la ruta relativa de la imagen. Responde `400` si el tipo no es una imagen y sirve el archivo con `Cache-Control: public, max-age=3600`.
 
 ### Copiar archivo/carpeta
 
@@ -156,13 +166,26 @@ POST /api/files/moveFolder
 
 Para mover a una carpeta existente sin interpretar el destino como un nuevo nombre, añade `"mode": "into"` al cuerpo de cualquiera de las dos solicitudes. `to: ""` indica Inicio. Si la carpeta de destino no existe, la operación falla sin renombrar el origen. Sin `mode`, `/api/files/move` conserva su comportamiento anterior de movimiento o cambio de nombre.
 
+### Pegar del portapapeles interno
+
+```
+POST /api/files/paste
+{
+  "from": "/path/to/source",
+  "to": "/path/to/dest",
+  "type": "file"
+}
+```
+
+`type` es `file` o `folder` (obligatorio; cualquier otro valor responde `400`). Copia el elemento a `to` y emite el evento SSE `paste`.
+
 ### Eliminar a papelera
 
 ```
 DELETE /api/files?path=/path/to/file
 ```
 
-### Eliminación permanente (API solo)
+### Eliminación permanente
 
 ```
 POST /api/files/permanent
@@ -170,6 +193,8 @@ POST /api/files/permanent
   "id": "<trash-id>"
 }
 ```
+
+El `id` es el de la entrada en la papelera que devuelve `GET /api/trash`.
 
 ---
 
@@ -181,25 +206,16 @@ POST /api/files/permanent
 GET /api/trash
 ```
 
-### Restaurar (UI disponible)
+### Restaurar
 
 ```
 POST /api/trash/:id/restore
 ```
 
-### Vaciar papelera (API solo)
+### Vaciar papelera
 
 ```
 POST /api/trash/empty
-```
-
-### Eliminar permanentemente (API solo)
-
-```
-DELETE /api/trash
-{
-  "id": "<trash-id>"
-}
 ```
 
 ---
@@ -246,8 +262,35 @@ GET /api/events
 
 Stream `text/event-stream` con los cambios del sistema de archivos. Usa la
 misma cookie de sesión que el resto de `/api`. El cliente abre una conexión al
-entrar y refresca el listado al recibir un evento (`created`, `updated`,
-`deleted`). Al detener el servidor la conexión se cierra.
+entrar y refresca el listado al recibir un evento. Los eventos emitidos por el
+servidor son:
+
+| Evento | Cuándo |
+|---|---|
+| `upload` | Se sube un archivo |
+| `folder` | Se crea una carpeta |
+| `paste` | Se pega desde el portapapeles interno |
+| `move` | Se mueve o renombra |
+| `copy` | Se copia |
+| `trash` | Se envía a la papelera |
+| `restore` | Se restaura desde la papelera |
+
+Al detener el servidor la conexión se cierra.
+
+---
+
+## Rutas legacy (compatibilidad)
+
+Se mantienen por compatibilidad con clientes antiguos y solo operan sobre la raíz del almacenamiento (no aceptan subcarpetas):
+
+```
+GET    /api/files/list
+GET    /api/files/download/:filename
+DELETE /api/files/delete/:filename
+```
+
+- `list` devuelve solo los nombres de los archivos de la raíz.
+- `download` y `delete` reciben un nombre de archivo, no una ruta. `delete` compara sin distinguir mayúsculas y responde `409` si el nombre es ambiguo, `404` si no existe.
 
 ---
 
@@ -310,7 +353,7 @@ DELETE /api/settings
 | `400` | Bad request (parámetros faltantes o inválidos) |
 | `401` | No autenticado / sesión expirada |
 | `403` | Origen externo no permitido |
-| `404` | No encontrado (archivo, carpeta, dispositivo) |
+| `404` | No encontrado (archivo o carpeta) |
 | `409` | Conflicto (archivo ya existe, contraseña incorrecta) |
 | `413` | Payload demasiado grande |
 | `415` | Tipo de contenido no soportado |

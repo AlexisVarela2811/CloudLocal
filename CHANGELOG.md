@@ -47,6 +47,13 @@ introduce cada cambio. Los artefactos publicados están en
 - **Una sola versión de producto**: `package.json` de root, `launcher`, `server` y `client` pasan a
   0.1.4 (el client estaba en `0.0.0`). `scripts/version.cjs` acepta `set X.Y.Z` y sincroniza los
   cuatro manifiestos sin reformatearlos.
+- **Documentación alineada con el código**: el README y `docs/api.md` dejan de documentar la sección
+  de Dispositivos y `DELETE /api/trash` (no existen en `server/src`), documentan `GET /api/events`
+  con sus siete eventos reales (`upload`, `folder`, `paste`, `move`, `copy`, `trash`, `restore`),
+  `GET /api/files/preview/*` y `POST /api/files/paste`, describen las rutas legacy y dejan de marcar
+  como "solo API" lo que ya está en la interfaz. El diagrama pasa a `WINDOWS · MACOS · LINUX` con
+  los puertos reales (80, respaldo 5000) y `~/.cloudlocal/files`. `npm run check:docs` verifica
+  enlaces, anclas y que cada endpoint documentado exista en el servidor.
 
 ### Security
 
