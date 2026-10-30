@@ -1,8 +1,18 @@
 # CloudLocal 0.1.4 — notas de la versión
 
-Versión de producto 0.1.4 en preparación sobre la rama `release/0.1.4`. Sin tag, sin Release
-publicada y sin push: este documento describe lo que cambia en el árbol de trabajo, no un artefacto
-publicado. Los assets reales se publican al crear el tag `v0.1.4`, si esa decisión se toma.
+Versión de producto 0.1.4, publicada el 30 de octubre de 2026 en
+[v0.1.4](https://github.com/AlexisVarela2811/CloudLocal/releases/tag/v0.1.4). Assets publicados, cada uno
+con su `.zip.sha256` al lado:
+
+| Plataforma | Asset |
+|---|---|
+| Windows x64 | `0.1.4-rc.1-windows-x64.zip` (33.8 MB) |
+| macOS Apple Silicon | `0.1.4-rc.1-darwin-arm64.zip` (37.1 MB) |
+| Linux x64 | `0.1.4-rc.1-linux-x64.zip` (42.5 MB) |
+
+La Release la genera `release.yml` al empujar el tag: cada sistema construye, verifica y prueba su
+propio candidato (ver [Verificación de assets](#verificación-de-assets)) y el job `publish` adjunta los
+archivos a la Release.
 
 ## Cambios
 
@@ -161,9 +171,10 @@ artefacto nativo del host y no forma parte de `npm test`.
 Decisiones abiertas, no correcciones ya aplicadas:
 
 - **Nombres de asset.** Siguen el esquema `<versión>-rc.<n>-<plataforma>.zip`
-  (`0.1.4-rc.1-linux-x64.zip`): un asset publicado bajo el tag `v0.1.4` seguirá llamándose "rc.1"
-  porque `.github/workflows/release.yml` resuelve `VERSION=${GITHUB_REF_NAME#v}-rc.1`. Es coherente con
-  las Releases v0.1.1–v0.1.3 ya publicadas, pero sigue siendo una decisión pendiente.
+  (`0.1.4-rc.1-linux-x64.zip`) porque `.github/workflows/release.yml` resuelve
+  `VERSION=${GITHUB_REF_NAME#v}-rc.1`: los assets publicados bajo el tag `v0.1.4` llevan "rc.1" en el
+  nombre. Es coherente con las Releases v0.1.1–v0.1.3, pero el nombre no coincide con el tag y sigue
+  siendo una decisión pendiente.
 - **Sin firma de código de pago.** No hay Authenticode en Windows ni notarización de Apple en macOS;
   `candidate.json` lo declara (`unsigned: true`) y los checksums prueban integridad, no identidad del
   editor.

@@ -9,7 +9,7 @@ Entradas derivadas de `git log` y de los tags `v0.0.1`–`v0.1.3`; entre parént
 introduce cada cambio. Los artefactos publicados están en
 [GitHub Releases](https://github.com/AlexisVarela2811/CloudLocal/releases).
 
-## [0.1.4] — sin publicar
+## [0.1.4] — 2026-10-30
 
 ### Added
 
@@ -181,7 +181,7 @@ introduce cada cambio. Los artefactos publicados están en
 
 ---
 
-[0.1.4]: sin publicar (rama `release/0.1.4`)
+[0.1.4]: https://github.com/AlexisVarela2811/CloudLocal/releases/tag/v0.1.4
 [0.1.3]: https://github.com/AlexisVarela2811/CloudLocal/releases/tag/v0.1.3
 [0.1.2]: https://github.com/AlexisVarela2811/CloudLocal/releases/tag/v0.1.2
 [0.1.1]: https://github.com/AlexisVarela2811/CloudLocal/releases/tag/v0.1.1
