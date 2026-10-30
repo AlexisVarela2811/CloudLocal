@@ -3,21 +3,23 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const esbuild = require('esbuild');
 const { inject } = require('postject');
+const layout = require('./release-layout.cjs');
 
-// Host platform → executable name and platform id. The SEA base binary is
-// always process.execPath: the Node that runs this build. Node SEA requires the
-// blob and the base binary to come from the same Node build, and npm platform
-// packages for node binaries are incomplete (node-darwin-arm64 stopped at 18),
-// so each OS builds its own asset with its own interpreter.
-const PLATFORMS = {
-  win32: { exe: 'CloudLocal.exe', id: 'windows-x64' },
-  linux: { exe: 'cloudlocal-linux-x64', id: 'linux-x64' },
-  darwin: { exe: 'cloudlocal-darwin-arm64', id: 'darwin-arm64' },
-};
+// Host platform → executable name and platform id, from release-layout.cjs so the
+// built artifact, the candidate payload and the verification never disagree. The
+// SEA base binary is always process.execPath: the Node that runs this build. Node
+// SEA requires the blob and the base binary to come from the same Node build, and
+// npm platform packages for node binaries are incomplete (node-darwin-arm64
+// stopped at 18), so each OS builds its own asset with its own interpreter.
 
 async function main() {
-  const platform = PLATFORMS[process.platform];
+  const platform = layout.layoutFor(process.platform);
   if (!platform) throw new Error('Unsupported platform: ' + process.platform);
+  // Refuse to produce an artifact the asset name would mislabel.
+  if (platform.arch !== process.arch) {
+    throw new Error(platform.id + ' targets ' + platform.arch + ', but this host is ' +
+      process.platform + '-' + process.arch + '. Published targets are windows-x64, linux-x64 and darwin-arm64.');
+  }
   const root = path.resolve(__dirname, '../..');
   const dist = path.join(root, 'client', 'dist');
   const output = path.join(__dirname, '../dist');
@@ -56,7 +58,7 @@ async function main() {
   }));
   execFileSync(nodeExe, ['--experimental-sea-config', seaConfig], { stdio: 'inherit' });
 
-  const exePath = path.join(output, platform.exe);
+  const exePath = path.join(output, platform.binary);
   fs.copyFileSync(nodeExe, exePath);
 
   if (process.platform === 'darwin') {
@@ -118,6 +120,6 @@ async function main() {
     }
   }
 
-  console.log(`Built ${platform.exe} (${platform.id}): ${exePath}`);
+  console.log(`Built ${platform.binary} (${platform.id}): ${exePath}`);
 }
 main().catch(err => { console.error(err); process.exitCode = 1; });

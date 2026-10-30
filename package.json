@@ -1,6 +1,6 @@
 {
     "name": "CloudLocal",
-    "version": "0.1.1",
+    "version": "0.1.4",
     "private": true,
     "license": "MIT",
     "engines": {
@@ -13,6 +13,7 @@
         "start:frontend": "npm --workspace client run dev",
         "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
         "build:frontend": "npm --workspace client run build",
+        "check:docs": "node .scripts/check-links.cjs && node .scripts/check-endpoints.cjs",
         "lint:frontend": "npm --workspace client run lint",
         "preview:frontend": "npm --workspace client run preview",
         "test": "npm run test:server && npm run test:client && npm --prefix launcher test",

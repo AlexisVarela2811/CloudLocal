@@ -20,13 +20,15 @@ function cleanFixture(dir) {
   try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
 }
 
-// Platform identity, mirroring build.cjs and release.cjs.
-const PLATFORM_MAP = {
-  win32: { binary: 'CloudLocal.exe', id: 'windows-x64' },
-  linux: { binary: 'cloudlocal-linux-x64', id: 'linux-x64' },
-  darwin: { binary: 'cloudlocal-darwin-arm64', id: 'darwin-arm64' },
-};
-const PLATFORM = PLATFORM_MAP[process.platform];
+// Platform identity comes from release-layout.cjs, the same table build.cjs,
+// release.cjs, release-verify.cjs and smoke.cjs read.
+const layout = require('../scripts/release-layout.cjs');
+const PLATFORM = layout.layoutFor(process.platform);
+// Payload executable: inside the .app bundle on macOS, a loose file elsewhere.
+const EXE_REL = PLATFORM.kind === 'macos' ? layout.APP_EXECUTABLE : PLATFORM.binary;
+function candidateDirFor(proj, versionTag) {
+  return path.join(proj.distDir, 'release', (versionTag || '0.0.1-rc.1') + '-' + PLATFORM.id);
+}
 
 function createProjectFixture(fixtureDir) {
   const launcherDir = path.join(fixtureDir, 'launcher');
@@ -40,11 +42,17 @@ function createProjectFixture(fixtureDir) {
   fs.mkdirSync(resourcesDir, { recursive: true });
   fs.mkdirSync(serverDir, { recursive: true });
 
-  for (const name of ['release.cjs', 'release-verify.cjs']) {
+  for (const name of ['release.cjs', 'release-verify.cjs', 'release-layout.cjs']) {
     fs.copyFileSync(
       path.join(__dirname, '..', 'scripts', name),
       path.join(scriptsDir, name)
     );
+  }
+
+  // Packaging resources the platform layouts copy into the candidate.
+  for (const name of ['CloudLocal.icns', 'cloudlocal.png', 'CloudLocal.desktop', 'install.sh']) {
+    const source = path.join(__dirname, '..', 'resources', name);
+    if (fs.existsSync(source)) fs.copyFileSync(source, path.join(resourcesDir, name));
   }
 
   const exeBuf = Buffer.alloc(128 * 1024, 0);
@@ -116,16 +124,10 @@ function runVerify(dirPath, extraArgs = []) {
   });
 }
 
-// release.cjs builds the Windows-only release candidate (bsdtar from
-// System32, win32 platform fields), so tests that create a real candidate
-// only run on Windows. release-verify.cjs itself is pure fs and stays
-// covered there through the same tests.
-function winOnly() {
-  if (process.platform !== 'win32') this.skip();
-}
-
+// release.cjs now assembles a candidate on all three published platforms, so
+// only the Windows-specific bsdtar probe is host-gated.
 test('release: bsdtar.exe path is discoverable on Windows', function() {
-  winOnly.call(this);
+  if (process.platform !== 'win32') this.skip();
   const tarExe = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
   assert.ok(fs.existsSync(tarExe), 'bsdtar.exe should exist at ' + tarExe);
 });
@@ -154,8 +156,7 @@ test('release-verify.cjs --help prints usage and exits 0', () => {
   } finally { cleanFixture(fixture); }
 });
 
-test('release.cjs creates candidate; verify passes; extract validates', function() {
-  winOnly.call(this);
+test('release.cjs creates candidate; verify passes; extract validates', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -164,19 +165,19 @@ test('release.cjs creates candidate; verify passes; extract validates', function
     assert.equal(createResult.status, 0, 'release.cjs exit 0: ' + createResult.stderr);
     assert.ok(createResult.stdout.includes('Candidate created'));
 
-    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64');
+    const candidateDir = candidateDirFor(proj);
     assert.ok(fs.existsSync(candidateDir));
 
     // Check all payload files
-    for (const f of ['CloudLocal.exe', 'LICENSE', 'NODE-LICENSE.txt',
+    for (const f of [EXE_REL, 'LICENSE', 'NODE-LICENSE.txt',
       'THIRD-PARTY-NOTICES.txt', 'README.md', 'RELEASE-NOTES.md',
       'candidate.json', 'SHA256SUMS']) {
       assert.ok(fs.existsSync(path.join(candidateDir, f)), 'Expected: ' + f);
     }
 
     // Check .zip and .zip.sha256 siblings
-    const zipPath = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64.zip');
-    const zipShaPath = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64.zip.sha256');
+    const zipPath = candidateDirFor(proj) + '.zip';
+    const zipShaPath = zipPath + '.sha256';
     assert.ok(fs.existsSync(zipPath), '.zip exists');
     assert.ok(fs.existsSync(zipShaPath), '.zip.sha256 exists');
 
@@ -221,7 +222,7 @@ test('release.cjs creates candidate; verify passes; extract validates', function
       .includes('Unsigned'));
 
     // Verify exe hash matches provenance
-    const actualExeHash = sha256file(path.join(candidateDir, 'CloudLocal.exe'));
+    const actualExeHash = sha256file(path.join(candidateDir, EXE_REL));
     assert.equal(provData.sha256, actualExeHash);
   } finally { cleanFixture(fixture); }
 });
@@ -230,7 +231,7 @@ test('release.cjs rejects existing candidate directory (no-clobber)', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
-    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-' + PLATFORM.id);
+    const candidateDir = candidateDirFor(proj);
     fs.mkdirSync(candidateDir, { recursive: true });
     fs.writeFileSync(path.join(candidateDir, 'README.md'), 'existing');
 
@@ -253,7 +254,7 @@ test('release.cjs fails without LICENSE (no partial output)', () => {
     const result = runRelease(proj, '0.0.1-rc.1');
     assert.equal(result.status, 1);
     assert.ok(result.stderr.includes('LICENSE') || result.stderr.includes('Error'));
-    assert.ok(!fs.existsSync(path.join(proj.distDir, 'release', '0.0.1-rc.1-' + PLATFORM.id)));
+    assert.ok(!fs.existsSync(candidateDirFor(proj)));
   } finally { cleanFixture(fixture); }
 });
 
@@ -266,7 +267,7 @@ test('release.cjs fails without NODE-LICENSE (no partial output)', () => {
     const result = runRelease(proj, '0.0.1-rc.1');
     assert.equal(result.status, 1);
     assert.ok(result.stderr.includes('LICENSE') || result.stderr.includes('NODE'));
-    assert.ok(!fs.existsSync(path.join(proj.distDir, 'release', '0.0.1-rc.1-' + PLATFORM.id)));
+    assert.ok(!fs.existsSync(candidateDirFor(proj)));
   } finally { cleanFixture(fixture); }
 });
 
@@ -287,20 +288,19 @@ test('release.cjs fails when the platform binary is missing', () => {
     fs.unlinkSync(path.join(proj.distDir, PLATFORM.binary));
     const result = runRelease(proj, '0.0.1-rc.1');
     assert.equal(result.status, 1);
-    assert.ok(result.stderr.includes('CloudLocal.exe') || result.stderr.includes('not found'));
+    assert.ok(result.stderr.includes(PLATFORM.binary) || result.stderr.includes('not found'));
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: rejects — tampered CloudLocal.exe', function() {
-  winOnly.call(this);
+test('release-verify: rejects — tampered payload executable', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
     const r = runRelease(proj, '0.0.1-rc.1');
     assert.equal(r.status, 0);
 
-    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64');
-    const exePath = path.join(candidateDir, 'CloudLocal.exe');
+    const candidateDir = candidateDirFor(proj);
+    const exePath = path.join(candidateDir, EXE_REL);
     const data = fs.readFileSync(exePath);
     data[100] = (data[100] + 1) % 256;
     fs.writeFileSync(exePath, data);
@@ -311,15 +311,14 @@ test('release-verify: rejects — tampered CloudLocal.exe', function() {
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: rejects — tampered candidate.json', function() {
-  winOnly.call(this);
+test('release-verify: rejects — tampered candidate.json', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
     const r = runRelease(proj, '0.0.1-rc.1');
     assert.equal(r.status, 0);
 
-    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64');
+    const candidateDir = candidateDirFor(proj);
     const provData = JSON.parse(
       fs.readFileSync(path.join(candidateDir, 'candidate.json'), 'utf-8'));
     provData.unsigned = false;
@@ -332,15 +331,14 @@ test('release-verify: rejects — tampered candidate.json', function() {
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: rejects — missing checksum entries', function() {
-  winOnly.call(this);
+test('release-verify: rejects — missing checksum entries', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
     const r = runRelease(proj, '0.0.1-rc.1');
     assert.equal(r.status, 0);
 
-    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64');
+    const candidateDir = candidateDirFor(proj);
     fs.unlinkSync(path.join(candidateDir, 'NODE-LICENSE.txt'));
 
     const result = runVerify(candidateDir);
@@ -349,15 +347,14 @@ test('release-verify: rejects — missing checksum entries', function() {
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: rejects — symlink in payload', function() {
-  winOnly.call(this);
+test('release-verify: rejects — symlink in payload', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
     const r = runRelease(proj, '0.0.1-rc.1');
     assert.equal(r.status, 0);
 
-    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64');
+    const candidateDir = candidateDirFor(proj);
     const realFile = path.join(candidateDir, 'LICENSE');
     fs.unlinkSync(realFile);
     fs.mkdirSync(realFile, { recursive: true });
@@ -368,19 +365,18 @@ test('release-verify: rejects — symlink in payload', function() {
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: rejects — SHA256SUMS with path traversal', function() {
-  winOnly.call(this);
+test('release-verify: rejects — SHA256SUMS with path traversal', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
     const r = runRelease(proj, '0.0.1-rc.1');
     assert.equal(r.status, 0);
 
-    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64');
+    const candidateDir = candidateDirFor(proj);
     const fakeHash = 'a'.repeat(64);
     fs.writeFileSync(path.join(candidateDir, 'SHA256SUMS'),
       fakeHash + '  ../../../etc/passwd\n' +
-      fakeHash + '  CloudLocal.exe\n');
+      fakeHash + '  ' + EXE_REL + '\n');
 
     const result = runVerify(candidateDir);
     assert.equal(result.status, 1);
@@ -388,15 +384,14 @@ test('release-verify: rejects — SHA256SUMS with path traversal', function() {
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: no-clobber — verify does not modify candidate', function() {
-  winOnly.call(this);
+test('release-verify: no-clobber — verify does not modify candidate', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
     const r = runRelease(proj, '0.0.1-rc.1');
     assert.equal(r.status, 0);
 
-    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64');
+    const candidateDir = candidateDirFor(proj);
 
     const beforeHashes = {};
     for (const file of ['candidate.json', 'LICENSE', 'README.md', 'RELEASE-NOTES.md']) {
@@ -413,60 +408,52 @@ test('release-verify: no-clobber — verify does not modify candidate', function
   } finally { cleanFixture(fixture); }
 });
 
-test('release.cjs: candidate has exactly allowed files (no extras)', function() {
-  winOnly.call(this);
+test('release.cjs: candidate has exactly allowed files (no extras)', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
     const r = runRelease(proj, '0.0.1-rc.1');
     assert.equal(r.status, 0);
 
-    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64');
-    const allowed = [
-      'CloudLocal.exe', 'LICENSE', 'NODE-LICENSE.txt',
-      'THIRD-PARTY-NOTICES.txt', 'README.md', 'RELEASE-NOTES.md',
-      'candidate.json', 'SHA256SUMS',
-    ];
-    const actual = new Set(fs.readdirSync(candidateDir));
+    const candidateDir = candidateDirFor(proj);
+    const allowed = layout.payloadPaths(PLATFORM).concat('SHA256SUMS');
+    const actual = new Set(layout.collectPayload(candidateDir));
     for (const name of actual) assert.ok(allowed.includes(name), 'Disallowed: ' + name);
     for (const name of allowed) assert.ok(actual.has(name), 'Missing: ' + name);
   } finally { cleanFixture(fixture); }
 });
 
-test('release-verify: accepts explicit candidate directory path', function() {
-  winOnly.call(this);
+test('release-verify: accepts explicit candidate directory path', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
     const r = runRelease(proj, '0.0.1-rc.1');
     assert.equal(r.status, 0);
 
-    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64');
+    const candidateDir = candidateDirFor(proj);
     const result = runVerify(candidateDir);
     assert.equal(result.status, 0, 'Should accept explicit path: ' + result.stderr);
   } finally { cleanFixture(fixture); }
 });
 
-test('release.cjs: .zip.sha256 is sibling outside candidate, not inside', function() {
-  winOnly.call(this);
+test('release.cjs: .zip.sha256 is sibling outside candidate, not inside', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
     const r = runRelease(proj, '0.0.1-rc.1');
     assert.equal(r.status, 0);
 
-    const candidateDir = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64');
-    const zipShaPath = path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64.zip.sha256');
+    const candidateDir = candidateDirFor(proj);
+    const zipShaPath = candidateDirFor(proj) + '.zip.sha256';
     assert.ok(fs.existsSync(zipShaPath));
 
-    assert.ok(!fs.existsSync(path.join(candidateDir, '0.0.1-rc.1-windows-x64.zip.sha256')));
+    assert.ok(!fs.existsSync(path.join(candidateDir, '0.0.1-rc.1-' + PLATFORM.id + '.zip.sha256')));
 
     const sumContent = fs.readFileSync(path.join(candidateDir, 'SHA256SUMS'), 'utf-8');
     assert.ok(!sumContent.includes('zip.sha256'));
   } finally { cleanFixture(fixture); }
 });
-test('release: notices include hoisted production metadata and license text', function() {
-  winOnly.call(this);
+test('release: notices include hoisted production metadata and license text', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -479,14 +466,13 @@ test('release: notices include hoisted production metadata and license text', fu
     const result = runRelease(proj);
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.stderr, '');
-    const notices = fs.readFileSync(path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64', 'THIRD-PARTY-NOTICES.txt'), 'utf8');
+    const notices = fs.readFileSync(path.join(candidateDirFor(proj), 'THIRD-PARTY-NOTICES.txt'), 'utf8');
     assert.ok(notices.includes('demo-prod 1.0.0 (license: MIT)'), notices);
     assert.ok(notices.includes('Copyright demo production dependency'), notices);
   } finally { cleanFixture(fixture); }
 });
 
-test('release: bundled instructions are self-contained rather than repository links', function() {
-  winOnly.call(this);
+test('release: bundled instructions are self-contained rather than repository links', () => {
   const fixture = mkFixture();
   try {
     const proj = createProjectFixture(fixture);
@@ -494,9 +480,9 @@ test('release: bundled instructions are self-contained rather than repository li
     const result = runRelease(proj);
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.stderr, '');
-    const readme = fs.readFileSync(path.join(proj.distDir, 'release', '0.0.1-rc.1-windows-x64', 'README.md'), 'utf8');
+    const readme = fs.readFileSync(path.join(candidateDirFor(proj), 'README.md'), 'utf8');
     assert.ok(!readme.includes('docs/missing.md'));
-    assert.ok(readme.includes('CloudLocal.exe'));
+    assert.ok(readme.includes(PLATFORM.kind === 'macos' ? 'CloudLocal.app' : PLATFORM.binary));
     assert.ok(readme.includes('Apagar servidor'));
     assert.ok(readme.includes('SHA256SUMS'));
   } finally { cleanFixture(fixture); }
@@ -516,5 +502,90 @@ test('release: an existing archive is never overwritten even without its directo
     assert.ok(result.stderr.includes('already exists'));
     assert.equal(sha256file(zip), before);
     assert.ok(!fs.existsSync(path.join(release, '0.0.1-rc.1-' + PLATFORM.id)));
+  } finally { cleanFixture(fixture); }
+});
+
+test('release-verify: rejects — payload list that does not match the platform layout', () => {
+  const fixture = mkFixture();
+  try {
+    const proj = createProjectFixture(fixture);
+    assert.equal(runRelease(proj).status, 0);
+
+    const candidateDir = candidateDirFor(proj);
+    const provPath = path.join(candidateDir, 'candidate.json');
+    const provData = JSON.parse(fs.readFileSync(provPath, 'utf-8'));
+    provData.payload = ['LICENSE', 'NODE-LICENSE.txt', 'README.md'];
+    fs.writeFileSync(provPath, JSON.stringify(provData, null, 2) + '\n');
+
+    const result = runVerify(candidateDir);
+    assert.equal(result.status, 1);
+    assert.ok(result.stderr.includes('payload'), result.stderr);
+  } finally { cleanFixture(fixture); }
+});
+
+test('release-verify: rejects — declared executable outside the platform layout', () => {
+  const fixture = mkFixture();
+  try {
+    const proj = createProjectFixture(fixture);
+    assert.equal(runRelease(proj).status, 0);
+
+    const candidateDir = candidateDirFor(proj);
+    const provPath = path.join(candidateDir, 'candidate.json');
+    const provData = JSON.parse(fs.readFileSync(provPath, 'utf-8'));
+    provData.files.executable = 'cloudlocal-windows-x64';
+    fs.writeFileSync(provPath, JSON.stringify(provData, null, 2) + '\n');
+
+    const result = runVerify(candidateDir);
+    assert.equal(result.status, 1);
+    assert.ok(result.stderr.includes('executable should be'), result.stderr);
+  } finally { cleanFixture(fixture); }
+});
+
+test('release-verify: rejects — extra file in the candidate', () => {
+  const fixture = mkFixture();
+  try {
+    const proj = createProjectFixture(fixture);
+    assert.equal(runRelease(proj).status, 0);
+
+    const candidateDir = candidateDirFor(proj);
+    fs.writeFileSync(path.join(candidateDir, 'notes.txt'), 'unexpected');
+
+    const result = runVerify(candidateDir);
+    assert.equal(result.status, 1);
+    assert.ok(result.stderr.includes('Disallowed file'), result.stderr);
+  } finally { cleanFixture(fixture); }
+});
+
+test('release-verify: accepts the produced archive and rejects a non-archive', () => {
+  const fixture = mkFixture();
+  try {
+    const proj = createProjectFixture(fixture);
+    assert.equal(runRelease(proj).status, 0);
+    const candidateDir = candidateDirFor(proj);
+    const zipPath = candidateDir + '.zip';
+
+    const ok = runVerify(candidateDir, ['--archive', zipPath]);
+    assert.equal(ok.status, 0, ok.stderr);
+    assert.ok(ok.stdout.includes('Archive contains exactly the'), ok.stdout);
+
+    const notAZip = path.join(fixture, 'fake.zip');
+    fs.writeFileSync(notAZip, 'not a zip archive');
+    const bad = runVerify(candidateDir, ['--archive', notAZip]);
+    assert.equal(bad.status, 1);
+    assert.ok(bad.stderr.includes('not a zip archive'), bad.stderr);
+  } finally { cleanFixture(fixture); }
+});
+
+test('release-verify: rejects — executable without the 0755 mode', function() {
+  if (process.platform === 'win32') this.skip();
+  const fixture = mkFixture();
+  try {
+    const proj = createProjectFixture(fixture);
+    assert.equal(runRelease(proj).status, 0);
+    const candidateDir = candidateDirFor(proj);
+    fs.chmodSync(path.join(candidateDir, EXE_REL), 0o644);
+    const result = runVerify(candidateDir);
+    assert.equal(result.status, 1);
+    assert.ok(result.stderr.includes('Wrong mode'), result.stderr);
   } finally { cleanFixture(fixture); }
 });

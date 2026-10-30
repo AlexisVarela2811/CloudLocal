@@ -1,4 +1,4 @@
-# CloudLocal — Private Local File Server
+# CloudLocal — Servidor de archivos local privado
 
 **Un ejecutable pone en marcha tu nube local; los demás equipos entran desde el navegador.** Los archivos quedan en el ordenador servidor, que debe permanecer encendido y despierto. No se necesitan clientes, códigos de vinculación ni otra aplicación en Ubuntu, móviles u otros ordenadores para subir, consultar y descargar archivos.
 
@@ -44,16 +44,105 @@ CloudLocal es un servidor de archivos local privado que se ejecuta como un únic
 
 ## Instalación
 
-### Windows (ejecutable portátil)
+### Descargar desde Releases
 
-1. Descarga `launcher/dist/CloudLocal.exe` (construido en un equipo Windows x64)
-2. Ejecuta el archivo. El servidor funciona en segundo plano, sin consola
-3. El navegador se abre automáticamente en el equipo servidor; configura una contraseña de entre 12 y 256 caracteres en la pantalla inicial
-4. En **Configuración → Servidor → Conectar otros dispositivos**, consulta o copia la dirección. Ábrela desde otro equipo conectado a la misma red e inicia sesión.
+Descarga el ZIP de tu plataforma desde la página de Releases y extrae **todo** su contenido en una
+carpeta: <https://github.com/AlexisVarela2811/CloudLocal/releases/latest>.
 
-Si el navegador no se abre, visita `http://127.0.0.1:80` en el equipo servidor, usando el puerto real si es diferente. La configuración inicial solo está permitida desde ese equipo.
+| Sistema | Archivo (patrón) | Contenido del ZIP |
+|---|---|---|
+| Windows x64 | `<versión>-rc.<n>-windows-x64.zip` | `CloudLocal.exe` |
+| macOS (Apple Silicon) | `<versión>-rc.<n>-darwin-arm64.zip` | `CloudLocal.app` |
+| Linux x64 | `<versión>-rc.<n>-linux-x64.zip` | `cloudlocal-linux-x64`, `CloudLocal.desktop`, `cloudlocal.png`, `install.sh` |
 
-Para detenerlo, espera a que finalicen las transferencias y pulsa **Detener Server**. Se cierra únicamente la instancia que atiende esa dirección, no otros procesos de Node. Para reiniciar, ejecuta otra vez `CloudLocal.exe` y recarga la página; tus archivos y contraseña se conservan. Consulta [Detener y reiniciar](docs/server-launcher.md#detener-y-reiniciar).
+Ejemplo con la versión 0.1.4: `0.1.4-rc.1-linux-x64.zip`. Cada release publica además un archivo
+`<archivo>.zip.sha256` por cada ZIP, y dentro del ZIP un `SHA256SUMS` con el hash de cada archivo.
+
+**Arquitecturas disponibles**: solo `darwin-arm64` (macOS Apple Silicon) y `linux-x64` (Linux
+x86-64), además de `windows-x64`. No se publican builds para macOS Intel ni para Linux ARM
+(por ejemplo Raspberry Pi); en esos casos hay que compilar desde el código fuente.
+
+#### Windows (x64)
+
+1. Ejecuta `CloudLocal.exe`. El servidor funciona en segundo plano, sin consola.
+2. El navegador se abre automáticamente en el equipo servidor; configura una contraseña de entre 12 y 256 caracteres en la pantalla inicial.
+3. En **Configuración → Servidor → Conectar otros dispositivos**, copia la dirección. Ábrela desde otro equipo conectado a la misma red e inicia sesión.
+
+#### macOS (Apple Silicon)
+
+1. Abre `CloudLocal.app` (doble clic, o `open CloudLocal.app` desde Terminal).
+2. Si macOS bloquea la app, consulta [Si ves una advertencia](#si-ves-una-advertencia).
+3. El navegador se abre en el equipo servidor; configura la contraseña y usa **Configuración → Servidor → Conectar otros dispositivos** para el resto de equipos.
+
+#### Linux (x64)
+
+1. Ejecuta `./cloudlocal-linux-x64`. El ZIP conserva el permiso de ejecución; si tu extractor lo
+   pierde, aplica `chmod +x cloudlocal-linux-x64`.
+2. Opcional: `./install.sh` instala sin `root` en `~/.local` (binario `cloudlocal`, entrada de menú
+   `.desktop` e icono). `./install.sh --uninstall` deshace la instalación.
+3. El navegador se abre en el equipo servidor; configura la contraseña y usa **Configuración → Servidor → Conectar otros dispositivos** para el resto de equipos.
+
+### Notas de uso
+
+- **Solo red local.** CloudLocal usa HTTP sin cifrar y no está pensado para Internet. No publiques el puerto en el router, en un proxy público ni en un túnel; úsalo en tu LAN.
+- **El equipo servidor debe permanecer encendido y despierto**, con CloudLocal en ejecución. Los archivos viven en su disco.
+- **Los demás equipos entran con la IP de Configuración**: abre en el navegador la dirección que muestra **Configuración → Servidor → Conectar otros dispositivos** (por ejemplo `http://192.168.1.20:80`), usando el puerto real si es distinto de 80.
+- **La configuración inicial solo se permite desde el propio equipo servidor.** Si el navegador no se abre, visita `http://127.0.0.1:80` (o el puerto real) en ese equipo.
+- **Se apaga con "Apagar"**: espera a que terminen las transferencias y pulsa **Apagar** en la barra lateral, o **Configuración → Servidor → Apagar el servidor**. Se cierra únicamente la instancia que atiende esa dirección, no otros procesos de Node.
+- **Para reiniciar**, ejecuta otra vez el binario o la app y recarga la página; tus archivos y contraseña se conservan. Consulta [Detener y reiniciar](docs/server-launcher.md#detener-y-reiniciar).
+
+### Si ves una advertencia
+
+Los binarios de CloudLocal no llevan firma de código de pago: no hay Authenticode en Windows ni
+notarización de Apple en macOS. Las advertencias del sistema son esperables; elige según tu
+criterio y verifica la integridad antes de ejecutar.
+
+**Windows — SmartScreen ("Windows protegió tu PC")**
+
+1. Comprueba el SHA-256 del ZIP descargado (ver más abajo).
+2. En el diálogo, **Más información → Ejecutar de todas formas**. También puedes desbloquear el
+   archivo antes de ejecutarlo: clic derecho → **Propiedades** → **Desbloquear** → **Aplicar**.
+3. El binario no está firmado con Authenticode, por lo que SmartScreen no puede identificar al editor.
+
+**macOS — Gatekeeper ("no se puede abrir porque proviene de un desarrollador no identificado" o "está dañada")**
+
+El `.app` va firmado de forma *ad-hoc* (sin certificado de Apple ni notarización). Tras la descarga,
+macOS añade el atributo de cuarentena:
+
+```sh
+xattr -dr com.apple.quarantine CloudLocal.app
+open CloudLocal.app
+```
+
+Alternativas por interfaz: clic derecho sobre `CloudLocal.app` → **Abrir** → **Abrir**, o
+**Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente**. El mensaje "dañada" tras
+mover la app también se resuelve con `xattr -dr com.apple.quarantine`.
+
+**Verificar el SHA-256**
+
+Compara el hash del ZIP con el contenido del archivo `.zip.sha256` de la misma Release. Cada
+sistema tiene su comando:
+
+```sh
+# Linux
+sha256sum 0.1.4-rc.1-linux-x64.zip
+# macOS
+shasum -a 256 0.1.4-rc.1-darwin-arm64.zip
+```
+
+```bat
+rem Windows (PowerShell o CMD)
+certutil -hashfile 0.1.4-rc.1-windows-x64.zip SHA256
+```
+
+Dentro del ZIP, `SHA256SUMS` repite el mismo control para sus archivos: `sha256sum -c SHA256SUMS`.
+Un checksum demuestra integridad (que el archivo llegó completo y sin cambios), **no** identidad
+del editor ni autenticidad.
+
+**Compilar desde el código**
+
+Si prefieres no ejecutar binarios descargados —o tu arquitectura no está publicada—, construye el
+artefacto en tu equipo: consulta [Desarrollo (desde el código fuente)](#desarrollo-desde-el-código-fuente).
 
 ### Desarrollo (desde el código fuente)
 
@@ -104,31 +193,32 @@ npm run dev          # Inicia Vite en http://localhost:5173 con HMR
 |---|---|
 | `server/` | API REST (Node.js) que gestiona el sistema de archivos |
 | `client/` | Interfaz web React con TypeScript + TailwindCSS |
-| `launcher/` | Empaquetado portátil (Node.js SEA) — produce `CloudLocal.exe` |
+| `launcher/` | Empaquetado portátil (Node.js SEA) — produce el artefacto de cada plataforma: `CloudLocal.exe`, `CloudLocal.app` o el binario Linux |
 
 ---
 
 ## Arquitectura
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                        Red LAN                          │
-│                                                         │
-│  ┌──────────┐    HTTP     ┌──────────────────┐         │
-│  │  Navegador│ ──────────► │   server/        │         │
-│  │  (client/)│             │   (API + static) │         │
-│  └──────────┘             │                  │         │
-│  ┌──────────┐             │  ┌────────────┐  │         │
-│  │  Móvil   │ ──────────► │  │ .cloudlocal│  │         │
-│  └──────────┘             │  │ /state     │  │         │
-│                           │  └────────────┘  │         │
-│                           │  ┌────────────┐  │         │
-│                           │  │ .cloudlocal│  │         │
-│                           │  │ /files     │  │         │
-│                           │  └────────────┘  │         │
-│                           └──────────────────┘         │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                               Red LAN                                │
+│                                                                      │
+│  ┌────────────┐                        ┌──────────────────────────┐  │
+│  │ Navegador  │ HTTP /api ────────────►│ server/ · Express        │  │
+│  │ SPA React  │                        │ API JSON + estáticos     │  │
+│  │ client/dist│◄─────── SSE /api/events│ SPA (client/dist)        │  │
+│  └────────────┘                        │ (launcher: Node SEA)     │  │
+│  ┌────────────┐                        │                          │  │
+│  │ Móvil /    │ HTTP ─────────────────►│                          │  │
+│  │ otro equipo│                        │ dataDir                  │  │
+│  └────────────┘                        │  ~/.cloudlocal/files     │  │
+│                                        │  .cloudlocal/trash · tmp │  │
+│                                        │ stateDir                 │  │
+│                                        │  ~/.cloudlocal/state     │  │
+│                                        └──────────────────────────┘  │
+│                                                                      │
+│ un proceso · HTTP sin cifrar · solo en la LAN                        │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Server (`server/`)
@@ -136,10 +226,12 @@ npm run dev          # Inicia Vite en http://localhost:5173 con HMR
 API REST con autenticación basada en cookie (scrypt + token de sesión). Gestiona:
 
 - Listado y navegación de carpetas
-- Subida de archivos con barra de progreso
+- Subida de archivos con barra de progreso (máximo 4 subidas simultáneas; por encima responde `429`)
 - Descarga y vistas previas
-- Papelera (borrado temporal; eliminación permanente y vaciado vía API)
+- Papelera (borrado temporal, restauración, eliminación permanente y vaciado)
 - Configuración de carpeta de datos
+- Eventos en vivo por SSE (`/api/events`) para refrescar el listado sin recargar
+- Límite de intentos de inicio de sesión: 5 fallos por IP en una ventana de 15 minutos; a partir de ahí responde `429`
 - Cierre graceful del servidor HTTP
 
 ### Client (`client/`)
@@ -148,17 +240,29 @@ Aplicación React con TypeScript organizada en:
 
 - `App.tsx` — Orquestación principal (auth, routing, estado, shortcuts de teclado)
 - `components/Access.tsx` — Pantalla de autenticación (acceso con contraseña)
+- `components/Details.tsx` — Inspector de un elemento seleccionado
+- `components/MultiDetails.tsx` — Resumen de selección múltiple
+- `components/FileVisual.tsx` — Iconos y miniaturas por tipo de archivo
 - `components/Preview.tsx` — Modal de vista previa (imágenes, vídeo, audio, PDF)
 - `components/Settings.tsx` — Configuración y toggle de modo oscuro (toggle grande, 64px ancho)
 - `components/DragAndDrop.tsx` — Overlay de arrastrar y soltar (subida externa)
 - `components/UploadQueue.tsx` — Cola de subida con progreso y retry/cancel
 - `hooks/useDragUpload.ts` — Hook para arrastrar archivos externos
+- `hooks/useSSE.ts` — Conexión `EventSource` a `/api/events`
 - `api/api.ts` — Cliente HTTP Axios (todos los endpoints)
 - `workspace.mjs` — Utilidades (formateo, breadcrumb, tipado de preview)
 
 ### Launcher (`launcher/`)
 
-Bundler que combina servidor + frontend en un ejecutable portátil usando Node.js SEA (Single-Executable Application). Produce `launcher/dist/CloudLocal.exe`.
+Bundler que combina servidor + frontend en un ejecutable portátil usando Node.js SEA (Single-Executable Application). Cada sistema construye su propio artefacto en `launcher/dist/`:
+
+| Plataforma | Artefacto | Empaquetado de la Release |
+|---|---|---|
+| Windows x64 | `CloudLocal.exe` | ejecutable con icono `.ico` incrustado |
+| macOS (Apple Silicon) | `cloudlocal-darwin-arm64` | dentro de `CloudLocal.app` con `Contents/Resources/CloudLocal.icns`, firma ad-hoc y [entitlements](launcher/resources/darwin-entitlements.plist) |
+| Linux x64 | `cloudlocal-linux-x64` | binario más `CloudLocal.desktop`, `cloudlocal.png` e `install.sh` |
+
+El detalle de la Release multiplataforma está en [Notas de la versión 0.1.4](docs/release-0.1.4.md).
 
 ---
 
@@ -186,9 +290,11 @@ Bundler que combina servidor + frontend en un ejecutable portátil usando Node.j
 | `POST` | `/api/files/copy` | Copiar archivo/folder (`{from, to}`) |
 | `POST` | `/api/files/move` | Mover archivo (`{from, to}`) |
 | `POST` | `/api/files/moveFolder` | Mover carpeta (`{from, to}`) |
+| `POST` | `/api/files/paste` | Pegar del portapapeles interno (`{from, to, type}`) |
 | `POST` | `/api/files/permanent` | Eliminación permanente (`{id}`) |
 | `GET` | `/api/files/zip` | Descargar como ZIP (`?paths[]=`) |
-| `GET` | `/api/files/content` | Obtener contenido (`?path=`) |
+| `GET` | `/api/files/content` | Obtener contenido (`?path=`, `?inline=1` para ver en el navegador) |
+| `GET` | `/api/files/preview/*` | Miniatura de imagen (`*` = ruta relativa; responde `400` si no es una imagen) |
 
 ### Papelera
 
@@ -197,7 +303,6 @@ Bundler que combina servidor + frontend en un ejecutable portátil usando Node.j
 | `GET` | `/api/trash` | Listar archivos en papelera |
 | `POST` | `/api/trash/:id/restore` | Restaurar archivo |
 | `POST` | `/api/trash/empty` | Vaciar papelera (todos) |
-| `DELETE` | `/api/trash` | Borrar archivo permanentemente |
 
 ### Estado
 
@@ -205,18 +310,7 @@ Bundler que combina servidor + frontend en un ejecutable portátil usando Node.j
 |---|---|---|
 | `GET` | `/api/status` | Espacio en disco, límite de subida, URLs |
 | `GET` | `/api/session` | Estado de sesión actual |
-
-### Dispositivos
-
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `GET` | `/api/devices/` | Listar dispositivos vinculados |
-| `GET` | `/api/devices/offers` | Listar ofertas pendientes |
-| `POST` | `/api/devices/pair-code` | Generar código de emparejamiento |
-| `POST` | `/api/devices/:id/offers` | Enviar oferta a dispositivo |
-| `GET` | `/api/devices/:id/entries` | Listar entradas compartidas |
-| `GET` | `/api/devices/:id/content` | Obtener contenido compartido |
-| `DELETE` | `/api/devices/:id` | Desvincular dispositivo |
+| `GET` | `/api/events` | Stream SSE (`text/event-stream`) con los eventos `upload`, `folder`, `paste`, `move`, `copy`, `trash` y `restore` |
 
 ### Configuración
 
@@ -246,7 +340,7 @@ Bundler que combina servidor + frontend en un ejecutable portátil usando Node.j
 | `CLOUDLOCAL_STATE_DIR` | Ruta del directorio de estado y credenciales | `.cloudlocal/state` |
 | `CLOUDLOCAL_MAX_UPLOAD` | Tamaño máximo de archivo en bytes | `536870912` (512 MiB) |
 
-> El launcher (`CloudLocal.exe`) fija `CLOUDLOCAL_PORT=80` automáticamente; no se necesita configurar.
+> El launcher (el ejecutable, `CloudLocal.app` o el binario Linux) fija `CLOUDLOCAL_PORT=80` automáticamente; no se necesita configurar.
 
 ---
 
@@ -254,7 +348,7 @@ Bundler que combina servidor + frontend en un ejecutable portátil usando Node.j
 
 ### Sidebar
 
-Panel lateral fijo con navegación rápida a Archivos, Papelera y Configuración. Incluye indicador de estado del servidor (en línea/desconectado) y botón para cerrar sesión. En móvil se muestra como panel deslizable.
+Panel lateral fijo con navegación rápida a Archivos, Papelera y Configuración. Incluye indicador de estado del servidor (en línea/desconectado) y botón para cerrar sesión. Por debajo de 768 px de ancho deja de ocupar espacio: se oculta y se abre como panel deslizable con el botón de menú del topbar y un overlay para cerrarlo.
 
 ### Navegación de carpetas
 
@@ -312,7 +406,8 @@ Selecciona un archivo y pulsa F2. El nombre se convierte en un campo editable. P
 
 - **Mover a papelera**: Delete (seleccionados) o botón eliminar
 - **Restaurar**: botón "Restaurar" en la UI (restaura al path original)
-- **Eliminación permanente** y **vaciar papelera**: solo disponibles vía API
+- **Eliminación permanente**: acción por elemento en la vista de papelera
+- **Vaciar papelera**: botón "Vaciar papelera" (borra todos los elementos de forma definitiva)
 
 ### Modo oscuro
 
@@ -322,10 +417,10 @@ Actívalo en la sección Configuración mediante un toggle grande (64×34px) con
 
 | Breakpoint | Comportamiento |
 |---|---|
-| `> 1024px` | Sidebar fijo, tabla completa |
-| `768px – 1024px` | Sidebar fijo, espacio reducido |
-| `481px – 768px` | Sidebar deslizable, columna de detalles oculta |
-| `≤ 480px` | Sidebar deslizable, acciones compactadas |
+| `> 1024px` | Sidebar fijo; tabla con todas las columnas |
+| `769px – 1024px` | Sidebar fijo; se oculta la columna de tamaño |
+| `≤ 768px` | Sidebar fuera de pantalla (se abre con el botón de menú y overlay); se ocultan las columnas de tamaño y modificación |
+| `≤ 480px` | Igual que la anterior, con el panel más estrecho (260 px) y la cuadrícula en 3 columnas |
 
 ---
 
@@ -345,22 +440,24 @@ CloudLocal/
 │   │   ├── api/      # Cliente HTTP Axios (api.ts)
 │   │   ├── components/
 │   │   │   ├── Access.tsx        # Pantalla de acceso
+│   │   │   ├── Details.tsx       # Inspector de un elemento
+│   │   │   ├── MultiDetails.tsx  # Resumen de selección múltiple
+│   │   │   ├── FileVisual.tsx    # Iconos y miniaturas por tipo
 │   │   │   ├── DragAndDrop.tsx   # Overlay de drag & drop
 │   │   │   ├── Preview.tsx       # Modal de vista previa
 │   │   │   ├── Settings.tsx      # Configuración y toggle dark mode
-│   │   │   ├── UploadQueue.tsx   # Cola de subida con progreso
-│   │   │   └── Devices.tsx       # Gestión de dispositivos LAN
+│   │   │   └── UploadQueue.tsx   # Cola de subida con progreso
 │   │   ├── hooks/
-│   │   │   └── useDragUpload.ts  # Hook de drag & drop
-│   │   ├── App.tsx         # Orquestación principal
-│   │   └── index.css       # Estilos globales (variables, focus, themes)
+│   │   │   ├── useDragUpload.ts  # Hook de drag & drop
+│   │   │   └── useSSE.ts         # Eventos en vivo desde /api/events
+│   │   └── App.tsx         # Orquestación principal
 │   └── public/
 ├── launcher/         # Empaquetado portátil (Node.js SEA)
 │   └── src/
 │       ├── main.cjs
 │       ├── runtime.cjs
 │       └── tray.cjs
-└── odd/              # Especificaciones y tareas (ODD)
+└── docs/             # Notas de versión y documentación de la API
 ```
 
 #### Flujo de trabajo
@@ -377,7 +474,7 @@ CloudLocal/
 
 - **TypeScript**: strict mode habilitado. No uses `any` salvo necesidad documentada.
 - **Componentes React**: funcionales con hooks. Nombres `PascalCase`.
-- **CSS**: TailwindCSS como base, variables CSS personalizadas para theming. Sin modificar `index.css` salvo indicación.
+- **CSS**: TailwindCSS como base, variables CSS personalizadas para theming.
 - **Comentarios**: en español. JSDoc para funciones exportadas.
 - **Tests**: unitarios en `test/` por componente.
 - **Commits**: estilo [Conventional Commits](https://www.conventionalcommits.org/).
@@ -387,6 +484,9 @@ CloudLocal/
 ```sh
 # Compilar cliente (TypeScript + Vite)
 npm run build:frontend
+
+# Enlaces, anclas y que cada endpoint documentado exista en server/src
+npm run check:docs
 
 # Ejecutar tests (server + client + launcher)
 npm test
@@ -405,5 +505,6 @@ npm test
 
 - [Servidor portable y configuración](docs/server-launcher.md)
 - [API y autenticación](docs/api.md)
+- [Notas de la versión 0.1.4](docs/release-0.1.4.md)
 - [Notas de la versión 0.1.0](docs/release-0.1.0.md)
 - [Notas de la versión 0.0.1](docs/release-0.0.1.md)

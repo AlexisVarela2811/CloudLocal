@@ -1,26 +1,33 @@
 #!/usr/bin/env node
 'use strict';
 
-// launcher/scripts/release.cjs — creates a local 0.0.1 release candidate
-// with provenance metadata, SHA256SUMS, and a .zip archive sibling.
+// launcher/scripts/release.cjs — creates a local release candidate for the host
+// platform with provenance metadata, SHA256SUMS, and a .zip archive sibling.
+//
+// Windows ships a loose CloudLocal.exe; macOS ships CloudLocal.app (with the
+// .icns icon inside); Linux ships the binary plus a .desktop entry, a PNG icon
+// and a rootless install.sh. release-layout.cjs owns those names.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync, execSync } = require('node:child_process');
+const layout = require('./release-layout.cjs');
 
 // ── Project root: launcher/scripts → ../.. ────────────────────────────────
 const SCRIPT_DIR = path.resolve(__dirname);
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '../..');
 const LAUNCHER_DIR = path.resolve(SCRIPT_DIR, '..');
 const DIST_DIR = path.join(LAUNCHER_DIR, 'dist');
+const RESOURCES_DIR = path.join(LAUNCHER_DIR, 'resources');
 
 // ── Host platform identity (build.cjs produces the native binary) ─────────
-const PLATFORMS = {
-  win32: { id: 'windows-x64', binary: 'CloudLocal.exe', homeLabel: '%USERPROFILE%', hashPrefix: 'certutil -hashfile', hashSuffix: 'SHA256' },
-  linux: { id: 'linux-x64', binary: 'cloudlocal-linux-x64', homeLabel: '~', hashPrefix: 'sha256sum', hashSuffix: '' },
-  darwin: { id: 'darwin-arm64', binary: 'cloudlocal-darwin-arm64', homeLabel: '~', hashPrefix: 'shasum -a 256', hashSuffix: '' },
+const HOST_INFO = {
+  win32: { homeLabel: '%USERPROFILE%', hashPrefix: 'certutil -hashfile', hashSuffix: 'SHA256' },
+  linux: { homeLabel: '~', hashPrefix: 'sha256sum', hashSuffix: '' },
+  darwin: { homeLabel: '~', hashPrefix: 'shasum -a 256', hashSuffix: '' },
 };
-const PLATFORM = PLATFORMS[process.platform] || null;
+const LAYOUT = layout.layoutFor(process.platform);
+const PLATFORM = LAYOUT ? { ...LAYOUT, ...HOST_INFO[process.platform] } : null;
 
 // ── Product versions (read from package.json files) ────────────────────────
 
@@ -165,6 +172,165 @@ function createArchive(srcDir, zipPath) {
   });
 }
 
+// Written/copied documents keep a fixed mode so a restrictive umask cannot make
+// the candidate differ between machines (release-verify enforces 0644).
+function writeDocument(filePath, content) {
+  fs.writeFileSync(filePath, content);
+  if (process.platform !== 'win32') fs.chmodSync(filePath, 0o644);
+}
+
+// ── Candidate documents (README/RELEASE-NOTES) ────────────────────────────
+
+// Payload files of this platform, i.e. everything that is not a shared notice.
+function payloadDisplayPaths() {
+  if (!PLATFORM) return ['executable'];
+  return layout.payloadPaths(PLATFORM).filter(file => !layout.COMMON_FILES.includes(file));
+}
+
+function hashCommand(target) {
+  return PLATFORM.hashPrefix + ' ' + target + (PLATFORM.hashSuffix ? ' ' + PLATFORM.hashSuffix : '');
+}
+
+function executablePath() {
+  return PLATFORM.kind === 'macos' ? layout.APP_EXECUTABLE : PLATFORM.binary;
+}
+
+// Instructions bundled inside the archive: self-contained, no repository links.
+function archiveReadme(version) {
+  const lines = [
+    `# CloudLocal ${version} — ${PLATFORM.id}`,
+    '',
+    'Extrae todos los archivos del ZIP en una carpeta. No necesitas instalar Node.js ni Bun.',
+    '',
+  ];
+
+  if (PLATFORM.kind === 'windows') {
+    lines.push(
+      'Ejecuta CloudLocal.exe. El servidor funciona en segundo plano, sin consola.',
+    );
+  } else if (PLATFORM.kind === 'macos') {
+    lines.push(
+      'Abre CloudLocal.app (doble clic). El ejecutable está en Contents/MacOS/cloudlocal.',
+      'La app está firmada de forma ad-hoc, sin notarización de Apple: si macOS la bloquea',
+      'o dice que está dañada, ejecuta en Terminal:',
+      '',
+      '  xattr -dr com.apple.quarantine CloudLocal.app',
+      '',
+      'y vuelve a abrirla. Ese aviso es esperable: no hay certificado de desarrollador.',
+    );
+  } else {
+    lines.push(
+      'Ejecuta ./cloudlocal-linux-x64. El ZIP conserva el permiso 0755; si tu extractor lo',
+      'pierde, aplica chmod +x cloudlocal-linux-x64.',
+      '',
+      'Opcional: ./install.sh instala sin privilegios de administrador en ~/.local',
+      '(binario `cloudlocal`, entrada de menú CloudLocal.desktop e icono cloudlocal.png).',
+      './install.sh --uninstall deshace esa instalación.',
+    );
+  }
+
+  lines.push(
+    '',
+    'El navegador se abre automáticamente en el equipo servidor con el puerto real.',
+    'Configura allí la contraseña (entre 12 y 256 caracteres). Por seguridad,',
+    'la configuración inicial solo está permitida desde el equipo servidor.',
+    'Si el navegador no se abre, visita http://127.0.0.1:80 en ese equipo;',
+    'si se usa otro puerto, sustituye 80 por el puerto indicado al iniciar.',
+    '',
+    'En otros dispositivos de la misma LAN, abre la dirección que muestra',
+    'Configuración → Servidor → Conectar otros dispositivos, con ese puerto.',
+    'HTTP no cifra el tráfico: no publiques el puerto en Internet.', '',
+    'Los archivos se guardan por defecto en ' + PLATFORM.homeLabel + '/.cloudlocal/files y',
+    'las credenciales en ' + PLATFORM.homeLabel + '/.cloudlocal/state. Guarda copias de seguridad.', '',
+    'Para crear una carpeta usa el botón o Ctrl+Alt+N. Ctrl+N queda para el navegador.',
+    'Antes de detenerlo espera a que terminen las transferencias y pulsa Apagar servidor',
+    '(el botón Apagar de la barra lateral), o Configuración → Servidor → Apagar el servidor.',
+    'Solo se detiene esa instancia. Para reiniciar, ejecuta de nuevo ' +
+    (PLATFORM.kind === 'macos' ? 'CloudLocal.app' : PLATFORM.binary) + ' y recarga la página.', '',
+    'Verificación: ejecuta `' + hashCommand(executablePath()) + '` y compara el',
+    'resultado con SHA256SUMS. El ZIP tiene su checksum en un archivo .zip.sha256 separado.',
+    'Un checksum comprueba integridad, no identidad del editor ni autenticidad.', '',
+    'No se realizó firma confiable de CloudLocal ni notarización;',
+    (PLATFORM.kind === 'windows' ? 'no se verificó Authenticode. Windows puede mostrar advertencias de seguridad.' :
+      PLATFORM.kind === 'macos' ? 'la app solo tiene firma ad-hoc. macOS puede mostrar advertencias de seguridad.' :
+        'el binario no está firmado. Linux puede mostrar advertencias al ejecutarlo.'), '',
+    'Consulta RELEASE-NOTES.md, LICENSE, NODE-LICENSE.txt y THIRD-PARTY-NOTICES.txt.', ''
+  );
+  return lines.join('\n');
+}
+
+function describePayloadFile(file) {
+  if (file === layout.APP_BUNDLE) return 'macOS app bundle (Finder shows the .icns icon)';
+  if (file === layout.APP_EXECUTABLE) return 'packed executable inside the bundle (SEA)';
+  if (file === layout.APP_INFO_PLIST) return 'bundle metadata (CFBundleExecutable, version, icon)';
+  if (file === layout.APP_ICON) return 'application icon (Apple Icon Image) inside the bundle';
+  if (file === layout.LINUX_BINARY) return 'packed executable (SEA), mode 0755';
+  if (file === layout.LINUX_DESKTOP_ENTRY) return 'desktop menu entry (Exec=cloudlocal, Icon=cloudlocal)';
+  if (file === layout.LINUX_ICON) return 'desktop icon (PNG 256x256)';
+  if (file === layout.LINUX_INSTALLER) return 'per-user install helper (no root), mode 0755';
+  if (file === 'LICENSE') return 'MIT license (project)';
+  if (file === 'NODE-LICENSE.txt') return 'Node.js MIT license (Node 22.23.2)';
+  if (file === 'THIRD-PARTY-NOTICES.txt') return 'third-party dependency notices';
+  if (file === 'README.md') return 'usage instructions';
+  if (file === 'RELEASE-NOTES.md') return 'this file';
+  if (file === 'candidate.json') return 'machine-readable provenance';
+  if (file === 'SHA256SUMS') return 'checksums for verification';
+  return null;
+}
+
+function releaseNotes(versionTag, version, git) {
+  const payload = layout.payloadPaths(PLATFORM).filter(file => file !== 'SHA256SUMS');
+  const files = payload.map(file => '- `' + file + '` — ' + describePayloadFile(file));
+  files.push('- `SHA256SUMS` — checksums for verification');
+  const signing = PLATFORM.kind === 'windows'
+    ? ['Authenticode verification is unavailable in this environment. The upstream',
+      'Node signature may be invalidated by SEA injection; its status is not verified.']
+    : PLATFORM.kind === 'macos'
+      ? ['The bundle keeps an ad-hoc signature with the JIT entitlements V8 needs, but it is',
+        'not notarized and no developer certificate was used.']
+      : ['The Linux binary carries no signature.'];
+  return [
+    '# CloudLocal Release Notes',
+    '',
+    `## Version: ${versionTag}`,
+    '',
+    `## Product Version: ${version}`,
+    '',
+    `## Platform: ${PLATFORM.id}`,
+    '',
+    '### ⚠ Unsigned',
+    '',
+    'No trusted CloudLocal signing was performed.',
+    ...signing,
+    'Checksums provide integrity, not publisher identity.',
+    '',
+    '## Files',
+    '',
+    ...files,
+    '',
+    '## Verification',
+    '',
+    'Compute SHA-256 of each file and compare against SHA256SUMS:',
+    '',
+    '  `' + hashCommand(executablePath()) + '`',
+    '',
+    'or use the provided verify script:',
+    '',
+    '  `node launcher/scripts/release-verify.cjs <candidate-directory>`',
+    '',
+    'Archive checksum:',
+    '  File: <candidateName>.zip.sha256 (sibling of candidate directory)',
+    '',
+    '## Known Limitations',
+    '',
+    '- No trusted CloudLocal signing was performed; Authenticode/notarization was not verified.',
+    '- Built on branch `' + (git.branch || 'unknown') + '` from commit `' + (git.commit || 'unknown') + '`.',
+    git.dirty === true ? '- Working directory has uncommitted changes — content may differ from a clean build.' :
+      git.dirty === false ? '- Clean working directory.' :
+        '- Git status unknown (provenance may be incomplete).',
+  ].join('\n') + '\n';
+}
+
 // ── Usage / help ──────────────────────────────────────────────────────────
 
 function printHelp() {
@@ -185,8 +351,14 @@ function printHelp() {
   console.log('  launcher/dist/release/<candidateName>.zip.sha256 — archive checksum');
   console.log('');
   console.log('Candidate payload files:');
-  console.log('  ' + (PLATFORM ? PLATFORM.binary : 'executable') + ', LICENSE, NODE-LICENSE.txt, THIRD-PARTY-NOTICES.txt,');
-  console.log('  README.md, RELEASE-NOTES.md, candidate.json, SHA256SUMS');
+  const payload = payloadDisplayPaths();
+  for (const entry of payload) console.log('  ' + entry);
+  console.log('  ' + layout.COMMON_FILES.join(', '));
+  console.log('');
+  console.log('Platform layouts:');
+  console.log('  windows-x64  CloudLocal.exe (icon injected by build.cjs)');
+  console.log('  linux-x64    ' + [layout.LINUX_BINARY, layout.LINUX_DESKTOP_ENTRY, layout.LINUX_ICON, layout.LINUX_INSTALLER].join(', '));
+  console.log('  darwin-arm64 ' + layout.APP_BUNDLE + ' (' + [layout.APP_INFO_PLIST, layout.APP_EXECUTABLE, layout.APP_ICON].join(', ') + ')');
   console.log('');
   console.log('Verification:');
   console.log('  node launcher/scripts/release-verify.cjs <candidate-directory>');
@@ -197,6 +369,15 @@ function printHelp() {
 function main() {
   if (!PLATFORM) {
     console.error('Error: unsupported platform for release candidate: ' + process.platform);
+    process.exitCode = 1;
+    return;
+  }
+  // Only these architectures are published; a mislabeled asset is worse than a
+  // clear refusal, because the archive name is what users download.
+  if (PLATFORM.arch !== process.arch) {
+    console.error('Error: ' + PLATFORM.id + ' targets ' + PLATFORM.arch + ', but this host is ' +
+      process.platform + '-' + process.arch + '.');
+    console.error('Published targets are windows-x64, linux-x64 and darwin-arm64.');
     process.exitCode = 1;
     return;
   }
@@ -283,8 +464,15 @@ function main() {
   fs.mkdirSync(candidateRoot, { recursive: true });
 
   try {
-    fs.copyFileSync(exePath, path.join(candidateRoot, PLATFORM.binary));
-    const exeHashActual = sha256file(path.join(candidateRoot, PLATFORM.binary));
+    // Platform payload: loose executable, Linux extras, or a macOS .app bundle.
+    layout.writePayload({
+      layout: PLATFORM,
+      candidateRoot,
+      binarySource: exePath,
+      resourcesDir: RESOURCES_DIR,
+      version,
+    });
+    const exeHashActual = sha256file(path.join(candidateRoot, executablePath()));
     if (exeHashActual !== exeHash) {
       console.error('Error: Executable hash mismatch after copy');
       process.exitCode = 1;
@@ -293,6 +481,9 @@ function main() {
 
     fs.copyFileSync(requiredSourceFiles.LICENSE, path.join(candidateRoot, 'LICENSE'));
     fs.copyFileSync(requiredSourceFiles.NODE_LICENSE, path.join(candidateRoot, 'NODE-LICENSE.txt'));
+    if (process.platform !== 'win32') {
+      for (const name of ['LICENSE', 'NODE-LICENSE.txt']) fs.chmodSync(path.join(candidateRoot, name), 0o644);
+    }
 
     const tpLines = collectThirdPartyNotices();
     const thirdPartyContent = [
@@ -312,78 +503,11 @@ function main() {
       '- esbuild and postject are build tools, not standalone programs in this archive.',
       '- The Node.js runtime and its bundled dependencies retain the terms in NODE-LICENSE.txt.',
     ].join('\n') + '\n';
-    fs.writeFileSync(path.join(candidateRoot, 'THIRD-PARTY-NOTICES.txt'), thirdPartyContent);
+    writeDocument(path.join(candidateRoot, 'THIRD-PARTY-NOTICES.txt'), thirdPartyContent);
 
     // Bundle user instructions without links to files outside this archive.
-    fs.writeFileSync(path.join(candidateRoot, 'README.md'), [
-      `# CloudLocal ${version} — candidato local para ${PLATFORM.id}`, '',
-      'Extrae todos los archivos del ZIP en una carpeta y ejecuta ' + PLATFORM.binary + '.',
-      'No necesitas instalar Node.js ni Bun. El servidor funciona sin consola.', '',
-      'El navegador se abre automáticamente en el equipo servidor con el puerto real.',
-      'Configura allí la contraseña (entre 12 y 256 caracteres). Por seguridad,',
-      'la configuración inicial solo está permitida desde el equipo servidor.',
-      'Si el navegador no se abre, visita http://127.0.0.1:80 en ese equipo;',
-      'si se usa otro puerto, sustituye 80 por el puerto indicado al iniciar.', '',
-      'En otros dispositivos de la misma LAN, abre la IP del servidor con ese puerto.',
-      'Mantén el servidor encendido. HTTP no cifra el tráfico: no publiques el puerto en Internet.', '',
-      'Los archivos se guardan por defecto en ' + PLATFORM.homeLabel + '/.cloudlocal/files y',
-      'las credenciales en ' + PLATFORM.homeLabel + '/.cloudlocal/state. Guarda copias de seguridad.', '',
-      'Para crear una carpeta usa el botón o Ctrl+Alt+N. Ctrl+N queda para el navegador.',
-      'Antes de detenerlo espera a que terminen las transferencias y usa el botón Apagar servidor.',
-      'Solo se detiene esa instancia. Para reiniciar, ejecuta de nuevo ' + PLATFORM.binary + ' y recarga la página.', '',
-      'Verificación: ejecuta ' + PLATFORM.hashPrefix + ' ' + PLATFORM.binary + (PLATFORM.hashSuffix ? ' ' + PLATFORM.hashSuffix : '') + ' y compara el',
-      'resultado con SHA256SUMS. El ZIP tiene su checksum en un archivo .zip.sha256 separado.',
-      'Un checksum comprueba integridad, no identidad del editor ni autenticidad.', '',
-      'Este candidato es local y no publicado. No se realizó firma confiable de CloudLocal;',
-      'no se verificó Authenticode. Windows puede mostrar advertencias de seguridad.',
-      'Consulta RELEASE-NOTES.md, LICENSE, NODE-LICENSE.txt y THIRD-PARTY-NOTICES.txt.', ''
-    ].join('\n'));
-
-    fs.writeFileSync(path.join(candidateRoot, 'RELEASE-NOTES.md'), [
-      '# CloudLocal Release Notes',
-      '',
-      `## Version: ${versionTag}`,
-      '',
-      `## Product Version: ${version}`,
-      '',
-      '### ⚠ Unsigned Local Candidate',
-      '',
-      'This is a local candidate; no trusted CloudLocal signing has been performed.',
-      'Authenticode verification is unavailable in this environment. The upstream',
-      'Node signature may be invalidated by SEA injection; its status is not verified.',
-      'Windows may show a security warning. Checksums provide integrity, not publisher identity.',
-      '',
-      '## Files',
-      '',
-      '- `' + PLATFORM.binary + '` — the packed executable (SEA' + (process.platform === 'win32' ? ', GUI subsystem' : '') + ')',
-      '- `LICENSE` — MIT license (project)',
-      '- `NODE-LICENSE.txt` — Node.js MIT license (Node 22.23.2)',
-      '- `THIRD-PARTY-NOTICES.txt` — third-party dependency notices',
-      '- `README.md` — usage instructions',
-      '- `RELEASE-NOTES.md` — this file',
-      '- `candidate.json` — machine-readable provenance',
-      '- `SHA256SUMS` — checksums for verification',
-      '',
-      '## Verification',
-      '',
-      'Compute SHA-256 of each file and compare against SHA256SUMS:',
-      '',
-      '  `' + PLATFORM.hashPrefix + ' ' + PLATFORM.binary + (PLATFORM.hashSuffix ? ' ' + PLATFORM.hashSuffix : '') + '`' + (process.platform === 'win32' ? ' (Windows)' : '') + ',',
-      '  or use the provided verify script:',
-      '',
-      '  `node launcher/scripts/release-verify.cjs <candidate-directory>`',
-      '',
-      'Archive checksum:',
-      '  File: <candidateName>.zip.sha256 (sibling of candidate directory)',
-      '',
-      '## Known Limitations',
-      '',
-      '- No trusted CloudLocal signing was performed; Authenticode status was not verified.',
-      '- Built on branch `' + (git.branch || 'unknown') + '` from commit `' + (git.commit || 'unknown') + '`.',
-      git.dirty === true ? '- Working directory has uncommitted changes — content may differ from a clean build.' :
-      git.dirty === false ? '- Clean working directory.' :
-      '- Git status unknown (provenance may be incomplete).',
-    ].join('\n') + '\n');
+    writeDocument(path.join(candidateRoot, 'README.md'), archiveReadme(version));
+    writeDocument(path.join(candidateRoot, 'RELEASE-NOTES.md'), releaseNotes(versionTag, version, git));
 
     const candidate = {
       name: 'CloudLocal',
@@ -409,7 +533,12 @@ function main() {
         launcher: versions.launcher,
       },
       files: {
-        executable: PLATFORM.binary,
+        executable: executablePath(),
+        appBundle: PLATFORM.kind === 'macos' ? layout.APP_BUNDLE : null,
+        desktopEntry: PLATFORM.kind === 'linux' ? layout.LINUX_DESKTOP_ENTRY : null,
+        icon: PLATFORM.kind === 'macos' ? layout.APP_ICON
+          : PLATFORM.kind === 'linux' ? layout.LINUX_ICON : null,
+        installer: PLATFORM.kind === 'linux' ? layout.LINUX_INSTALLER : null,
         license: 'LICENSE',
         nodeLicense: 'NODE-LICENSE.txt',
         thirdPartyNotices: 'THIRD-PARTY-NOTICES.txt',
@@ -418,28 +547,19 @@ function main() {
         provenance: 'candidate.json',
         checksums: 'SHA256SUMS',
       },
+      // Exactly the files SHA256SUMS covers, in payload order.
+      payload: layout.payloadPaths(PLATFORM).filter(file => file !== 'SHA256SUMS'),
       builtAt: new Date().toISOString(),
       buildTool: 'esbuild + postject',
       runtime: 'node22',
     };
     fs.writeFileSync(path.join(candidateRoot, 'candidate.json'), JSON.stringify(candidate, null, 2) + '\n');
 
-    const payloadFiles = [
-      PLATFORM.binary,
-      'LICENSE',
-      'NODE-LICENSE.txt',
-      'THIRD-PARTY-NOTICES.txt',
-      'README.md',
-      'RELEASE-NOTES.md',
-      'candidate.json',
-    ];
     const sumLines = [];
-    for (const file of payloadFiles) {
+    for (const file of candidate.payload) {
       const fpath = path.join(candidateRoot, file);
-      if (fs.existsSync(fpath)) {
-        const hash = sha256file(fpath);
-        sumLines.push(hash + '  ' + file);
-      }
+      if (!fs.existsSync(fpath)) throw new Error('Payload file missing after assembly: ' + file);
+      sumLines.push(sha256file(fpath) + '  ' + file);
     }
     fs.writeFileSync(path.join(candidateRoot, 'SHA256SUMS'), sumLines.join('\n') + '\n');
 
@@ -450,7 +570,8 @@ function main() {
     fs.writeFileSync(zipPath + '.sha256', zipHash + '  ' + candidateName + '.zip\n');
 
     console.log('Candidate created: ' + candidateRoot);
-    console.log('  Executable: CloudLocal.exe (' + exeHashActual + ')');
+    console.log('  Payload: ' + payloadDisplayPaths().join(', '));
+    console.log('  Executable: ' + executablePath() + ' (' + exeHashActual + ')');
     console.log('  Archive: ' + zipPath);
     console.log('  Archive SHA-256: ' + zipHash);
     console.log('  Commit: ' + (git.commit || 'unknown') + ' (' + (git.branch || 'unknown') + (git.dirty === true ? ' [dirty]' : git.dirty === false ? ' [clean]' : ' [unknown]') + ')');

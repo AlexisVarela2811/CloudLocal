@@ -7,7 +7,7 @@ Candidato `0.0.1-rc.1` para Windows x64. La aplicación se conserva tal como fue
 1. Extrae todos los archivos del ZIP y ejecuta `CloudLocal.exe`. No necesitas instalar Node.js ni Bun.
 2. Configura la contraseña desde `http://localhost:80` en el equipo servidor. El launcher intenta el puerto 5000 si el preferido no está disponible; usa la dirección y el puerto reales del inicio.
 3. En otros equipos de la LAN, abre la IP del servidor con ese puerto e inicia sesión.
-4. Espera a que finalicen las transferencias antes de pulsar **Detener Server**. Solo se cierra esa instancia. Para reiniciar, ejecuta el archivo otra vez y recarga la página.
+4. Espera a que finalicen las transferencias antes de pulsar **Apagar**. Solo se cierra esa instancia. Para reiniciar, ejecuta el archivo otra vez y recarga la página.
 
 El equipo servidor debe permanecer encendido. HTTP no cifra el tráfico: úsalo únicamente en una red de confianza y no expongas el puerto a Internet. Conserva copias de seguridad de tus archivos.
 

@@ -73,15 +73,16 @@ jobs:
 
       - name: Verify release candidate
         shell: bash
-        run: npm run release:verify -- "launcher/dist/release/$VERSION-${{ matrix.platform }}"
+        run: npm run release:verify -- "launcher/dist/release/$VERSION-${{ matrix.platform }}" --archive "launcher/dist/release/$VERSION-${{ matrix.platform }}.zip"
 
-      - name: Smoke test the executable
-        run: npm run smoke:exe
+      - name: Smoke test the packaged candidate
+        shell: bash
+        run: npm run smoke:exe -- "launcher/dist/release/$VERSION-${{ matrix.platform }}"
 
       - name: Upload candidate artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cloudlocal-$VERSION-${{ matrix.platform }}
+          name: cloudlocal-${{ env.VERSION }}-${{ matrix.platform }}
           path: |
             launcher/dist/release/${{ env.VERSION }}-${{ matrix.platform }}.zip
             launcher/dist/release/${{ env.VERSION }}-${{ matrix.platform }}.zip.sha256

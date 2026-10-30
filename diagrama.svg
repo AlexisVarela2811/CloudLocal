@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1760" height="1160" viewBox="0 0 1760 1160" role="img" aria-labelledby="svg-title svg-desc" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
 <title id="svg-title">CloudLocal — Arquitectura del sistema</title>
-<desc id="svg-desc">Diagrama técnico CloudLocal: Frontend React con inspector de selección múltiple y miniaturas, Backend Express.js con eventos SSE, almacenamiento local con papelera, ejecutable Windows Node SEA, navegadores de la LAN, autenticación, seguridad y compresión. Estilo según design/system.md: acento teal, fondo cream, Inter y radios 5/8/12/16.</desc>
+<desc id="svg-desc">Diagrama técnico CloudLocal: Frontend React con inspector de selección múltiple y miniaturas, Backend Express.js con eventos SSE, almacenamiento local con papelera, ejecutable Node SEA para Windows, macOS y Linux, navegadores de la LAN, autenticación, seguridad y compresión. Estilo según design/system.md: acento teal, fondo cream, Inter y radios 5/8/12/16.</desc>
 <defs>
   <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#ddd6cd" opacity=".5"/></pattern>
   <linearGradient id="page" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f5f0eb"/><stop offset="1" stop-color="#efe9e1"/></linearGradient>
@@ -19,7 +19,7 @@
 <rect x="1264" y="62" width="190" height="40" rx="8" fill="#fdfbf6" stroke="#ddd6cd" stroke-width="1" />
 <text x="1359" y="88" font-size="14" fill="#1a1f2b" font-weight="600" text-anchor="middle"  >APLICACIÓN LOCAL</text>
 <rect x="1466" y="62" width="230" height="40" rx="8" fill="rgba(13,148,136,0.08)" stroke="rgba(13,148,136,0.35)" stroke-width="1" />
-<text x="1581" y="88" font-size="14" fill="#0d9488" font-weight="600" text-anchor="middle"  >WINDOWS  ·  LAN</text>
+<text x="1581" y="88" font-size="12.5" fill="#0d9488" font-weight="600" letter-spacing="0.3" text-anchor="middle"  >WINDOWS · MACOS · LINUX</text>
 <line x1="64" y1="148" x2="1696" y2="148" stroke="#ddd6cd" stroke-width="1.5" />
 <!-- 01 · Frontend -->
 <rect x="64" y="182" width="441" height="365" rx="12" fill="rgba(13,148,136,0.05)" stroke="none" stroke-width="1" opacity="0.5"/>
@@ -131,8 +131,8 @@
 <text x="867" y="643" font-size="13" fill="#687382" font-weight="400" text-anchor="start"  >Lógica de archivos</text>
 <text x="1108" y="529" font-size="12" fill="#7c3aed" font-weight="700" text-anchor="start" letter-spacing="1.2" >UPLOADS · MULTER</text>
 <text x="1108" y="558" font-size="14.3" fill="#1a1f2b" font-weight="550" text-anchor="start"  >diskStorage · tempDir</text>
-<text x="1108" y="585" font-size="14.3" fill="#1a1f2b" font-weight="550" text-anchor="start"  >4 transferencias en paralelo</text>
-<text x="1108" y="612" font-size="14.3" fill="#1a1f2b" font-weight="550" text-anchor="start"  >Máximo: 512 MB</text>
+<text x="1108" y="585" font-size="14.3" fill="#1a1f2b" font-weight="550" text-anchor="start"  >hasta 4 subidas a la vez</text>
+<text x="1108" y="612" font-size="14.3" fill="#1a1f2b" font-weight="550" text-anchor="start"  >Máximo: 512 MiB</text>
 <text x="1108" y="643" font-size="13" fill="#687382" font-weight="400" text-anchor="start"  >Carga controlada</text>
 <rect x="612" y="684" width="716" height="104" rx="12" fill="rgba(124,58,237,0.05)" stroke="rgba(124,58,237,0.22)" stroke-width="1.0" />
 <text x="630" y="709" font-size="12" fill="#7c3aed" font-weight="700" text-anchor="start" letter-spacing="1.2" >OPERACIONES DISPONIBLES</text>
@@ -167,13 +167,13 @@
 <text x="1672" y="214" font-size="13" fill="#15803d" font-weight="700" text-anchor="end" letter-spacing="1" >04</text>
 <rect x="1451" y="258" width="224" height="79" rx="12" fill="rgba(21,128,61,0.05)" stroke="rgba(21,128,61,0.22)" stroke-width="1.0" />
 <text x="1465" y="281" font-size="12" fill="#15803d" font-weight="700" text-anchor="start" letter-spacing="1.2" >DIRECTORIO BASE</text>
-<text x="1465" y="305" font-size="16" fill="#1a1f2b" font-weight="700" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >dataDir / upload</text>
+<text x="1465" y="305" font-size="14.5" fill="#1a1f2b" font-weight="700" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >~/.cloudlocal/files</text>
 <text x="1465" y="324" font-size="12.8" fill="#687382" font-weight="400" text-anchor="start"  >Almacenamiento local</text>
 <rect x="1451" y="350" width="224" height="99" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
 <text x="1465" y="373" font-size="12" fill="#15803d" font-weight="700" text-anchor="start" letter-spacing="1.2" >ESTRUCTURA</text>
 <text x="1465" y="397" font-size="14" fill="#1a1f2b" font-weight="550" text-anchor="start"  >archivos · carpetas</text>
-<text x="1465" y="419" font-size="14" fill="#1a1f2b" font-weight="550" text-anchor="start"  >trash · .cloudlocal</text>
-<text x="1465" y="440" font-size="14" fill="#1a1f2b" font-weight="550" text-anchor="start"  >tmp</text>
+<text x="1465" y="419" font-size="14" fill="#1a1f2b" font-weight="550" text-anchor="start"  >.cloudlocal/trash</text>
+<text x="1465" y="440" font-size="14" fill="#1a1f2b" font-weight="550" text-anchor="start"  >.cloudlocal/tmp</text>
 <!-- 05 · Launcher -->
 <rect x="1430" y="500" width="266" height="313" rx="12" fill="rgba(180,83,9,0.05)" stroke="none" stroke-width="1" opacity="0.5"/>
 <rect x="1430" y="495" width="266" height="313" rx="16" fill="#fdfbf6" stroke="rgba(180,83,9,0.30)" stroke-width="1.35" />
@@ -194,11 +194,11 @@
 <text x="1465" y="673" font-size="13.3" fill="#1a1f2b" font-weight="600" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >esbuild · sea.json</text>
 <text x="1465" y="687" font-size="13.0" fill="#687382" font-weight="400" text-anchor="start"  >sea.blob · postject</text>
 <rect x="1451" y="701" width="224" height="88" rx="12" fill="#fdfbf6" stroke="#ece7de" stroke-width="1.0" />
-<text x="1465" y="720" font-size="12" fill="#b45309" font-weight="700" text-anchor="start" letter-spacing="1.2" >RUNTIME WINDOWS</text>
-<text x="1465" y="741" font-size="13.5" fill="#1a1f2b" font-weight="600" text-anchor="start"  >Node 22 · win-x64</text>
+<text x="1465" y="720" font-size="12" fill="#b45309" font-weight="700" text-anchor="start" letter-spacing="1.2" >RUNTIME DEL HOST</text>
+<text x="1465" y="741" font-size="13.5" fill="#1a1f2b" font-weight="600" text-anchor="start"  >Node 22 · 3 plataformas</text>
 <text x="1465" y="759" font-size="12.8" fill="#1a1f2b" font-weight="550" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >launch() · start · onReady</text>
-<text x="1465" y="773" font-size="12.0" fill="#1a1f2b" font-weight="550" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >5000/5001 · SIGINT · SIGTERM</text>
-<text x="1465" y="788" font-size="11.5" fill="#687382" font-weight="400" text-anchor="start"  >stdin · shutdown</text>
+<text x="1465" y="773" font-size="12.0" fill="#1a1f2b" font-weight="550" text-anchor="start" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace" >puerto 80 · 5000 respaldo</text>
+<text x="1465" y="784" font-size="11.5" fill="#687382" font-weight="400" text-anchor="start"  >SIGINT · SIGTERM · stdin</text>
 <!-- Arrows -->
 <path d="M510 322 L583 322" fill="none" stroke="#0d9488" stroke-width="3" marker-end="url(#ar-teal)" stroke-linecap="round"/>
 <text x="546.5" y="300" font-size="12" fill="#0d9488" font-weight="700" text-anchor="middle"  >HTTP /api</text>

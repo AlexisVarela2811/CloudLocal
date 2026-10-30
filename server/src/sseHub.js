@@ -23,7 +23,7 @@ class SseHub {
 
   /**
    * Emit an event to all subscribers.
-   * @param {string} type — action type (upload, trash, restore, copy, move, rename, empty)
+   * @param {string} type — action type (upload, folder, paste, move, copy, trash, restore)
    * @param {object} [payload] — optional extra data
    */
   emit(type, payload = {}) {
