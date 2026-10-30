@@ -11,6 +11,14 @@ introduce cada cambio. Los artefactos publicados están en
 
 ## [0.1.4] — sin publicar
 
+### Security
+
+- `npm audit fix` (sin `--force`) resuelve los dos avisos de severidad high: **multer** 2.4.0 →
+  2.5.0 (GHSA-q7qp-rjg7-q26m) y **body-parser** 1.20.8 → 1.20.9 (GHSA-27r3-jxmh-p828). Ambas son
+  actualizaciones de parche dentro del rango declarado: ningún `package.json` cambió y no hizo falta
+  un salto major. El árbol de dependencias del servidor queda hoisteado en la raíz, sin cambios de
+  versión en el resto de paquetes.
+
 ### Changed
 
 - **Instalación desde Releases**: el README deja de apuntar a `launcher/dist/CloudLocal.exe`
