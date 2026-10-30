@@ -391,7 +391,10 @@ function macBundleProblems(candidateDir) {
 function linuxExtrasProblems(candidateDir) {
   const problems = [];
   const desktop = fs.readFileSync(path.join(candidateDir, layout.LINUX_DESKTOP_ENTRY), 'utf8');
-  const field = key => (new RegExp('^' + key + '=(.*)$', 'm').exec(desktop) || [])[1];
+  const field = key => {
+    const match = new RegExp('^' + key + '=(.*)$', 'm').exec(desktop);
+    return match ? match[1].trim() : undefined;
+  };
   if (!/^\[Desktop Entry\]$/m.test(desktop)) problems.push('CloudLocal.desktop has no [Desktop Entry] group');
   if (field('Type') !== 'Application') problems.push('CloudLocal.desktop Type must be Application');
   if (!field('Exec')) problems.push('CloudLocal.desktop has no Exec line');
