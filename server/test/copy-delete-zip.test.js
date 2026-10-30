@@ -329,6 +329,296 @@ test('POST /api/files/upload: accepts normal file extensions', async t => {
     assert.equal((await request('/api/files/upload', form('music.mp3', 'mp3'))).status, 201);
 });
 
+// ---- STORAGE SAFETY S1: destination names must not become addresses ----
+
+async function exists(target) {
+    try {
+        await fs.stat(target);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// Everything the user can see; .cloudlocal is server internals.
+function userEntries(names) {
+    return names.filter(name => name !== '.cloudlocal').sort();
+}
+
+async function makeFolder(request, folder, name) {
+    assert.equal((await request('/api/folders', jsonBody('POST', { folder, name }))).status, 201);
+}
+
+test('POST /api/files/copy: a destination name that is a path is rejected and writes nothing', async t => {
+    const { request, root } = await fixture(t);
+    await setup(request);
+    await uploadFile(request, 'note.txt', 'payload');
+    await makeFolder(request, '', 'keep');
+    const files = path.join(root, 'files');
+
+    for (const newName of ['../escaped.txt', '..\\escaped.txt', 'nested/evil.txt', '../../escaped.txt',
+        '/absolute/evil.txt', '../.cloudlocal/trash/evil.txt']) {
+        const res = await request('/api/files/copy', jsonBody('POST', { from: 'note.txt', to: 'keep', newName }));
+        assert.equal(res.status, 400, `${newName} is rejected instead of resolved`);
+    }
+
+    assert.deepEqual(await fs.readdir(path.join(files, 'keep')), [], 'a rejected name still wrote into the folder');
+    assert.deepEqual(userEntries(await fs.readdir(files)), ['keep', 'note.txt']);
+    assert.deepEqual(await fs.readdir(path.join(files, '.cloudlocal', 'trash')), [], 'a rejected name reached internal storage');
+    assert.equal(await exists(path.join(root, 'escaped.txt')), false);
+    assert.equal(await exists(path.join(files, 'escaped.txt')), false);
+    assert.equal(await fs.readFile(path.join(files, 'note.txt'), 'utf8'), 'payload');
+
+    // A plain destination name is still accepted after the rejections.
+    assert.equal((await request('/api/files/copy', jsonBody('POST', { from: 'note.txt', to: 'keep', newName: 'copy.txt' }))).status, 200);
+    assert.deepEqual(userEntries(await fs.readdir(path.join(files, 'keep'))), ['copy.txt']);
+});
+
+test('POST /api/files/copy: a destination folder outside storage is rejected', async t => {
+    const { request, root } = await fixture(t);
+    await setup(request);
+    await uploadFile(request, 'note.txt', 'payload');
+    await makeFolder(request, '', 'keep');
+    const files = path.join(root, 'files');
+
+    for (const to of ['../escaped', 'keep/../../escaped', './keep', '..\\keep', '/tmp/evil']) {
+        assert.equal((await request('/api/files/copy', jsonBody('POST', { from: 'note.txt', to }))).status, 400, `${to} is not a storage folder`);
+    }
+
+    assert.deepEqual(userEntries(await fs.readdir(files)), ['keep', 'note.txt']);
+    assert.deepEqual(userEntries(await fs.readdir(root)), ['files', 'state']);
+    assert.equal(await exists(path.join(root, 'escaped')), false);
+});
+
+test('POST /api/folders: a created name cannot become a path', async t => {
+    const { request, root } = await fixture(t);
+    await setup(request);
+    const files = path.join(root, 'files');
+
+    for (const body of [{ folder: '', name: '../escaped' }, { folder: '', name: '..\\escaped' },
+        { folder: '', name: 'a/b' }, { folder: '../', name: 'evil' }, { folder: 'keep/..', name: 'evil' }]) {
+        assert.equal((await request('/api/folders', jsonBody('POST', body))).status, 400, `${JSON.stringify(body)} is rejected`);
+    }
+
+    assert.deepEqual(userEntries(await fs.readdir(files)), []);
+    assert.deepEqual(userEntries(await fs.readdir(root)), ['files', 'state']);
+    await makeFolder(request, '', 'ok');
+});
+
+test('POST /api/files/paste: destination folder traversal leaves the source untouched', async t => {
+    const { request, root } = await fixture(t);
+    await setup(request);
+    await makeFolder(request, '', 'src');
+    await uploadFile(request, 'data.txt', 'payload', 'src');
+    await uploadFile(request, 'note.txt', 'payload');
+    const files = path.join(root, 'files');
+
+    assert.equal((await request('/api/files/paste', jsonBody('POST', { from: 'src', to: '../escaped', type: 'folder' }))).status, 400);
+    assert.equal((await request('/api/files/paste', jsonBody('POST', { from: 'src', to: 'src/../../escaped', type: 'folder' }))).status, 400);
+    assert.equal((await request('/api/files/paste', jsonBody('POST', { from: 'note.txt', to: '../escaped', type: 'file' }))).status, 400);
+
+    assert.deepEqual(userEntries(await fs.readdir(files)), ['note.txt', 'src']);
+    assert.deepEqual(userEntries(await fs.readdir(path.join(files, 'src'))), ['data.txt']);
+    assert.equal(await exists(path.join(root, 'escaped')), false);
+});
+
+test('POST /api/files/move: a rename destination cannot escape its folder', async t => {
+    const { request, root } = await fixture(t);
+    await setup(request);
+    await uploadFile(request, 'old.txt', 'legacy');
+    await makeFolder(request, '', 'keep');
+    await uploadFile(request, 'inside.txt', 'kept', 'keep');
+    const files = path.join(root, 'files');
+
+    for (const to of ['../../escaped.txt', 'keep/../../escaped.txt', '..\\escaped.txt']) {
+        assert.equal((await request('/api/files/move', jsonBody('POST', { from: 'old.txt', to }))).status, 400, `${to} does not rename across folders`);
+    }
+    assert.equal((await request('/api/files/move', jsonBody('POST', { from: 'old.txt', to: 'keep/../..', mode: 'into' }))).status, 400);
+
+    assert.equal(await fs.readFile(path.join(files, 'old.txt'), 'utf8'), 'legacy');
+    assert.equal(await fs.readFile(path.join(files, 'keep', 'inside.txt'), 'utf8'), 'kept');
+    assert.equal(await exists(path.join(root, 'escaped.txt')), false);
+    assert.equal(await exists(path.join(files, 'escaped.txt')), false);
+});
+
+test('POST /api/files/upload: the folder query and the uploaded name stay inside storage', async t => {
+    const { request, root } = await fixture(t);
+    await setup(request);
+    await makeFolder(request, '', 'keep');
+    const files = path.join(root, 'files');
+
+    for (const folder of ['../escape', 'keep/../../escape', './keep']) {
+        assert.equal((await uploadFile(request, 'note.txt', 'payload', folder)).status, 400, `folder=${folder} is rejected`);
+    }
+
+    // A client that sends a path as the file name gets a name, not an address.
+    const escaped = await uploadFile(request, '../escaped.txt', 'name path');
+    assert.equal(escaped.status, 201);
+    assert.equal((await escaped.json()).file.path, 'escaped.txt');
+
+    assert.deepEqual(userEntries(await fs.readdir(files)), ['escaped.txt', 'keep']);
+    assert.equal(await exists(path.join(root, 'escape')), false);
+    assert.equal(await exists(path.join(root, 'escaped.txt')), false);
+});
+
+// ---- STORAGE SAFETY S2: two mutations competing for the same place ----
+
+test('POST /api/files/copy: concurrent copies into one destination reserve distinct names', async t => {
+    const { request, root } = await fixture(t);
+    await setup(request);
+    await makeFolder(request, '', 'left');
+    await makeFolder(request, '', 'right');
+    await makeFolder(request, '', 'dest');
+    await uploadFile(request, 'same.txt', 'first', 'left');
+    await uploadFile(request, 'same.txt', 'second', 'right');
+    const files = path.join(root, 'files');
+
+    const [a, b] = await Promise.all([
+        request('/api/files/copy', jsonBody('POST', { from: 'left/same.txt', to: 'dest' })),
+        request('/api/files/copy', jsonBody('POST', { from: 'right/same.txt', to: 'dest' })),
+    ]);
+    assert.equal(a.status, 200);
+    assert.equal(b.status, 200);
+    const paths = [(await a.json()).entry.path, (await b.json()).entry.path];
+    assert.equal(new Set(paths).size, 2, 'both copies claim the same destination');
+    assert.deepEqual(userEntries(await fs.readdir(path.join(files, 'dest'))), ['same (1).txt', 'same.txt']);
+
+    const contents = [];
+    for (const item of paths) contents.push(await fs.readFile(path.join(files, ...item.split('/')), 'utf8'));
+    assert.deepEqual(contents.sort(), ['first', 'second'], 'a concurrent copy overwrote another file');
+    assert.equal(await fs.readFile(path.join(files, 'left', 'same.txt'), 'utf8'), 'first');
+    assert.equal(await fs.readFile(path.join(files, 'right', 'same.txt'), 'utf8'), 'second');
+});
+
+test('POST /api/files/paste: concurrent folder copies reserve distinct destinations', async t => {
+    const { request, root } = await fixture(t);
+    await setup(request);
+    await makeFolder(request, '', 'src');
+    await uploadFile(request, 'data.txt', 'payload', 'src');
+    await makeFolder(request, '', 'dest');
+    const files = path.join(root, 'files');
+
+    const [a, b] = await Promise.all([
+        request('/api/files/paste', jsonBody('POST', { from: 'src', to: 'dest', type: 'folder' })),
+        request('/api/files/paste', jsonBody('POST', { from: 'src', to: 'dest', type: 'folder' })),
+    ]);
+    assert.equal(a.status, 200);
+    assert.equal(b.status, 200);
+    const paths = [(await a.json()).entry.path, (await b.json()).entry.path];
+    assert.equal(new Set(paths).size, 2, 'both folder copies landed on the same destination');
+    assert.deepEqual(userEntries(await fs.readdir(path.join(files, 'dest'))), ['src', 'src (1)']);
+
+    for (const item of paths) {
+        assert.equal(await fs.readFile(path.join(files, ...item.split('/'), 'data.txt'), 'utf8'), 'payload');
+    }
+    assert.equal(await fs.readFile(path.join(files, 'src', 'data.txt'), 'utf8'), 'payload');
+});
+
+test('POST /api/files/move: concurrent moves to one destination keep one winner and both sources', async t => {
+    const { request, root } = await fixture(t);
+    await setup(request);
+    await makeFolder(request, '', 'left');
+    await makeFolder(request, '', 'right');
+    await makeFolder(request, '', 'dest');
+    await uploadFile(request, 'same.txt', 'first', 'left');
+    await uploadFile(request, 'same.txt', 'second', 'right');
+    const files = path.join(root, 'files');
+
+    const [a, b] = await Promise.all([
+        request('/api/files/move', jsonBody('POST', { from: 'left/same.txt', to: 'dest' })),
+        request('/api/files/move', jsonBody('POST', { from: 'right/same.txt', to: 'dest' })),
+    ]);
+    assert.deepEqual([a.status, b.status].sort(), [200, 409], 'two moves wrote the same destination');
+    const winner = a.status === 200 ? 'left/same.txt' : 'right/same.txt';
+    const loser = a.status === 200 ? 'right/same.txt' : 'left/same.txt';
+    await Promise.all([a.json(), b.json()]);
+
+    const contents = await Promise.all([
+        fs.readFile(path.join(files, 'dest', 'same.txt'), 'utf8'),
+        fs.readFile(path.join(files, ...loser.split('/')), 'utf8'),
+    ]);
+    assert.deepEqual(contents.sort(), ['first', 'second'], 'the losing move lost its bytes');
+    assert.equal(await exists(path.join(files, ...winner.split('/'))), false);
+});
+
+test('DELETE /api/files: concurrent trashes of one path move the file once', async t => {
+    const { request, root } = await fixture(t);
+    await setup(request);
+    await uploadFile(request, 'gone.txt', 'bytes');
+    const files = path.join(root, 'files');
+
+    const [a, b] = await Promise.all([
+        request('/api/files/?path=gone.txt', { method: 'DELETE' }),
+        request('/api/files/?path=gone.txt', { method: 'DELETE' }),
+    ]);
+    assert.deepEqual([a.status, b.status].sort(), [200, 404], 'one file was trashed twice');
+    await Promise.all([a.json(), b.json()]);
+
+    const trash = (await (await request('/api/trash')).json()).entries;
+    assert.deepEqual(trash.map(entry => entry.path), ['gone.txt']);
+    assert.deepEqual(userEntries(await fs.readdir(files)), []);
+});
+
+test('POST /api/files/copy racing DELETE /api/files keeps the bytes reachable', async t => {
+    const { request, root } = await fixture(t);
+    await setup(request);
+    await uploadFile(request, 'same.txt', 'payload');
+    await makeFolder(request, '', 'dest');
+    const files = path.join(root, 'files');
+
+    const [copy, trash] = await Promise.all([
+        request('/api/files/copy', jsonBody('POST', { from: 'same.txt', to: 'dest' })),
+        request('/api/files/?path=same.txt', { method: 'DELETE' }),
+    ]);
+    const copyBody = await copy.json();
+    const trashBody = await trash.json();
+    assert.equal(trash.status, 200, 'the source was neither copied out nor trashed');
+    assert.ok([200, 404].includes(copy.status), `unexpected copy status ${copy.status}`);
+    assert.equal(await exists(path.join(files, 'same.txt')), false);
+
+    if (copy.status === 200) {
+        assert.equal(copyBody.entry.path, 'dest/same.txt');
+        assert.equal(await fs.readFile(path.join(files, 'dest', 'same.txt'), 'utf8'), 'payload');
+    } else {
+        assert.deepEqual(await fs.readdir(path.join(files, 'dest')), []);
+    }
+
+    // The original is still recoverable from trash either way.
+    const restored = await request(`/api/trash/${trashBody.entry.id}/restore`, jsonBody('POST', {}));
+    assert.equal(restored.status, 200);
+    assert.equal((await restored.json()).entry.path, 'same.txt');
+    assert.equal(await fs.readFile(path.join(files, 'same.txt'), 'utf8'), 'payload');
+});
+
+test('POST /api/folders racing POST /api/files/moveFolder for one name resolves to one winner', async t => {
+    const { request, root } = await fixture(t);
+    await setup(request);
+    await makeFolder(request, '', 'source');
+    await makeFolder(request, 'source', 'same');
+    await uploadFile(request, 'data.txt', 'data', 'source/same');
+    await makeFolder(request, '', 'dest');
+    const files = path.join(root, 'files');
+
+    const [created, moved] = await Promise.all([
+        request('/api/folders', jsonBody('POST', { folder: 'dest', name: 'same' })),
+        request('/api/files/moveFolder', jsonBody('POST', { from: 'source/same', to: 'dest' })),
+    ]);
+    const createdBody = await created.json();
+    const movedBody = await moved.json();
+
+    if (created.status === 201) {
+        assert.equal(moved.status, 409, 'a move replaced a folder created at the same name');
+        assert.deepEqual(await fs.readdir(path.join(files, 'dest', 'same')), []);
+        assert.equal(await fs.readFile(path.join(files, 'source', 'same', 'data.txt'), 'utf8'), 'data');
+    } else {
+        assert.equal(created.status, 409);
+        assert.equal(moved.status, 200);
+        assert.equal(movedBody.entry.path, 'dest/same');
+        assert.equal(await fs.readFile(path.join(files, 'dest', 'same', 'data.txt'), 'utf8'), 'data');
+        assert.equal(await exists(path.join(files, 'source', 'same')), false);
+    }
+});
+
 // ---- buildZipArchive unit tests ----
 
 test('buildZipArchive: creates valid zip with one file', async t => {

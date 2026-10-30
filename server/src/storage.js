@@ -235,8 +235,15 @@ function createStorage(root) {
     try {
       const payloadPath = path.join(trashDir, id);
       const payloadInfo = await fsp.lstat(payloadPath);
-      if (payloadInfo.isDirectory()) await fsp.rename(payloadPath, target);
-      else await moveExclusive(payloadPath, target);
+      if (payloadInfo.isDirectory()) {
+        try {
+          await fsp.lstat(target);
+          throw new StorageError('Destination already exists', 409);
+        } catch (error) {
+          if (error.code !== 'ENOENT') throw error;
+        }
+        await fsp.rename(payloadPath, target);
+      } else await moveExclusive(payloadPath, target);
       await fsp.unlink(path.join(trashDir, `${id}.json`));
       const { info } = await locate(parts);
       return entry(parts.slice(0, -1), parts.at(-1), info);
@@ -250,17 +257,11 @@ function createStorage(root) {
 
   async function move(relativePath, targetFolder, newName) {
     const parts = segments(relativePath);
-    let source;
-    try {
-      const result = await locate(parts, 'file');
-      source = result.absolute;
-    } catch {
-      const result = await locate(parts, 'directory');
-      source = result.absolute;
-    }
+    const { absolute: source, info: sourceInfo } = await locate(parts);
+    if (!sourceInfo.isFile() && !sourceInfo.isDirectory()) throw new StorageError('Unsupported storage entry');
     const targetParts = segments(targetFolder, true);
     const { absolute: targetDir } = await locate(targetParts, 'directory');
-    const targetName = newName || parts.at(-1);
+    const targetName = newName === undefined ? parts.at(-1) : component(newName);
     const target = path.join(targetDir, targetName);
     try {
       const targetInfo = await fsp.lstat(target);
@@ -269,7 +270,10 @@ function createStorage(root) {
     } catch (error) {
       if (error.code !== 'ENOENT') throw filesystemError(error);
     }
-    await renameFile(source, target);
+    try {
+      if (sourceInfo.isFile()) await moveExclusive(source, target);
+      else await renameFile(source, target);
+    } catch (error) { throw filesystemError(error); }
     const info = await fsp.lstat(target);
     return entry(targetParts, targetName, info);
   }
@@ -279,7 +283,7 @@ function createStorage(root) {
     const { absolute: source } = await locate(parts, 'directory');
     const targetParts = segments(targetFolder, true);
     const { absolute: targetDir } = await locate(targetParts, 'directory');
-    const targetName = newName || parts.at(-1);
+    const targetName = newName === undefined ? parts.at(-1) : component(newName);
     const target = path.join(targetDir, targetName);
     try {
       const targetInfo = await fsp.lstat(target);
@@ -306,26 +310,22 @@ function createStorage(root) {
     const { absolute: source } = await locate(parts, 'file');
     const targetParts = segments(targetFolder, true);
     const { absolute: targetDir } = await locate(targetParts, 'directory');
-    const targetName = newName || parts.at(-1);
+    const targetName = newName === undefined ? parts.at(-1) : component(newName);
     validateExtension(targetName);
-    let target = path.join(targetDir, targetName);
-    // Handle collision: append (1), (2), etc.
-    try {
-      const existing = await fsp.lstat(target);
-      if (existing.isFile() || existing.isDirectory()) {
-        const baseName = path.basename(targetName, path.extname(targetName));
-        const ext = path.extname(targetName);
-        let counter = 1;
-        do {
-          target = path.join(targetDir, `${baseName} (${counter})${ext}`);
-          counter++;
-          await fsp.lstat(target);
-        } while (true); // lstat throws on ENOENT, we catch and continue
+    const ext = path.extname(targetName);
+    const baseName = path.basename(targetName, ext);
+    let target;
+    for (let counter = 0; ; counter++) {
+      const name = counter ? `${baseName} (${counter})${ext}` : targetName;
+      component(name);
+      target = path.join(targetDir, name);
+      try {
+        await fsp.copyFile(source, target, fs.constants.COPYFILE_EXCL);
+        break;
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw filesystemError(error);
       }
-    } catch (error) {
-      if (error.code !== 'ENOENT') throw filesystemError(error);
     }
-    await fsp.copyFile(source, target);
     const info = await fsp.lstat(target);
     return entry(targetParts, path.basename(target), info);
   }
@@ -335,7 +335,7 @@ function createStorage(root) {
     const { absolute: source } = await locate(parts, 'directory');
     const targetParts = segments(to, true);
     const { absolute: targetDir } = await locate(targetParts, 'directory');
-    const targetName = newName || parts.at(-1);
+    const targetName = newName === undefined ? parts.at(-1) : component(newName);
     let target = path.join(targetDir, targetName);
     try {
       const existing = await fsp.lstat(target);
@@ -353,11 +353,13 @@ function createStorage(root) {
       if (error.code !== 'ENOENT') throw filesystemError(error);
     }
     await fsp.mkdir(target);
+    try {
     const entries = await fsp.readdir(source);
     for (const name of entries) {
       const src = path.join(source, name);
       const dst = path.join(target, name);
       const info = await fsp.lstat(src);
+      if (info.isSymbolicLink()) throw new StorageError('Symbolic links are not allowed');
       if (info.isDirectory()) {
         // Copy subfolder recursively
         await fsp.mkdir(dst);
@@ -368,7 +370,11 @@ function createStorage(root) {
       }
     }
     const info = await fsp.lstat(target);
-    return entry(targetParts, targetName, info);
+    return entry(targetParts, path.basename(target), info);
+    } catch (error) {
+      await fsp.rm(target, { recursive: true, force: true });
+      throw error;
+    }
   }
 
   async function _copyFolderRecursive(src, dst) {
@@ -377,6 +383,7 @@ function createStorage(root) {
       const srcEntry = path.join(src, name);
       const dstEntry = path.join(dst, name);
       const info = await fsp.lstat(srcEntry);
+      if (info.isSymbolicLink()) throw new StorageError('Symbolic links are not allowed');
       if (info.isDirectory()) {
         await fsp.mkdir(dstEntry);
         await _copyFolderRecursive(srcEntry, dstEntry);
@@ -427,8 +434,21 @@ function createStorage(root) {
     return { deleted: deletedIds.length };
   }
 
-  return { tempDir, list, mkdir, importFile, resolveFile, trash, listTrash, restore, usage,
-    move, moveFolder, copy, copyFolder, permanentDelete, emptyTrash, validateExtension };
+  // Serialize this storage instance's mutations. Other processes must not modify
+  // the storage tree concurrently; they do not participate in this queue.
+  let mutation = Promise.resolve();
+  function serialized(fn) {
+    return (...args) => {
+      const result = mutation.then(() => fn(...args));
+      mutation = result.catch(() => {});
+      return result;
+    };
+  }
+  return { tempDir, list, mkdir: serialized(mkdir), importFile: serialized(importFile), resolveFile,
+    trash: serialized(trash), listTrash, restore: serialized(restore), usage,
+    move: serialized(move), moveFolder: serialized(moveFolder), copy: serialized(copy),
+    copyFolder: serialized(copyFolder), permanentDelete: serialized(permanentDelete),
+    emptyTrash: serialized(emptyTrash), validateExtension };
 }
 
 // CRC32 lookup table

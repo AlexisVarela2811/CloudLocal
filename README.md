@@ -86,6 +86,7 @@ x86-64), además de `windows-x64`. No se publican builds para macOS Intel ni par
 
 - **Solo red local.** CloudLocal usa HTTP sin cifrar y no está pensado para Internet. No publiques el puerto en el router, en un proxy público ni en un túnel; úsalo en tu LAN.
 - **El equipo servidor debe permanecer encendido y despierto**, con CloudLocal en ejecución. Los archivos viven en su disco.
+- **Evita modificar la carpeta de almacenamiento desde otros programas mientras CloudLocal está activo.** Las operaciones de una misma instancia de CloudLocal se coordinan entre sí, pero los cambios simultáneos de otros procesos o de otra instancia no están protegidos por esa coordinación.
 - **Los demás equipos entran con la IP de Configuración**: abre en el navegador la dirección que muestra **Configuración → Servidor → Conectar otros dispositivos** (por ejemplo `http://192.168.1.20:80`), usando el puerto real si es distinto de 80.
 - **La configuración inicial solo se permite desde el propio equipo servidor.** Si el navegador no se abre, visita `http://127.0.0.1:80` (o el puerto real) en ese equipo.
 - **Se apaga con "Apagar"**: espera a que terminen las transferencias y pulsa **Apagar** en la barra lateral, o **Configuración → Servidor → Apagar el servidor**. Se cierra únicamente la instancia que atiende esa dirección, no otros procesos de Node.
