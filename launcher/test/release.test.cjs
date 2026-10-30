@@ -126,11 +126,8 @@ function runVerify(dirPath, extraArgs = []) {
 
 // release.cjs now assembles a candidate on all three published platforms, so
 // only the Windows-specific bsdtar probe is host-gated.
-function winOnly() {
+test('release: bsdtar.exe path is discoverable on Windows', function() {
   if (process.platform !== 'win32') this.skip();
-}
-
-test('release: bsdtar.exe path is discoverable on Windows', () => {
   const tarExe = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
   assert.ok(fs.existsSync(tarExe), 'bsdtar.exe should exist at ' + tarExe);
 });
