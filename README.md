@@ -44,16 +44,105 @@ CloudLocal es un servidor de archivos local privado que se ejecuta como un únic
 
 ## Instalación
 
-### Windows (ejecutable portátil)
+### Descargar desde Releases
 
-1. Descarga `launcher/dist/CloudLocal.exe` (construido en un equipo Windows x64)
-2. Ejecuta el archivo. El servidor funciona en segundo plano, sin consola
-3. El navegador se abre automáticamente en el equipo servidor; configura una contraseña de entre 12 y 256 caracteres en la pantalla inicial
-4. En **Configuración → Servidor → Conectar otros dispositivos**, consulta o copia la dirección. Ábrela desde otro equipo conectado a la misma red e inicia sesión.
+Descarga el ZIP de tu plataforma desde la página de Releases y extrae **todo** su contenido en una
+carpeta: <https://github.com/AlexisVarela2811/CloudLocal/releases/latest>.
 
-Si el navegador no se abre, visita `http://127.0.0.1:80` en el equipo servidor, usando el puerto real si es diferente. La configuración inicial solo está permitida desde ese equipo.
+| Sistema | Archivo (patrón) | Contenido del ZIP |
+|---|---|---|
+| Windows x64 | `<versión>-rc.<n>-windows-x64.zip` | `CloudLocal.exe` |
+| macOS (Apple Silicon) | `<versión>-rc.<n>-darwin-arm64.zip` | `CloudLocal.app` |
+| Linux x64 | `<versión>-rc.<n>-linux-x64.zip` | `cloudlocal-linux-x64`, `CloudLocal.desktop`, `cloudlocal.png`, `install.sh` |
 
-Para detenerlo, espera a que finalicen las transferencias y pulsa **Detener Server**. Se cierra únicamente la instancia que atiende esa dirección, no otros procesos de Node. Para reiniciar, ejecuta otra vez `CloudLocal.exe` y recarga la página; tus archivos y contraseña se conservan. Consulta [Detener y reiniciar](docs/server-launcher.md#detener-y-reiniciar).
+Ejemplo con la versión 0.1.4: `0.1.4-rc.1-linux-x64.zip`. Cada release publica además un archivo
+`<archivo>.zip.sha256` por cada ZIP, y dentro del ZIP un `SHA256SUMS` con el hash de cada archivo.
+
+**Arquitecturas disponibles**: solo `darwin-arm64` (macOS Apple Silicon) y `linux-x64` (Linux
+x86-64), además de `windows-x64`. No se publican builds para macOS Intel ni para Linux ARM
+(por ejemplo Raspberry Pi); en esos casos hay que compilar desde el código fuente.
+
+#### Windows (x64)
+
+1. Ejecuta `CloudLocal.exe`. El servidor funciona en segundo plano, sin consola.
+2. El navegador se abre automáticamente en el equipo servidor; configura una contraseña de entre 12 y 256 caracteres en la pantalla inicial.
+3. En **Configuración → Servidor → Conectar otros dispositivos**, copia la dirección. Ábrela desde otro equipo conectado a la misma red e inicia sesión.
+
+#### macOS (Apple Silicon)
+
+1. Abre `CloudLocal.app` (doble clic, o `open CloudLocal.app` desde Terminal).
+2. Si macOS bloquea la app, consulta [Si ves una advertencia](#si-ves-una-advertencia).
+3. El navegador se abre en el equipo servidor; configura la contraseña y usa **Configuración → Servidor → Conectar otros dispositivos** para el resto de equipos.
+
+#### Linux (x64)
+
+1. Ejecuta `./cloudlocal-linux-x64`. El ZIP conserva el permiso de ejecución; si tu extractor lo
+   pierde, aplica `chmod +x cloudlocal-linux-x64`.
+2. Opcional: `./install.sh` instala sin `root` en `~/.local` (binario `cloudlocal`, entrada de menú
+   `.desktop` e icono). `./install.sh --uninstall` deshace la instalación.
+3. El navegador se abre en el equipo servidor; configura la contraseña y usa **Configuración → Servidor → Conectar otros dispositivos** para el resto de equipos.
+
+### Notas de uso
+
+- **Solo red local.** CloudLocal usa HTTP sin cifrar y no está pensado para Internet. No publiques el puerto en el router, en un proxy público ni en un túnel; úsalo en tu LAN.
+- **El equipo servidor debe permanecer encendido y despierto**, con CloudLocal en ejecución. Los archivos viven en su disco.
+- **Los demás equipos entran con la IP de Configuración**: abre en el navegador la dirección que muestra **Configuración → Servidor → Conectar otros dispositivos** (por ejemplo `http://192.168.1.20:80`), usando el puerto real si es distinto de 80.
+- **La configuración inicial solo se permite desde el propio equipo servidor.** Si el navegador no se abre, visita `http://127.0.0.1:80` (o el puerto real) en ese equipo.
+- **Se apaga con "Apagar"**: espera a que terminen las transferencias y pulsa **Apagar** en la barra lateral, o **Configuración → Servidor → Apagar el servidor**. Se cierra únicamente la instancia que atiende esa dirección, no otros procesos de Node.
+- **Para reiniciar**, ejecuta otra vez el binario o la app y recarga la página; tus archivos y contraseña se conservan. Consulta [Detener y reiniciar](docs/server-launcher.md#detener-y-reiniciar).
+
+### Si ves una advertencia
+
+Los binarios de CloudLocal no llevan firma de código de pago: no hay Authenticode en Windows ni
+notarización de Apple en macOS. Las advertencias del sistema son esperables; elige según tu
+criterio y verifica la integridad antes de ejecutar.
+
+**Windows — SmartScreen ("Windows protegió tu PC")**
+
+1. Comprueba el SHA-256 del ZIP descargado (ver más abajo).
+2. En el diálogo, **Más información → Ejecutar de todas formas**. También puedes desbloquear el
+   archivo antes de ejecutarlo: clic derecho → **Propiedades** → **Desbloquear** → **Aplicar**.
+3. El binario no está firmado con Authenticode, por lo que SmartScreen no puede identificar al editor.
+
+**macOS — Gatekeeper ("no se puede abrir porque proviene de un desarrollador no identificado" o "está dañada")**
+
+El `.app` va firmado de forma *ad-hoc* (sin certificado de Apple ni notarización). Tras la descarga,
+macOS añade el atributo de cuarentena:
+
+```sh
+xattr -dr com.apple.quarantine CloudLocal.app
+open CloudLocal.app
+```
+
+Alternativas por interfaz: clic derecho sobre `CloudLocal.app` → **Abrir** → **Abrir**, o
+**Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente**. El mensaje "dañada" tras
+mover la app también se resuelve con `xattr -dr com.apple.quarantine`.
+
+**Verificar el SHA-256**
+
+Compara el hash del ZIP con el contenido del archivo `.zip.sha256` de la misma Release. Cada
+sistema tiene su comando:
+
+```sh
+# Linux
+sha256sum 0.1.4-rc.1-linux-x64.zip
+# macOS
+shasum -a 256 0.1.4-rc.1-darwin-arm64.zip
+```
+
+```bat
+rem Windows (PowerShell o CMD)
+certutil -hashfile 0.1.4-rc.1-windows-x64.zip SHA256
+```
+
+Dentro del ZIP, `SHA256SUMS` repite el mismo control para sus archivos: `sha256sum -c SHA256SUMS`.
+Un checksum demuestra integridad (que el archivo llegó completo y sin cambios), **no** identidad
+del editor ni autenticidad.
+
+**Compilar desde el código**
+
+Si prefieres no ejecutar binarios descargados —o tu arquitectura no está publicada—, construye el
+artefacto en tu equipo: consulta [Desarrollo (desde el código fuente)](#desarrollo-desde-el-código-fuente).
 
 ### Desarrollo (desde el código fuente)
 
@@ -104,7 +193,7 @@ npm run dev          # Inicia Vite en http://localhost:5173 con HMR
 |---|---|
 | `server/` | API REST (Node.js) que gestiona el sistema de archivos |
 | `client/` | Interfaz web React con TypeScript + TailwindCSS |
-| `launcher/` | Empaquetado portátil (Node.js SEA) — produce `CloudLocal.exe` |
+| `launcher/` | Empaquetado portátil (Node.js SEA) — produce el artefacto de cada plataforma: `CloudLocal.exe`, `CloudLocal.app` o el binario Linux |
 
 ---
 
@@ -158,7 +247,15 @@ Aplicación React con TypeScript organizada en:
 
 ### Launcher (`launcher/`)
 
-Bundler que combina servidor + frontend en un ejecutable portátil usando Node.js SEA (Single-Executable Application). Produce `launcher/dist/CloudLocal.exe`.
+Bundler que combina servidor + frontend en un ejecutable portátil usando Node.js SEA (Single-Executable Application). Cada sistema construye su propio artefacto en `launcher/dist/`:
+
+| Plataforma | Artefacto | Empaquetado de la Release |
+|---|---|---|
+| Windows x64 | `CloudLocal.exe` | ejecutable con icono `.ico` incrustado |
+| macOS (Apple Silicon) | `cloudlocal-darwin-arm64` | dentro de `CloudLocal.app` con `Contents/Resources/CloudLocal.icns`, firma ad-hoc y [entitlements](launcher/resources/darwin-entitlements.plist) |
+| Linux x64 | `cloudlocal-linux-x64` | binario más `CloudLocal.desktop`, `cloudlocal.png` e `install.sh` |
+
+El detalle de la Release multiplataforma está en [Notas de la versión 0.1.4](docs/release-0.1.4.md).
 
 ---
 
@@ -246,7 +343,7 @@ Bundler que combina servidor + frontend en un ejecutable portátil usando Node.j
 | `CLOUDLOCAL_STATE_DIR` | Ruta del directorio de estado y credenciales | `.cloudlocal/state` |
 | `CLOUDLOCAL_MAX_UPLOAD` | Tamaño máximo de archivo en bytes | `536870912` (512 MiB) |
 
-> El launcher (`CloudLocal.exe`) fija `CLOUDLOCAL_PORT=80` automáticamente; no se necesita configurar.
+> El launcher (el ejecutable, `CloudLocal.app` o el binario Linux) fija `CLOUDLOCAL_PORT=80` automáticamente; no se necesita configurar.
 
 ---
 
@@ -405,5 +502,6 @@ npm test
 
 - [Servidor portable y configuración](docs/server-launcher.md)
 - [API y autenticación](docs/api.md)
+- [Notas de la versión 0.1.4](docs/release-0.1.4.md)
 - [Notas de la versión 0.1.0](docs/release-0.1.0.md)
 - [Notas de la versión 0.0.1](docs/release-0.0.1.md)
