@@ -352,7 +352,9 @@ function checkExecutableSize(candidateDir) {
   pass(name + ' exists (' + size + ' bytes)');
 }
 
-function checkMacBundle(candidateDir) {
+// Structural problems of a macOS bundle; empty means the bundle is sound.
+// Exported so the macOS path is testable on any host, not only on macOS CI.
+function macBundleProblems(candidateDir) {
   const plistPath = path.join(candidateDir, layout.APP_INFO_PLIST);
   const plist = fs.readFileSync(plistPath, 'utf8');
   const value = key => (new RegExp('<key>' + key + '</key>\\s*<string>([^<]*)</string>').exec(plist) || [])[1];
@@ -382,11 +384,11 @@ function checkMacBundle(candidateDir) {
   if (icns.toString('ascii', 0, 4) !== 'icns') problems.push('icon is not an Apple icon image (.icns)');
   else if (icns.readUInt32BE(4) !== icns.length) problems.push('icon length header does not match its size');
 
-  if (problems.length > 0) for (const problem of problems) fail(problem);
-  else pass('CloudLocal.app metadata and .icns icon verified');
+  return problems;
 }
 
-function checkLinuxExtras(candidateDir) {
+// Structural problems of the Linux extras; empty means the payload is sound.
+function linuxExtrasProblems(candidateDir) {
   const problems = [];
   const desktop = fs.readFileSync(path.join(candidateDir, layout.LINUX_DESKTOP_ENTRY), 'utf8');
   const field = key => (new RegExp('^' + key + '=(.*)$', 'm').exec(desktop) || [])[1];
@@ -409,8 +411,12 @@ function checkLinuxExtras(candidateDir) {
   }
   if (!/--uninstall/.test(installer)) problems.push('install.sh must document its --uninstall mode');
 
+  return problems;
+}
+
+function report(problems, okMessage) {
   if (problems.length > 0) for (const problem of problems) fail(problem);
-  else pass('Linux desktop entry, PNG icon and install.sh verified');
+  else pass(okMessage);
 }
 
 // Reads the zip central directory: entry names plus the unix mode each entry
@@ -527,8 +533,8 @@ function main() {
   checkChecksums(candidateDir);
   checkProvenance(candidateDir);
   checkModes(candidateDir);
-  if (LAYOUT.kind === 'macos') checkMacBundle(candidateDir);
-  if (LAYOUT.kind === 'linux') checkLinuxExtras(candidateDir);
+  if (LAYOUT.kind === 'macos') report(macBundleProblems(candidateDir), 'CloudLocal.app metadata and .icns icon verified');
+  if (LAYOUT.kind === 'linux') report(linuxExtrasProblems(candidateDir), 'Linux desktop entry, PNG icon and install.sh verified');
   if (archivePath) checkArchive(candidateDir, path.resolve(archivePath));
 
   console.log('');
@@ -541,4 +547,8 @@ function main() {
   }
 }
 
-main();
+if (require.main === module) main();
+
+// Host-independent pieces, so the macOS and Linux payload checks can be tested
+// on any machine instead of only on their own CI runner.
+module.exports = { macBundleProblems, linuxExtrasProblems, readZipEntries, scanCandidate };
