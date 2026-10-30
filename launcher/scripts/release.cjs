@@ -172,6 +172,13 @@ function createArchive(srcDir, zipPath) {
   });
 }
 
+// Written/copied documents keep a fixed mode so a restrictive umask cannot make
+// the candidate differ between machines (release-verify enforces 0644).
+function writeDocument(filePath, content) {
+  fs.writeFileSync(filePath, content);
+  if (process.platform !== 'win32') fs.chmodSync(filePath, 0o644);
+}
+
 // ── Candidate documents (README/RELEASE-NOTES) ────────────────────────────
 
 // Payload files of this platform, i.e. everything that is not a shared notice.
@@ -474,6 +481,9 @@ function main() {
 
     fs.copyFileSync(requiredSourceFiles.LICENSE, path.join(candidateRoot, 'LICENSE'));
     fs.copyFileSync(requiredSourceFiles.NODE_LICENSE, path.join(candidateRoot, 'NODE-LICENSE.txt'));
+    if (process.platform !== 'win32') {
+      for (const name of ['LICENSE', 'NODE-LICENSE.txt']) fs.chmodSync(path.join(candidateRoot, name), 0o644);
+    }
 
     const tpLines = collectThirdPartyNotices();
     const thirdPartyContent = [
@@ -493,11 +503,11 @@ function main() {
       '- esbuild and postject are build tools, not standalone programs in this archive.',
       '- The Node.js runtime and its bundled dependencies retain the terms in NODE-LICENSE.txt.',
     ].join('\n') + '\n';
-    fs.writeFileSync(path.join(candidateRoot, 'THIRD-PARTY-NOTICES.txt'), thirdPartyContent);
+    writeDocument(path.join(candidateRoot, 'THIRD-PARTY-NOTICES.txt'), thirdPartyContent);
 
     // Bundle user instructions without links to files outside this archive.
-    fs.writeFileSync(path.join(candidateRoot, 'README.md'), archiveReadme(version));
-    fs.writeFileSync(path.join(candidateRoot, 'RELEASE-NOTES.md'), releaseNotes(versionTag, version, git));
+    writeDocument(path.join(candidateRoot, 'README.md'), archiveReadme(version));
+    writeDocument(path.join(candidateRoot, 'RELEASE-NOTES.md'), releaseNotes(versionTag, version, git));
 
     const candidate = {
       name: 'CloudLocal',

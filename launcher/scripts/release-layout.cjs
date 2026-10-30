@@ -156,6 +156,8 @@ function writePayload({ layout, candidateRoot, binarySource, resourcesDir, versi
     const plistPath = path.join(candidateRoot, APP_INFO_PLIST);
     fs.mkdirSync(path.dirname(plistPath), { recursive: true });
     fs.writeFileSync(plistPath, infoPlist(version));
+    // Fixed mode: the umask must not decide what release-verify accepts.
+    if (process.platform !== 'win32') fs.chmodSync(plistPath, 0o644);
   }
   for (const resource of KIND_RESOURCES[layout.kind]) {
     copyWithMode(path.join(resourcesDir, resource.resource), path.join(candidateRoot, resource.target), resource.mode);

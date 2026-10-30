@@ -118,6 +118,13 @@ test('macOS payload is an .app bundle with a runnable binary and the .icns icon'
     assert.ok(info.CFBundleName && info.CFBundleDisplayName, 'names Finder shows');
     assert.equal(info.NSHighResolutionCapable, true);
 
+    if (process.platform !== 'win32') {
+      const plist = path.join(candidateRoot, 'CloudLocal.app', 'Contents', 'Info.plist');
+      const icon = path.join(candidateRoot, 'CloudLocal.app', 'Contents', 'Resources', 'CloudLocal.icns');
+      assert.equal(fs.statSync(plist).mode & 0o777, 0o644, 'Info.plist is 0644 regardless of umask');
+      assert.equal(fs.statSync(icon).mode & 0o777, 0o644, 'icns is 0644');
+    }
+
     const icns = fs.readFileSync(path.join(candidateRoot, 'CloudLocal.app', 'Contents', 'Resources', 'CloudLocal.icns'));
     assert.equal(icns.toString('ascii', 0, 4), 'icns');
     assert.equal(icns.readUInt32BE(4), icns.length, 'icns declares its own size');
@@ -138,6 +145,11 @@ test('Linux payload adds a desktop entry, an icon and a rootless installer', () 
     if (process.platform !== 'win32') {
       assert.equal(fs.statSync(binary).mode & 0o777, 0o755, 'linux binary is 0755');
       assert.equal(fs.statSync(installer).mode & 0o777, 0o755, 'install.sh is 0755');
+    }
+
+    if (process.platform !== 'win32') {
+      assert.equal(fs.statSync(path.join(candidateRoot, 'CloudLocal.desktop')).mode & 0o777, 0o644);
+      assert.equal(fs.statSync(path.join(candidateRoot, 'cloudlocal.png')).mode & 0o777, 0o644);
     }
 
     const desktop = fs.readFileSync(path.join(candidateRoot, 'CloudLocal.desktop'), 'utf8');

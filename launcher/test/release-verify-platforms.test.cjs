@@ -8,6 +8,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const zlib = require('node:zlib');
 
 const layout = require('../scripts/release-layout.cjs');
 const verify = require('../scripts/release-verify.cjs');
@@ -114,46 +115,79 @@ test('scanCandidate reports a symlink or a special file instead of hashing it', 
   assert.ok(scan.problems.some(problem => problem.startsWith('symlink in payload')), scan.problems.join('; '));
 }));
 
-test('readZipEntries normalizes the ./ prefix the Windows archiver writes', () => {
-  // Build a tiny zip by hand: one stored entry named "./payload.txt", mode 0755.
-  const name = './payload.txt';
-  const data = Buffer.from('hello');
-  const local = Buffer.alloc(30);
-  local.writeUInt32LE(0x04034b50, 0);
-  local.writeUInt16LE(20, 4);
-  local.writeUInt16LE(0, 6);
-  local.writeUInt16LE(0, 8);
-  local.writeUInt32LE(0, 14);
-  local.writeUInt32LE(data.length, 18);
-  local.writeUInt32LE(data.length, 22);
-  local.writeUInt16LE(name.length, 26);
-  const central = Buffer.alloc(46);
-  central.writeUInt32LE(0x02014b50, 0);
-  central.writeUInt16LE(0x031e, 4); // made by unix
-  central.writeUInt16LE(20, 6);
-  central.writeUInt16LE(0, 8);
-  central.writeUInt16LE(0, 10);
-  central.writeUInt32LE(0, 16);
-  central.writeUInt32LE(data.length, 20);
-  central.writeUInt32LE(data.length, 24);
-  central.writeUInt16LE(name.length, 28);
-  central.writeUInt32LE((0o100755 * 0x10000) >>> 0, 38);
+function makeZip(entries) {
+  // Minimal stored (uncompressed) zip builder: enough to exercise our reader.
+  const locals = [];
+  const centrals = [];
+  let offset = 0;
+  for (const entry of entries) {
+    const name = Buffer.from(entry.name);
+    const data = Buffer.from(entry.data || '');
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt32LE(zlib.crc32(data), 14);
+    local.writeUInt32LE(data.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(name.length, 26);
+    locals.push(local, name, data);
+
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(0x031e, 4);
+    central.writeUInt16LE(20, 6);
+    central.writeUInt32LE(zlib.crc32(data), 16);
+    central.writeUInt32LE(data.length, 20);
+    central.writeUInt32LE(data.length, 24);
+    central.writeUInt16LE(name.length, 28);
+    central.writeUInt32LE(((entry.type || 0o100644) * 0x10000) >>> 0, 38);
+    centrals.push(central, name);
+    offset += local.length + name.length + data.length;
+  }
+  const centralBuffer = Buffer.concat(centrals);
   const eocd = Buffer.alloc(22);
   eocd.writeUInt32LE(0x06054b50, 0);
-  eocd.writeUInt16LE(1, 8);
-  eocd.writeUInt16LE(1, 10);
-  const centralOffset = local.length + name.length + data.length;
-  eocd.writeUInt32LE(central.length + name.length, 12);
-  eocd.writeUInt32LE(centralOffset, 16);
+  eocd.writeUInt16LE(entries.length, 8);
+  eocd.writeUInt16LE(entries.length, 10);
+  eocd.writeUInt32LE(centralBuffer.length, 12);
+  eocd.writeUInt32LE(offset, 16);
+  return Buffer.concat([...locals, centralBuffer, eocd]);
+}
 
+function withZip(entries, run) {
   const dir = fs.mkdtempSync(path.join(__dirname, '..', '..', '.cache', 'zip-test-'));
   try {
     const zipPath = path.join(dir, 'handmade.zip');
-    fs.writeFileSync(zipPath, Buffer.concat([local, Buffer.from(name), data, central, Buffer.from(name), eocd]));
-    const entries = verify.readZipEntries(zipPath);
-    assert.equal(entries.get('payload.txt').mode, 0o755);
-    assert.equal(entries.get('payload.txt').directory, false);
+    fs.writeFileSync(zipPath, makeZip(entries));
+    run(zipPath);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+}
+
+test('readZipEntries normalizes the ./ prefix and keeps mode, size and CRC', () => {
+  withZip([{ name: './payload.txt', data: 'hello', type: 0o100755 }], zipPath => {
+    const { entries, duplicates } = verify.readZipEntries(zipPath);
+    const entry = entries.get('payload.txt');
+    assert.equal(entry.mode, 0o755);
+    assert.equal(entry.directory, false);
+    assert.equal(entry.fileType, 0o100000);
+    assert.equal(entry.uncompressedSize, 5);
+    assert.equal(entry.crc32, zlib.crc32(Buffer.from('hello')));
+    assert.deepEqual(duplicates, []);
+  });
+});
+
+test('readZipEntries flags a symlink entry and a duplicated name', () => {
+  withZip([
+    { name: 'payload.txt', data: 'a', type: 0o100644 },
+    { name: 'payload.txt', data: 'b', type: 0o100644 },
+  ], zipPath => {
+    assert.deepEqual(verify.readZipEntries(zipPath).duplicates, ['payload.txt']);
+  });
+
+  withZip([{ name: 'link', data: 'payload.txt', type: 0o120755 }], zipPath => {
+    const entry = verify.readZipEntries(zipPath).entries.get('link');
+    assert.equal(entry.fileType, 0o120000, 'symlink entries are recognisable');
+  });
 });

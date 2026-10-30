@@ -10,6 +10,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const zlib = require('node:zlib');
 const layout = require('./release-layout.cjs');
 
 const LAYOUT = layout.layoutFor(process.platform);
@@ -434,27 +435,55 @@ function readZipEntries(zipPath) {
   const count = buffer.readUInt16LE(eocd + 10);
   let offset = buffer.readUInt32LE(eocd + 16);
   const entries = new Map();
+  const duplicates = [];
   for (let index = 0; index < count; index++) {
     if (buffer.readUInt32LE(offset) !== 0x02014b50) throw new Error('corrupt zip central directory');
-    const externalAttributes = buffer.readUInt32LE(offset + 38);
+    const crc32 = buffer.readUInt32LE(offset + 16);
+    const uncompressedSize = buffer.readUInt32LE(offset + 24);
     const nameLength = buffer.readUInt16LE(offset + 28);
     const extraLength = buffer.readUInt16LE(offset + 30);
     const commentLength = buffer.readUInt16LE(offset + 32);
-    const name = buffer.toString('utf8', offset + 46, offset + 46 + nameLength);
-    entries.set(name.replace(/^\.\//, ''), { mode: (externalAttributes >>> 16) & 0o777, directory: name.endsWith('/') });
+    const externalAttributes = buffer.readUInt32LE(offset + 38);
+    const rawName = buffer.toString('utf8', offset + 46, offset + 46 + nameLength);
+    const name = rawName.replace(/^\.\//, '');
+    const unixMode = (externalAttributes >>> 16) & 0xffff;
+    const fileType = unixMode & 0o170000;
+    if (entries.has(name)) duplicates.push(name);
+    entries.set(name, {
+      mode: unixMode & 0o777,
+      // 0o120000 is a symlink; anything that is not a regular file or a
+      // directory has no place in a release payload.
+      fileType: fileType === 0 ? 0o100000 : fileType,
+      directory: rawName.endsWith('/'),
+      crc32,
+      uncompressedSize,
+    });
     offset += 46 + nameLength + extraLength + commentLength;
   }
-  return entries;
+  return { entries, duplicates };
 }
 
 function checkArchive(candidateDir, zipPath) {
-  let entries;
+  let archive;
   try {
-    entries = readZipEntries(zipPath);
+    archive = readZipEntries(zipPath);
   } catch (err) {
     fail('Cannot read archive ' + zipPath + ': ' + err.message);
     return;
   }
+  const { entries, duplicates } = archive;
+  if (duplicates.length > 0) {
+    fail('Duplicate entries in archive: ' + duplicates.join(', '));
+    return;
+  }
+  for (const [name, entry] of entries) {
+    if (entry.directory) continue;
+    if (entry.fileType !== 0o100000) {
+      fail('Archive entry is not a regular file: ' + name +
+        (entry.fileType === 0o120000 ? ' (symlink)' : ''));
+    }
+  }
+
   const files = [...entries].filter(([, entry]) => !entry.directory).map(([name]) => name).sort();
   const expected = [...ALLOWED_FILES].sort();
   if (files.join(',') !== expected.join(',')) {
@@ -462,6 +491,22 @@ function checkArchive(candidateDir, zipPath) {
     return;
   }
   pass('Archive contains exactly the ' + expected.length + ' payload files');
+
+  // Compare content, not just names: the stored CRC-32 must match the bytes on
+  // disk, so a truncated or replaced member cannot slip through.
+  let contentOk = true;
+  for (const file of expected) {
+    const disk = fs.readFileSync(path.join(candidateDir, file));
+    const entry = entries.get(file);
+    if (disk.length !== entry.uncompressedSize) {
+      fail('Archive size mismatch for ' + file + ': ' + entry.uncompressedSize + ' instead of ' + disk.length);
+      contentOk = false;
+    } else if (zlib.crc32(disk) !== entry.crc32) {
+      fail('Archive content mismatch for ' + file + ' (CRC-32 differs)');
+      contentOk = false;
+    }
+  }
+  if (contentOk) pass('Archive content matches the candidate byte for byte (CRC-32)');
 
   if (!MODES_MEANINGFUL) {
     pass('Archive modes not enforced on Windows (bsdtar stores its own attributes)');
