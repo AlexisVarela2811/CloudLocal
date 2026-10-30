@@ -12,13 +12,43 @@ CloudLocal.exe es un ejecutable autocontenido construido con **Node.js SEA** (Si
 
 ## Instalación
 
+CloudLocal se descarga de la página de Releases de GitHub: cada plataforma publica su ZIP con un
+`SHA256SUMS` dentro y un `<zip>.sha256` al lado. Las arquitecturas publicadas son solo **windows-x64**,
+**linux-x64** (x86-64) y **darwin-arm64** (Apple Silicon); no hay builds para macOS Intel ni para Linux
+ARM. Los detalles del contenido de cada ZIP están en
+[Empaquetado por plataforma](release-0.1.4.md#empaquetado-por-plataforma).
+
 ### Windows
 
-1. Descarga `launcher/dist/CloudLocal.exe` (construido en un equipo Windows x64)
-2. Haz doble clic para ejecutarlo
+1. Extrae el ZIP `...-windows-x64.zip` en una carpeta
+2. Haz doble clic sobre `CloudLocal.exe` para ejecutarlo
 3. La primera vez Windows puede bloquearlo — clic en **"Más información" → "Ejecutar de todos modos"**
 4. El servidor se ejecuta en segundo plano, sin consola (subsystem=2, GUI)
 5. Se abre el navegador automáticamente y se muestra una notificación toast
+
+### macOS (Apple Silicon)
+
+1. Extrae el ZIP `...-darwin-arm64.zip` y abre `CloudLocal.app` (doble clic, o `open CloudLocal.app`).
+   El ejecutable está en `Contents/MacOS/cloudlocal`.
+2. La app lleva firma *ad-hoc* con los entitlements de JIT, sin notarización de Apple. Si macOS la
+   bloquea o avisa de que está dañada, quita el atributo de cuarentena y vuelve a abrirla:
+
+   ```sh
+   xattr -dr com.apple.quarantine CloudLocal.app
+   open CloudLocal.app
+   ```
+
+3. El navegador se abre automáticamente en el equipo servidor, igual que en Windows.
+
+### Linux (x86-64)
+
+1. Extrae el ZIP `...-linux-x64.zip` y ejecuta `./cloudlocal-linux-x64`. El ZIP conserva el permiso
+   0755; si tu extractor lo pierde, aplica `chmod +x cloudlocal-linux-x64`.
+2. Opcional: `./install.sh` instala sin privilegios de administrador en `~/.local` — binario
+   `cloudlocal`, entrada de menú `CloudLocal.desktop`, icono `cloudlocal.png` y copias del README,
+   las notas y las licencias en `~/.local/share/cloudlocal`. `./install.sh --uninstall` deshace esa
+   instalación. Si `~/.local/bin` no está en `PATH`, el script lo avisa.
+3. El navegador se abre automáticamente mediante `xdg-open`; el aviso de red usa `notify-send`.
 
 ### Configuración inicial
 
@@ -34,8 +64,10 @@ Si el navegador no se abre, visita `http://127.0.0.1:80` en el equipo servidor, 
 ## Detener y reiniciar
 
 1. Espera a que finalicen las subidas y descargas.
-2. En la interfaz web, pulsa **Detener Server** con la sesión iniciada. Se cierra la instancia que atiende esa dirección y termina su proceso, no los demás procesos de Node. Si abriste varias instancias, las otras siguen ejecutándose.
-3. Para reiniciar, vuelve a ejecutar `CloudLocal.exe` y recarga la página. Los archivos y la contraseña se conservan; el botón vuelve a habilitarse cuando la app conecta con el servidor.
+2. En la interfaz web, pulsa **Apagar** (barra lateral, o **Configuración → Servidor → Apagar el servidor**) con la sesión iniciada. Se cierra la instancia que atiende esa dirección y termina su proceso, no los demás procesos de Node. Si abriste varias instancias, las otras siguen ejecutándose.
+3. Para reiniciar, vuelve a ejecutar `CloudLocal.exe` (en macOS, `CloudLocal.app`; en Linux,
+   `./cloudlocal-linux-x64`) y recarga la página. Los archivos y la contraseña se conservan; el botón
+   vuelve a habilitarse cuando la app conecta con el servidor.
 
 El cierre espera hasta tres segundos a que drenen las conexiones antes de terminar el proceso. Una transferencia aún activa puede interrumpirse.
 
@@ -114,6 +146,11 @@ El script `launcher/scripts/build.cjs`:
 3. Genera `sea.json` y `sea.blob` con `node --experimental-sea-config`
 4. Copia `node.exe` → `CloudLocal.exe` e inyecta el blob con `postject`
 5. Cambia el subsystem PE de 3 (CONSOLE) a 2 (GUI) para ocultar la consola
+
+La build es nativa del host: `build.cjs` usa el Node que lo ejecuta como binario base SEA y, junto con
+`release.cjs`, rechaza cualquier arquitectura distinta de windows-x64, linux-x64 y darwin-arm64. En
+macOS firma el ejecutable de forma ad-hoc con los entitlements de JIT; en macOS y Linux deja el
+ejecutable en 0755.
 
 ### Lanzar en desarrollo
 
