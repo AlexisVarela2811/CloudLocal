@@ -1,15 +1,73 @@
 // Explicit native-artifact probe; never run as part of unit tests.
 const fs = require('node:fs/promises');
+const fss = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const assert = require('node:assert/strict');
 const { chromium, expect } = require('@playwright/test');
+const layout = require('./release-layout.cjs');
 const root = path.resolve(__dirname, '../..');
-// Native artifact built by build.cjs for the host platform.
-const EXE_NAMES = { win32: 'CloudLocal.exe', linux: 'cloudlocal-linux-x64', darwin: 'cloudlocal-darwin-arm64' };
-const exeName = EXE_NAMES[process.platform];
-if (!exeName) throw new Error('Unsupported platform for smoke: ' + process.platform);
-const exe = path.join(root, 'launcher/dist', exeName);
+
+const LAYOUT = layout.layoutFor(process.platform);
+if (!LAYOUT) throw new Error('Unsupported platform for smoke: ' + process.platform);
+
+// Release candidate under test: an explicit argument, else the single candidate
+// this host built, else the loose binary in launcher/dist.
+function resolveArtifact() {
+  const releaseRoot = path.join(root, 'launcher/dist/release');
+  const suffix = '-' + LAYOUT.id;
+  const candidates = fss.existsSync(releaseRoot)
+    ? fss.readdirSync(releaseRoot).filter(name => name.endsWith(suffix) &&
+        fss.statSync(path.join(releaseRoot, name)).isDirectory()).sort()
+    : [];
+  const explicit = process.argv[2];
+  if (explicit && !fss.existsSync(explicit)) {
+    throw new Error('Release candidate directory not found: ' + explicit);
+  }
+  const candidateDir = explicit ? path.resolve(explicit)
+    : candidates.length > 0 ? path.join(releaseRoot, candidates[candidates.length - 1])
+      : null;
+  const executable = candidateDir
+    ? path.join(candidateDir, LAYOUT.kind === 'macos' ? layout.APP_EXECUTABLE : LAYOUT.binary)
+    : path.join(root, 'launcher/dist', LAYOUT.binary);
+  return { candidateDir, executable };
+}
+
+// The packaged layout must be what the user extracts, not just a binary: the
+// .app bundle on macOS, the desktop entry, the icon and the installer on Linux.
+function assertPayload(candidateDir) {
+  const must = (relative) => {
+    const full = path.join(candidateDir, relative);
+    assert.ok(fss.existsSync(full), 'candidate payload is missing ' + relative);
+    return full;
+  };
+  for (const file of layout.COMMON_FILES) must(file);
+  if (LAYOUT.kind === 'windows') {
+    must(LAYOUT.binary);
+    return;
+  }
+  if (LAYOUT.kind === 'macos') {
+    assert.ok(fss.lstatSync(must(layout.APP_BUNDLE)).isDirectory(), 'CloudLocal.app must be a directory');
+    const executable = must(layout.APP_EXECUTABLE);
+    assert.ok(fss.statSync(executable).mode & 0o111, 'bundle executable must be executable');
+    const plist = fss.readFileSync(must(layout.APP_INFO_PLIST), 'utf8');
+    assert.match(plist, /<key>CFBundleExecutable<\/key>\s*<string>cloudlocal<\/string>/);
+    assert.equal(fss.readFileSync(must(layout.APP_ICON)).toString('ascii', 0, 4), 'icns');
+    return;
+  }
+  const binary = must(layout.LINUX_BINARY);
+  assert.ok(fss.statSync(binary).mode & 0o111, 'linux binary must be executable');
+  assert.ok(fss.statSync(must(layout.LINUX_INSTALLER)).mode & 0o111, 'install.sh must be executable');
+  assert.match(fss.readFileSync(must(layout.LINUX_DESKTOP_ENTRY), 'utf8'), /^Exec=/m);
+  assert.equal(fss.readFileSync(must(layout.LINUX_ICON)).toString('hex', 0, 8), '89504e470d0a1a0a');
+}
+
+const artifact = resolveArtifact();
+const exe = artifact.executable;
+if (!fss.existsSync(exe)) {
+  throw new Error('Packaged executable not found: ' + exe + ' (run "npm run build:exe" first)');
+}
+if (artifact.candidateDir) assertPayload(artifact.candidateDir);
 
 async function main() {
   const cache = path.join(root, '.cache');
@@ -78,6 +136,10 @@ async function main() {
     child = null;
     await assert.rejects(fetch(base + '/api/session', { signal: AbortSignal.timeout(1000) }));
     console.log('PASS native SEA UI/assets, setup/login, byte upload/download, collision, shortcut hint and browser-button process shutdown');
+    console.log('  Artifact: ' + (artifact.candidateDir || path.join(root, 'launcher', 'dist')));
+    if (artifact.candidateDir) {
+      console.log('  Payload layout: ' + LAYOUT.kind + ' — ' + layout.payloadPaths(LAYOUT).join(', '));
+    }
   } finally {
     await browser.close();
     if (child && child.exitCode === null && child.signalCode === null) {

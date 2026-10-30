@@ -11,6 +11,34 @@ introduce cada cambio. Los artefactos publicados están en
 
 ## [0.1.4] — sin publicar
 
+### Added
+
+- **macOS: `CloudLocal.app`** en el asset `darwin-arm64`. El binario SEA vive en
+  `Contents/MacOS/cloudlocal`, con `Contents/Info.plist` (ejecutable, identificador, versión del
+  producto) y `Contents/Resources/CloudLocal.icns`. Se mantienen la firma ad-hoc y los
+  [entitlements JIT](launcher/resources/darwin-entitlements.plist) de `build.cjs`; no hay
+  notarización.
+- **Linux: `.desktop` + PNG + `install.sh`** en el asset `linux-x64`: `CloudLocal.desktop`
+  (`Exec=cloudlocal`, `Icon=cloudlocal`), `cloudlocal.png` 256×256 e `install.sh`, un instalador por
+  usuario en `~/.local` que no requiere privilegios de administrador y admite `--uninstall`.
+- `launcher/scripts/release-layout.cjs`: tabla única de plataformas y payload que leen
+  `build.cjs`, `release.cjs`, `release-verify.cjs` y `smoke.cjs`, para que ningún nombre de archivo
+  o de asset diverja entre construcción, checksums, verificación y publicación.
+- `launcher/scripts/make-icons.cjs`: regenera `CloudLocal.icns` y `cloudlocal.png` desde
+  `client/public/cloudlocal.svg`; los resultados se versionan en `launcher/resources/`.
+
+### Changed
+
+- Windows queda igual: `CloudLocal.exe` con el icono `.ico` inyectado y el mismo payload.
+- `build.cjs` y `release.cjs` rechazan construir un asset cuya arquitectura no coincida con la
+  plataforma publicada (`windows-x64`, `linux-x64`, `darwin-arm64`), en lugar de etiquetarlo mal.
+- `release-verify.cjs` valida el payload de cada plataforma: allowlist recursiva (incluye el árbol
+  de `CloudLocal.app`), cobertura exacta de `SHA256SUMS`, estructura de `Info.plist` y `.icns`,
+  entrada `.desktop`, PNG nativo e `install.sh`, modos 0755/0644 y, con `--archive`, que el ZIP
+  contenga exactamente el payload y conserve esos modos.
+- `smoke.cjs` ejecuta el ejecutable del candidato (en macOS el binario dentro de `.app`) y comprueba
+  el layout empaquetado antes de arrancar. `ci.yml` y `release.yml` le pasan el candidato y el ZIP.
+
 ### Security
 
 - `npm audit fix` (sin `--force`) resuelve los dos avisos de severidad high: **multer** 2.4.0 →

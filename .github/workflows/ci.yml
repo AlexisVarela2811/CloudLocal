@@ -1,14 +1,14 @@
 # CI — Cross-platform validation for CloudLocal.
 #
 # Strategy (matches the current release surface):
-# - The only published release artifact today is CloudLocal.exe (Windows x64),
-#   built by launcher/scripts/build.cjs (Windows-only by design).
+# - Three published assets: windows-x64, linux-x64 and darwin-arm64, each built
+#   on its own runner by launcher/scripts/build.cjs (the SEA base binary is the
+#   host node, so an OS cannot cross-build another).
 # - The matrix job proves the codebase (server, client, launcher) works on
 #   macOS, Linux and Windows, catching portability regressions early.
-# - The Windows job runs the full local release pipeline end to end:
-#   build -> candidate -> verify -> smoke, so every push to master proves the
-#   artifact we would ship actually boots and serves. When native Linux/macOS
-#   builds land in build.cjs, extend the release job to a matrix.
+# - The release job runs the full local pipeline end to end on every platform:
+#   build -> candidate -> verify (payload, modes and archive) -> smoke, so every
+#   push to master proves the artifact we would ship actually boots and serves.
 name: CI
 
 on:
@@ -116,10 +116,10 @@ jobs:
         run: npm run release:candidate -- 0.0.1-rc.1
 
       - name: Verify release candidate
-        run: npm run release:verify -- launcher/dist/release/0.0.1-rc.1-${{ matrix.platform }}
+        run: npm run release:verify -- launcher/dist/release/0.0.1-rc.1-${{ matrix.platform }} --archive launcher/dist/release/0.0.1-rc.1-${{ matrix.platform }}.zip
 
-      - name: Smoke test the executable
-        run: npm run smoke:exe
+      - name: Smoke test the packaged candidate
+        run: npm run smoke:exe -- launcher/dist/release/0.0.1-rc.1-${{ matrix.platform }}
 
       - name: Upload release candidate
         uses: actions/upload-artifact@v4

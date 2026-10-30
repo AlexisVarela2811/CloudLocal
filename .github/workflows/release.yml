@@ -73,10 +73,10 @@ jobs:
 
       - name: Verify release candidate
         shell: bash
-        run: npm run release:verify -- "launcher/dist/release/$VERSION-${{ matrix.platform }}"
+        run: npm run release:verify -- "launcher/dist/release/$VERSION-${{ matrix.platform }}" --archive "launcher/dist/release/$VERSION-${{ matrix.platform }}.zip"
 
-      - name: Smoke test the executable
-        run: npm run smoke:exe
+      - name: Smoke test the packaged candidate
+        run: npm run smoke:exe -- "launcher/dist/release/$VERSION-${{ matrix.platform }}"
 
       - name: Upload candidate artifact
         uses: actions/upload-artifact@v4

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=CloudLocal
+GenericName=Servidor de archivos local
+Comment=Comparte archivos en tu red local desde el navegador
+Exec=cloudlocal
+TryExec=cloudlocal
+Icon=cloudlocal
+Terminal=false
+Categories=Utility;FileManager;Network;
+Keywords=cloudlocal;files;lan;server;
+StartupNotify=false
