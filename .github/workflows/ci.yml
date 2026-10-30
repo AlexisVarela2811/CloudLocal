@@ -50,6 +50,10 @@ jobs:
       - name: Install dependencies (launcher)
         run: npm ci --prefix launcher
 
+      # Fails fast when a documented endpoint, link or anchor drifts from the code.
+      - name: Check documentation against the codebase
+        run: npm run check:docs
+
       # Client tests serve the compiled frontend from client/dist, which is
       # gitignored, so build it before running the suite.
       - name: Build frontend
