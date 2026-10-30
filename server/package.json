@@ -1,6 +1,6 @@
 {
     "name": "cloudlocal-server",
-    "version": "0.1.1",
+    "version": "0.1.4",
     "main": "src/server.js",
     "scripts": {
         "test": "node --test test/*.test.js",
